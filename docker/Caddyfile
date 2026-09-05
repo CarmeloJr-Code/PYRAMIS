@@ -1,0 +1,14 @@
+{
+	frankenphp
+	auto_https off
+	admin off
+	log {
+		output stderr
+	}
+}
+
+{$SERVER_NAME} {
+	root /app/public
+	encode zstd br gzip
+	php_server
+}

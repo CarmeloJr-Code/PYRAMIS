@@ -173,3 +173,24 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+
+---
+
+# PYRAMIS Context
+
+Bakery management + AI-forecasting system for Purple Yam Malaybalay. One Laravel app, two brands: **Purple Yam Malaybalay** (public storefront — no accounts, no delivery) and **PYRAMIS** (role-based employee workspace: Administrator, Baker, Cashier).
+
+Full docs: `docs/architecture.md`, `business-rules.md`, `roles-and-permissions.md`, `modules.md` (phase roadmap), `database.md`, `testing.md`, `ai-forecasting.md`. Source PRDs verbatim in `docs/reference/`.
+
+**Source of truth:** approved specs (`docs/`) > current implementation > capstone manuscript > Laravel/package docs. Never invent requirements, roles, or features — stop and ask if ambiguous.
+
+**Verified stack:** Laravel 13, PHP 8.3+, Livewire 4 + Flux UI, Tailwind v4, Fortify, Postgres/Supabase, Render deploy, Laravel Boost MCP installed.
+
+**Non-negotiable rules:** outlets receive finished goods from the main branch and never produce their own; customers never need accounts; no delivery; AI never writes to inventory/production/orders directly, only recommends (see `docs/ai-forecasting.md`); internal chat is text-only.
+
+**Roles:** Administrator=Manager, Cashier=Sales Staff, Baker=Production Staff. Full matrix in `docs/roles-and-permissions.md`.
+
+**Workflow:** vertical slices — one capability + full stack (migration → model → rules → auth → Livewire → Blade → validation → tests) per task. Inspect existing code first, validate/authorize server-side, test happy path + invalid input + unauthorized + edge cases, run `vendor/bin/pint --dirty --format agent` before done. No unrelated refactors or new dependencies without justification.
+
+**Status:** Phase 0 done (stock starter kit + Docker/Render/Supabase/Boost). Next: Phase 1 — application shell, employee auth, RBAC.

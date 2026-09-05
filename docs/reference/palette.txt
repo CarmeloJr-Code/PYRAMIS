@@ -1,0 +1,31 @@
+/* Coolors Exported Palette - https://coolors.co/7b2c8e-2b0832-2f0438-f8f7f8-d5cac8 */
+
+- CSV
+
+7B2C8E,2B0832,2F0438,F8F7F8,D5CAC8
+
+- With #
+
+#7B2C8E, #2B0832, #2F0438, #F8F7F8, #D5CAC8
+
+- Array
+
+["7B2C8E","2B0832","2F0438","F8F7F8","D5CAC8"]
+
+- Object
+
+{"Velvet Orchid":"7B2C8E","Midnight Violet":"2B0832","Dark Amethyst":"2F0438","Bright Snow":"F8F7F8","Dust Grey":"D5CAC8"}
+
+- Extended Array
+
+[{"name":"Velvet Orchid","hex":"7B2C8E","rgb":[123,44,142],"cmyk":[13,69,0,44],"hsb":[288,69,56],"hsl":[288,53,36],"lab":[34,49,-39]},{"name":"Midnight Violet","hex":"2B0832","rgb":[43,8,50],"cmyk":[14,84,0,80],"hsb":[290,84,20],"hsl":[290,72,11],"lab":[8,25,-19]},{"name":"Dark Amethyst","hex":"2F0438","rgb":[47,4,56],"cmyk":[16,93,0,78],"hsb":[290,93,22],"hsl":[290,87,12],"lab":[9,30,-23]},{"name":"Bright Snow","hex":"F8F7F8","rgb":[248,247,248],"cmyk":[0,0,0,3],"hsb":[300,0,97],"hsl":[300,7,97],"lab":[97,1,0]},{"name":"Dust Grey","hex":"D5CAC8","rgb":[213,202,200],"cmyk":[0,5,6,16],"hsb":[9,6,84],"hsl":[9,13,81],"lab":[82,3,2]}]
+
+- XML
+
+<palette>
+  <color name="Velvet Orchid" hex="7B2C8E" r="123" g="44" b="142" />
+  <color name="Midnight Violet" hex="2B0832" r="43" g="8" b="50" />
+  <color name="Dark Amethyst" hex="2F0438" r="47" g="4" b="56" />
+  <color name="Bright Snow" hex="F8F7F8" r="248" g="247" b="248" />
+  <color name="Dust Grey" hex="D5CAC8" r="213" g="202" b="200" />
+</palette>

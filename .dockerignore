@@ -8,10 +8,6 @@ vendor
 public/build
 public/hot
 public/storage
-storage/framework/cache/data/*
-storage/framework/sessions/*
-storage/framework/views/*
-storage/logs/*
 database/database.sqlite
 tests
 .phpunit.cache

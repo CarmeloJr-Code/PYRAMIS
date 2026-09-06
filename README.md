@@ -10,7 +10,7 @@ Centralized web-based bakery management and AI-assisted forecasting system for *
 
 ## Stack
 
-Laravel 13 · PHP 8.3+ · Livewire 4 + Flux UI · Tailwind CSS v4 · Laravel Fortify · PostgreSQL via Supabase · Render (Docker) for deployment · Laravel Boost for AI-agent tooling.
+Laravel 13 · PHP 8.4+ · Livewire 4 + Flux UI · Tailwind CSS v4 · Laravel Fortify · PostgreSQL via Supabase · Render (Docker) for deployment · Laravel Boost for AI-agent tooling.
 
 ## Status
 

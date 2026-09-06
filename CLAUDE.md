@@ -1,45 +1,79 @@
 # PYRAMIS
 
-Bakery management + AI-forecasting system for Purple Yam Malaybalay. One Laravel app, two brands: **Purple Yam Malaybalay** (public storefront — no accounts, no delivery) and **PYRAMIS** (employee workspace: Administrator, Baker, Cashier).
+Centralized bakery management + AI-assisted forecasting for **Purple Yam Malaybalay**. One Laravel app, two branded experiences:
 
-**Stack:** Laravel 13, PHP 8.3+, Livewire 4 + Flux UI, Tailwind v4, Fortify, Postgres/Supabase, Render deploy, Laravel Boost MCP. Confirm APIs against installed versions (`composer show --direct`, `package.json`) — never assume.
+- **Purple Yam Malaybalay** — public storefront: browse, pre-order, pick a pickup outlet, track status. No customer accounts, no delivery.
+- **PYRAMIS** — authenticated employee workspace: Administrator, Baker, Cashier.
 
-**Status:** Phase 0 done (starter kit + Docker/Render/Supabase/Boost). Next: Phase 1 — app shell, employee auth, RBAC.
+**Status:** Phase 0 (Foundation) done — stock Livewire starter kit plus Docker/Render/Supabase/Boost wiring. No business tables, roles, or features exist yet. Next: Phase 1 — app shell, employee auth, RBAC.
 
-## Source of truth
+## Verified stack
 
-Approved specs (`docs/`) > current implementation > capstone manuscript > package docs. Never invent requirements, roles, or features — stop and ask if ambiguous.
+Checked against this repo — don't assume otherwise.
 
-Docs: `docs/architecture.md`, `business-rules.md`, `roles-and-permissions.md`, `modules.md` (phase roadmap), `database.md`, `testing.md`, `ai-forecasting.md`. Source PRDs verbatim in `docs/reference/`.
+- Laravel 13, PHP `^8.4` (21 locked packages require `>=8.4`; both Dockerfile stages are `php8.4-alpine`)
+- Livewire 4 + Flux UI (`livewire/flux`), Blade, Tailwind v4
+- Auth: Fortify, plus passkeys (`@laravel/passkeys`)
+- PostgreSQL via Supabase, through Eloquent
+- Deploy: Render (`render.yaml`, `Dockerfile` committed)
+- AI (Phase 12, not yet installed): Laravel AI SDK + OpenAI GPT-5 Nano
+- Laravel Boost + MCP server wired up (`.mcp.json`)
+
+Confirm package APIs against installed versions (`composer show --direct`, `package.json`) — never assume a major version.
+
+## Source of truth, in order
+
+1. Approved specs (`docs/`)
+2. Approved design decisions and portal structure (`docs/architecture.md`, `docs/roles-and-permissions.md`)
+3. Current implementation — inspect before editing
+4. Capstone manuscript
+5. Laravel / package docs
+6. General technical knowledge
+
+Never invent requirements, roles, permissions, or features outside approved scope. When requirements conflict or are ambiguous, stop and ask rather than guess.
+
+Docs: `docs/architecture.md`, `business-rules.md`, `roles-and-permissions.md`, `modules.md` (phase roadmap), `database.md`, `testing.md`, `ai-forecasting.md`. Capstone sources verbatim in `docs/reference/`.
 
 Brand/logo sources, product recipes, and scanned business forms live in `docs/reference/{brand,recipes,forms}/` — reference only, never served, and **not** evidence that a feature was scoped (there is no recipes table and no printable-forms requirement). Read each folder's README before building from it. Web-ready logo assets go in `resources/views/components/app-logo-icon.blade.php` (inline SVG) and `public/favicon.*`, not in `docs/`.
 
 ## Non-negotiable business rules
 
-- Outlets receive finished goods from the main branch; they never produce their own.
-- Customers never need accounts. No delivery.
-- AI only recommends — it never writes to inventory/production/orders (`docs/ai-forecasting.md`).
+Full registry: `docs/business-rules.md`. The ones most often violated:
+
+- Outlets receive **finished goods from the main branch** — they never run their own production.
+- Customers **never** need an account. No delivery.
+- AI only recommends — it never writes to inventory, production, orders, or schedules, is never presented as a guaranteed prediction, and deterministic math stays in PHP/SQL, not the LLM (`docs/ai-forecasting.md`).
 - Internal chat is text-only.
-- Roles: Administrator=Manager, Cashier=Sales Staff, Baker=Production Staff. Matrix in `docs/roles-and-permissions.md`.
+
+## Roles — one vocabulary only
+
+| System role | Portal-design term |
+|---|---|
+| Administrator | Manager |
+| Cashier | Sales Staff |
+| Baker | Production Staff |
+| Customer | Customer |
+
+Full capability matrix: `docs/roles-and-permissions.md`.
 
 ## Workflow
 
-Vertical slices — one capability, full stack per task (migration → model → rules → auth → Livewire → Blade → validation → tests).
+Dependency-aware vertical slices. One task = one business capability with its full stack (migration → model → business rules → authorization → Livewire → Blade → validation → tests). Not a whole module, not several unrelated ones.
 
-- Inspect sibling files first and follow existing structure, naming, and conventions; reuse existing components.
-- Don't add base folders, dependencies, or unrelated refactors without approval.
-- Validate and authorize server-side (in Livewire actions as in HTTP requests); keep Livewire state server-side.
-- Use `php artisan make:*` (with `--no-interaction`) for new files, including `make:class`. New models get factories and seeders.
+- Inspect existing routes, controllers, components, models, and migrations for the area first; follow sibling structure and naming; reuse existing components.
+- Validate and authorize server-side — never trust the client. Keep Livewire state server-side.
+- Use `php artisan make:*` with `--no-interaction`, including `make:class`. New models get factories and seeders.
 - Prefer named routes and `route()`; Eloquent API Resources + versioning for APIs.
-- Run `vendor/bin/pint --dirty --format agent` before finishing PHP changes.
+- Run `vendor/bin/pint --dirty --format agent` on any touched PHP.
+- No unrelated refactors, no new base folders, no new dependencies, no architecture changes without approval.
 - Only write documentation files when asked. Be concise in replies.
 
 ## Testing
 
-- Every code change adds or updates a test; cover the changed behavior and its important failure modes (happy path, invalid input, unauthorized, edge cases) and nothing beyond.
+- Every code change adds or updates a test: happy path, invalid input, unauthorized access, edge cases, and resulting DB state — and nothing beyond.
 - PHPUnit. Create with `php artisan make:test --phpunit SomeFeatureTest` (no suite dir in the name); most tests are feature tests. Use factories and their custom states.
 - Run the narrowest set: `php artisan test --compact <path|--filter=testName>`, or `vendor/bin/phpunit` directly. Rerun after each change.
-- Read the `testing-best-practices` skill before writing tests. Don't write verification scripts or tinker for what tests already prove.
+- Read the `testing-best-practices` skill first. Don't write verification scripts or tinker for what tests already prove.
 
 ## Skills
 
@@ -65,3 +99,4 @@ Record durable team rules with `record-rule` (`glob`, `title`, short `note`) rat
 - Artisan: `php artisan route:list` (filter `--method`, `--name`, `--path`, `--except-vendor`), `php artisan config:show app.name`.
 - Tinker: single-quote the outer `--execute` string, double quotes inside PHP.
 - "Unable to locate file in Vite manifest" or a frontend change not showing → ask the user to run `npm run build` / `npm run dev` / `composer run dev`.
+- Re-running `php artisan boost:install` regenerates a verbose `<laravel-boost-guidelines>` block at the top of this file and overwrites what follows. It also drops the `docs/reference/` asset conventions above. If that happens, re-compact rather than keeping the generated version.

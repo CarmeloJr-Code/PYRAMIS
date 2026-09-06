@@ -46,7 +46,7 @@ Employee journey: Sign In → Authentication → Role Identification → Role-Ba
 | Component | Value | Verified from |
 |---|---|---|
 | Framework | Laravel 13 | `composer.json` |
-| Language | PHP `^8.3` (running 8.4 per Boost) | `composer.json` |
+| Language | PHP `^8.4` (locked deps require `>=8.4`) | `composer.json` |
 | UI | Blade + Livewire 4 + Flux UI (`livewire/flux`) | `composer.json` |
 | Styling | Tailwind CSS v4 | `package.json` |
 | Auth | Laravel Fortify + passkeys | `composer.json` |

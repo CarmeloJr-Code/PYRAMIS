@@ -6,6 +6,17 @@
 *.md diff=markdown
 *.php diff=php
 
+# Reference assets: opt out of the `text=auto eol=lf` above, which can
+# misclassify design sources as text and silently LF-normalize them.
+*.ai binary
+*.psd binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+
 CHANGELOG.md export-ignore
 README.md export-ignore
 .github/workflows/browser-tests.yml export-ignore

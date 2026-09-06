@@ -12,6 +12,8 @@ Approved specs (`docs/`) > current implementation > capstone manuscript > packag
 
 Docs: `docs/architecture.md`, `business-rules.md`, `roles-and-permissions.md`, `modules.md` (phase roadmap), `database.md`, `testing.md`, `ai-forecasting.md`. Source PRDs verbatim in `docs/reference/`.
 
+Brand/logo sources, product recipes, and scanned business forms live in `docs/reference/{brand,recipes,forms}/` — reference only, never served, and **not** evidence that a feature was scoped (there is no recipes table and no printable-forms requirement). Read each folder's README before building from it. Web-ready logo assets go in `resources/views/components/app-logo-icon.blade.php` (inline SVG) and `public/favicon.*`, not in `docs/`.
+
 ## Non-negotiable business rules
 
 - Outlets receive finished goods from the main branch; they never produce their own.

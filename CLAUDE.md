@@ -89,7 +89,7 @@ npx -y skills add <repo-url> --skill <name> --agent claude-code --copy -y
 
 - No RLS, no Supabase Auth, no `service_role`/anon keys. Authorization is Laravel policies (`docs/roles-and-permissions.md`). Advisor warnings about RLS on the public schema are not approved requirements — ignore them.
 - On Eloquent idiom, migrations, and N+1, `laravel-best-practices` wins. Use the Supabase skill for Postgres-level concerns: index type and shape, locking, pooling, `EXPLAIN`.
-- Tests run SQLite `:memory:` (`phpunit.xml`) while production is Postgres, so index and query changes cannot be proven by the suite — verify against the real database with Boost `database-query`.
+- Local test runs use SQLite `:memory:` (`phpunit.xml`); CI runs the same suite against Postgres 17 (`.github/workflows/tests.yml`), matching the Supabase engine. CI is the gate for Postgres-specific behaviour — index and query work can pass locally and still fail there, which is intended. Never point a test run at the Supabase project; `RefreshDatabase` would drop production tables.
 
 ## PHP style
 

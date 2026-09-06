@@ -13,6 +13,36 @@ jobs:
   ci:
     runs-on: ubuntu-latest
 
+    # Matches the Supabase project's engine (Postgres 17) so migrations, index
+    # types, and query plans are exercised on the same major version as production.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: pyramis_testing
+          POSTGRES_USER: pyramis
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U pyramis -d pyramis_testing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    # Real environment variables beat both phpunit.xml (its <env> entries are not
+    # force="true") and .env (Laravel loads it immutably), so these redirect the
+    # whole job — `composer setup`'s migrate included — onto Postgres. Local runs
+    # keep the SQLite defaults in phpunit.xml and need no database service.
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_DATABASE: pyramis_testing
+      DB_USERNAME: pyramis
+      DB_PASSWORD: password
+      DB_SSLMODE: disable
+
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -23,6 +53,7 @@ jobs:
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
         with:
           php-version: '8.4'
+          extensions: pdo_pgsql
           tools: composer:v2
           coverage: none
 

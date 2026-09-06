@@ -12,3 +12,4 @@
 	encode zstd br gzip
 	php_server
 }
+this-is-not-a-valid-caddy-directive {

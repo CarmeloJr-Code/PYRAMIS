@@ -67,3 +67,94 @@ jobs:
 
       - name: Run CI Checks
         run: composer ci:check
+
+  # Render builds this image on every push to main (render.yaml autoDeploy: true) and
+  # nothing else verifies it — there is no Docker on the dev machine. Build it here and
+  # boot it the way Render does, so a broken image fails the PR, not the deployed app.
+  docker:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: pyramis_testing
+          POSTGRES_USER: pyramis
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U pyramis -d pyramis_testing"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: docker build -t pyramis:ci .
+
+      # --security-opt no-new-privileges approximates how Render runs containers. It does
+      # NOT reproduce the 22bf2e3 capability failure: this container runs as root, and
+      # under no_new_privs execve only returns EPERM when file capabilities would elevate
+      # privileges. Verified by negative test — reverting that fix keeps the job green.
+      # Kept anyway as a cheap approximation of Render's profile.
+      # --network host lets the app reach the postgres service on 127.0.0.1:5432 and
+      # exposes its own port directly for the health poll.
+      - name: Start container
+        run: |
+          docker run -d --name pyramis-ci \
+            --network host \
+            --security-opt no-new-privileges:true \
+            -e APP_NAME=PYRAMIS \
+            -e APP_ENV=production \
+            -e APP_DEBUG=false \
+            -e "APP_KEY=base64:$(openssl rand -base64 32)" \
+            -e APP_URL=http://localhost:8080 \
+            -e LOG_CHANNEL=stderr \
+            -e LOG_LEVEL=warning \
+            -e PORT=8080 \
+            -e DB_CONNECTION=pgsql \
+            -e DB_HOST=127.0.0.1 \
+            -e DB_PORT=5432 \
+            -e DB_DATABASE=pyramis_testing \
+            -e DB_USERNAME=pyramis \
+            -e DB_PASSWORD=password \
+            -e DB_SSLMODE=disable \
+            -e SESSION_DRIVER=database \
+            -e CACHE_STORE=database \
+            -e QUEUE_CONNECTION=database \
+            pyramis:ci
+
+      # Same endpoint Render polls (render.yaml healthCheckPath, bootstrap/app.php health).
+      # Reaching 200 proves the whole entrypoint ran: config/route/view cache, then
+      # migrate --force against Postgres, then frankenphp serving.
+      - name: Wait for /up
+        run: |
+          for i in $(seq 1 30); do
+            if [ -z "$(docker ps -q -f name=pyramis-ci)" ]; then
+              echo "::error::container exited before becoming healthy"
+              exit 1
+            fi
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/up || true)
+            if [ "$code" = "200" ]; then
+              echo "/up returned 200 after ${i} attempt(s)"
+              exit 0
+            fi
+            echo "attempt ${i}: HTTP ${code:-none}"
+            sleep 2
+          done
+          echo "::error::/up never returned 200 within 60s"
+          exit 1
+
+      - name: Container logs
+        if: always()
+        run: docker logs pyramis-ci
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f pyramis-ci

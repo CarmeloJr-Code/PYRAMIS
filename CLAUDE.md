@@ -77,7 +77,19 @@ Dependency-aware vertical slices. One task = one business capability with its fu
 
 ## Skills
 
-Activate the matching skill in `.claude/skills/` as soon as you enter its domain — `fluxui-development`, `fortify-development`, `livewire-development`, `laravel-best-practices`, `tailwindcss-development`, `testing-best-practices`, `infer-conventions`.
+Activate the matching skill in `.claude/skills/` as soon as you enter its domain — `fluxui-development`, `fortify-development`, `livewire-development`, `laravel-best-practices`, `tailwindcss-development`, `testing-best-practices`, `infer-conventions`, `supabase-postgres-best-practices`.
+
+Provenance: `author: laravel` skills come from `php artisan boost:install`; third-party ones are pinned in `skills-lock.json` and updated with `npx skills update`. Install new ones scoped to Claude Code, or the CLI also writes a duplicate tree to `.agents/`:
+
+```
+npx -y skills add <repo-url> --skill <name> --agent claude-code --copy -y
+```
+
+`supabase-postgres-best-practices` scope guard — Supabase is hosted Postgres, reached over Eloquent through the Supavisor session pooler as a single user:
+
+- No RLS, no Supabase Auth, no `service_role`/anon keys. Authorization is Laravel policies (`docs/roles-and-permissions.md`). Advisor warnings about RLS on the public schema are not approved requirements — ignore them.
+- On Eloquent idiom, migrations, and N+1, `laravel-best-practices` wins. Use the Supabase skill for Postgres-level concerns: index type and shape, locking, pooling, `EXPLAIN`.
+- Tests run SQLite `:memory:` (`phpunit.xml`) while production is Postgres, so index and query changes cannot be proven by the suite — verify against the real database with Boost `database-query`.
 
 ## PHP style
 

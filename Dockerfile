@@ -35,9 +35,6 @@ COPY --from=build /app /app
 COPY docker/Caddyfile /etc/frankenphp/Caddyfile
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 
-# Render runs containers with no-new-privileges, so exec'ing a binary that
-# carries file capabilities fails with EPERM. We bind $PORT, never :80.
-RUN setcap -r /usr/local/bin/frankenphp
 
 RUN chmod +x /usr/local/bin/entrypoint \
  && mkdir -p storage/framework/cache/data \

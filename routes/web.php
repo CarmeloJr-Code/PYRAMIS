@@ -7,9 +7,17 @@ use Illuminate\Support\Facades\Route;
 Route::livewire('/', 'pages::storefront.home')->name('home');
 Route::livewire('products', 'pages::storefront.products')->name('products.index');
 Route::livewire('products/{product:slug}', 'pages::storefront.product')->name('products.show');
+Route::livewire('order', 'pages::storefront.order')->name('order');
+Route::livewire('orders/{order:reference}', 'pages::storefront.order-status')->name('orders.show');
 
 Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->group(function () {
     Route::livewire('dashboard', 'pages::employee.dashboard')->name('dashboard');
+
+    Route::middleware('can:manage-outlets')->group(function () {
+        Route::livewire('outlets', 'pages::employee.outlets.index')->name('outlets.index');
+        Route::livewire('outlets/create', 'pages::employee.outlets.manage')->name('outlets.create');
+        Route::livewire('outlets/{outlet}/edit', 'pages::employee.outlets.manage')->name('outlets.edit');
+    });
 
     Route::middleware('can:manage-products')->group(function () {
         Route::livewire('products', 'pages::employee.products.index')->name('products.index');

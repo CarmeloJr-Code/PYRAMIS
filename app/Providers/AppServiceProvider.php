@@ -59,6 +59,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-products', fn (User $user): bool => $user->hasRole(
             UserRole::Administrator,
         ));
+
+        // Outlet records are FR-06 management territory, same reasoning as
+        // manage-products: the matrix gives Cashier and Baker no say over them.
+        Gate::define('manage-outlets', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+        ));
     }
 
     /**

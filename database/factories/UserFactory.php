@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -27,6 +28,7 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
+            'role' => UserRole::Cashier,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
@@ -36,6 +38,36 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => null,
             /* @end-chisel-2fa */
         ];
+    }
+
+    /**
+     * Indicate that the user is an administrator (Manager).
+     */
+    public function administrator(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Administrator,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a baker (Production Staff).
+     */
+    public function baker(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Baker,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a cashier (Sales Staff).
+     */
+    public function cashier(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Cashier,
+        ]);
     }
 
     /**

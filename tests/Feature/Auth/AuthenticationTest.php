@@ -4,6 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -29,7 +30,7 @@ class AuthenticationTest extends TestCase
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect(route('dashboard', absolute: false));
+            ->assertRedirect(route('employee.dashboard', absolute: false));
 
         $this->assertAuthenticated();
     }
@@ -66,6 +67,28 @@ class AuthenticationTest extends TestCase
 
         $response->assertRedirect(route('two-factor.login'));
         $this->assertGuest();
+    }
+
+    public function test_the_workspace_is_served_under_the_employee_prefix(): void
+    {
+        $this->assertSame('/employee/login', route('login', absolute: false));
+        $this->assertSame('/employee/dashboard', route('employee.dashboard', absolute: false));
+    }
+
+    public function test_public_registration_is_not_available(): void
+    {
+        $this->assertFalse(Route::has('register'));
+
+        $this->get('/register')->assertNotFound();
+        $this->get('/employee/register')->assertNotFound();
+    }
+
+    public function test_the_public_landing_page_offers_sign_in_but_not_sign_up(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee(route('login'))
+            ->assertDontSee('Register');
     }
 
     public function test_users_can_logout(): void

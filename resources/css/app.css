@@ -26,6 +26,32 @@
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
+
+    /* Velvet Orchid — the Purple Yam Malaybalay brand ramp (docs/reference/design-vibe.md). */
+    --color-orchid-50: #f6ebf9;
+    --color-orchid-100: #eed8f3;
+    --color-orchid-200: #dcb1e7;
+    --color-orchid-300: #cb8adb;
+    --color-orchid-400: #b963cf;
+    --color-orchid-500: #a83cc3;
+    --color-orchid-600: #86309c;
+    --color-orchid-700: #652475;
+    --color-orchid-800: #43184e;
+    --color-orchid-900: #220c27;
+    --color-orchid-950: #18081b;
+
+    /* Bright Snow — the warm neutral that keeps the violet from taking over. */
+    --color-snow-50: #f8f7f8;
+    --color-snow-100: #e7e4e7;
+    --color-snow-200: #d0c8d0;
+    --color-snow-300: #b8adb8;
+    --color-snow-400: #a092a0;
+    --color-snow-500: #887788;
+    --color-snow-600: #6d5f6d;
+    --color-snow-700: #524752;
+    --color-snow-800: #372f37;
+    --color-snow-900: #1b181b;
+    --color-snow-950: #131113;
 }
 
 @layer theme {

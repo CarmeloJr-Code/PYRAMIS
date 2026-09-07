@@ -2,7 +2,11 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+// Purple Yam Malaybalay storefront. No authentication — customers never hold
+// an account (BR-001).
+Route::livewire('/', 'pages::storefront.home')->name('home');
+Route::livewire('products', 'pages::storefront.products')->name('products.index');
+Route::livewire('products/{product:slug}', 'pages::storefront.product')->name('products.show');
 
 Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->group(function () {
     Route::livewire('dashboard', 'pages::employee.dashboard')->name('dashboard');

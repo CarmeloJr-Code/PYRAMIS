@@ -33,6 +33,9 @@ class DatabaseSeeder extends Seeder
             'email' => 'cashier@purpleyam.test',
         ]);
 
-        $this->call(CatalogSeeder::class);
+        $this->call([
+            CatalogSeeder::class,
+            OutletSeeder::class,
+        ]);
     }
 }

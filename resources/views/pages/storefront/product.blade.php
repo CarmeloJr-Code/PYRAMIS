@@ -3,6 +3,7 @@
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -47,6 +48,30 @@ new #[Layout('layouts::storefront')] class extends Component {
     public function availableVariants(): Collection
     {
         return $this->product->variants->where('is_available', true)->values();
+    }
+
+    /**
+     * Put the chosen size in the session cart.
+     *
+     * The cart is only a convenience — checkout re-resolves every variant from
+     * the database, so nothing here is trusted at submit time.
+     */
+    public function addToOrder(): void
+    {
+        $variant = $this->availableVariants->firstWhere('id', $this->selectedVariantId);
+
+        if ($variant === null) {
+            return;
+        }
+
+        /** @var array<int, int> $cart */
+        $cart = Session::get('cart', []);
+
+        $cart[$variant->id] = min(($cart[$variant->id] ?? 0) + 1, 99);
+
+        Session::put('cart', $cart);
+
+        $this->redirectRoute('order', navigate: true);
     }
 }; ?>
 
@@ -109,11 +134,19 @@ new #[Layout('layouts::storefront')] class extends Component {
                 @endforeach
             </ul>
 
-            {{-- Placing the order is the Phase 3 slice; this page only gets the
-                 customer as far as choosing what they want. --}}
-            <p class="rounded-lg bg-snow-100 p-4 text-sm text-snow-600">
-                {{ __('Online pre-ordering is opening soon. In the meantime, please contact the shop to place an order.') }}
-            </p>
+            @if ($this->availableVariants->isNotEmpty())
+                <button
+                    type="button"
+                    wire:click="addToOrder"
+                    class="rounded-lg bg-orchid-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orchid-700"
+                >
+                    {{ __('Add to order') }}
+                </button>
+            @else
+                <p class="rounded-lg bg-snow-100 p-4 text-sm text-snow-600">
+                    {{ __('Every size is sold out right now. Please check back soon.') }}
+                </p>
+            @endif
         </div>
     </div>
 </div>

@@ -27,6 +27,19 @@
                     >
                         {{ __('Products') }}
                     </a>
+
+                    @php($cartCount = array_sum(session('cart', [])))
+
+                    <a
+                        href="{{ route('order') }}"
+                        class="flex items-center gap-2 {{ request()->routeIs('order') ? 'text-orchid-700' : 'text-snow-600 hover:text-orchid-700' }}"
+                        wire:navigate
+                    >
+                        {{ __('Your order') }}
+                        @if ($cartCount > 0)
+                            <span class="flex size-5 items-center justify-center rounded-full bg-orchid-600 text-xs font-semibold text-white">{{ $cartCount }}</span>
+                        @endif
+                    </a>
                 </nav>
             </div>
         </header>

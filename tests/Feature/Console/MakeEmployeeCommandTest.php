@@ -5,6 +5,7 @@ namespace Tests\Feature\Console;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -46,6 +47,56 @@ class MakeEmployeeCommandTest extends TestCase
 
         $this->assertNotSame('correct-horse-battery-staple', $employee->password);
         $this->assertTrue(Hash::check('correct-horse-battery-staple', $employee->password));
+    }
+
+    public function test_generate_password_creates_the_employee_without_prompting(): void
+    {
+        $this->artisan('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => 'ana@purpleyam.test',
+            '--role' => 'administrator',
+            '--generate-password' => true,
+        ])->assertSuccessful();
+
+        $employee = User::firstWhere('email', 'ana@purpleyam.test');
+
+        $this->assertNotNull($employee);
+        $this->assertSame(UserRole::Administrator, $employee->role);
+        $this->assertNotNull($employee->email_verified_at);
+    }
+
+    public function test_the_printed_generated_password_actually_works(): void
+    {
+        // Artisan::call, not $this->artisan(), so the printed output is capturable
+        // — and so this exercises the genuinely non-interactive path.
+        $exitCode = Artisan::call('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => 'ana@purpleyam.test',
+            '--role' => 'baker',
+            '--generate-password' => true,
+        ]);
+
+        $this->assertSame(0, $exitCode);
+
+        preg_match('/^\s+(\S{24})\s*$/m', Artisan::output(), $matches);
+
+        $this->assertNotEmpty($matches, 'The generated password was not printed.');
+
+        $this->assertTrue(
+            Hash::check($matches[1], User::firstWhere('email', 'ana@purpleyam.test')->password),
+        );
+    }
+
+    public function test_it_refuses_a_non_interactive_run_without_generate_password(): void
+    {
+        $this->artisan('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => 'ana@purpleyam.test',
+            '--role' => 'baker',
+            '--no-interaction' => true,
+        ])->assertFailed();
+
+        $this->assertDatabaseEmpty('users');
     }
 
     public function test_it_prompts_for_details_not_passed_as_options(): void

@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 use function Laravel\Prompts\password;
@@ -25,7 +26,8 @@ class MakeEmployeeCommand extends Command
     protected $signature = 'make:employee
         {--name= : The employee\'s full name}
         {--email= : The employee\'s email address}
-        {--role= : administrator, baker, or cashier}';
+        {--role= : administrator, baker, or cashier}
+        {--generate-password : Mint a strong random password and print it once instead of prompting}';
 
     /**
      * The console command description.
@@ -36,8 +38,17 @@ class MakeEmployeeCommand extends Command
 
     public function handle(): int
     {
-        if (! $this->input->isInteractive()) {
-            $this->components->error('This command needs an interactive terminal to read the password.');
+        $generate = (bool) $this->option('generate-password');
+
+        $needsPrompt = ! $generate
+            || $this->option('name') === null
+            || $this->option('email') === null
+            || $this->option('role') === null;
+
+        if ($needsPrompt && ! $this->input->isInteractive()) {
+            $this->components->error(
+                'This command needs an interactive terminal, unless --name, --email, --role and --generate-password are all given.',
+            );
 
             return self::FAILURE;
         }
@@ -57,8 +68,20 @@ class MakeEmployeeCommand extends Command
             options: $this->roleOptions(),
         );
 
-        $password = password(label: 'Password');
-        $confirmation = password(label: 'Confirm password');
+        if ($generate) {
+            $password = $this->generatePassword();
+
+            if ($password === null) {
+                $this->components->error('Could not generate a password meeting the configured rules.');
+
+                return self::FAILURE;
+            }
+
+            $confirmation = $password;
+        } else {
+            $password = password(label: 'Password');
+            $confirmation = password(label: 'Confirm password');
+        }
 
         $validator = Validator::make([
             'name' => $name,
@@ -98,7 +121,43 @@ class MakeEmployeeCommand extends Command
 
         $this->components->info("Employee [{$employee->email}] created as {$employee->role->label()}.");
 
+        if ($generate) {
+            // Printed once and never stored in clear. Whoever runs this is
+            // responsible for the terminal it lands in — a scheduled job would
+            // put it in the service logs.
+            $this->newLine();
+            $this->components->warn('Generated password — copy it now, it will not be shown again:');
+            $this->line("  {$password}");
+            $this->newLine();
+            $this->components->warn('Change it after the first sign-in.');
+        }
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Mint a random password that satisfies the configured password rules.
+     *
+     * Str::password draws from a shuffled pool, so a given draw is not
+     * guaranteed to contain every required character class. Validate each
+     * candidate against the same rules a human would face rather than assume.
+     */
+    protected function generatePassword(): ?string
+    {
+        foreach (range(1, 10) as $ignored) {
+            $candidate = Str::password(24);
+
+            $validator = Validator::make(
+                ['password' => $candidate, 'password_confirmation' => $candidate],
+                ['password' => $this->passwordRules()],
+            );
+
+            if ($validator->passes()) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**

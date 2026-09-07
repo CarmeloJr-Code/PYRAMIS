@@ -12,14 +12,25 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     *
+     * PYRAMIS has no public registration, so the first accounts come from here.
+     * One employee per role, for signing in during development.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        User::factory()->administrator()->create([
+            'name' => 'Purple Yam Administrator',
+            'email' => 'administrator@purpleyam.test',
+        ]);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        User::factory()->baker()->create([
+            'name' => 'Purple Yam Baker',
+            'email' => 'baker@purpleyam.test',
+        ]);
+
+        User::factory()->cashier()->create([
+            'name' => 'Purple Yam Cashier',
+            'email' => 'cashier@purpleyam.test',
         ]);
     }
 }

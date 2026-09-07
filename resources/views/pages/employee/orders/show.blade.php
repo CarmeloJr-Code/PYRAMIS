@@ -1,9 +1,11 @@
 <?php
 
+use App\Actions\RecordSaleForOrder;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -32,10 +34,36 @@ new class extends Component {
 
     /**
      * Move the order one step forward.
+     *
+     * Completing means the customer collected and paid, so that step also
+     * records the sale — the order-to-sale workflow of the Phase 4 spec.
      */
     public function advance(): void
     {
-        $this->apply($this->order->status->next());
+        $next = $this->order->status->next();
+
+        if ($next !== OrderStatus::Completed) {
+            $this->apply($next);
+
+            return;
+        }
+
+        Gate::authorize('manage-orders');
+
+        try {
+            $sale = app(RecordSaleForOrder::class)->handle($this->order, Auth::user());
+        } catch (\RuntimeException) {
+            Flux::toast(variant: 'danger', text: __('That change is no longer possible for this order.'));
+
+            return;
+        }
+
+        $this->order->refresh();
+
+        Flux::toast(
+            variant: 'success',
+            text: __('Order completed and sale :reference recorded.', ['reference' => $sale->reference]),
+        );
     }
 
     /**

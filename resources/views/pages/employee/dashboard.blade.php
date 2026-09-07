@@ -40,6 +40,16 @@ new #[Title('Dashboard')] class extends Component {
             </flux:card>
         @endcan
 
+        @can('manage-orders')
+            <flux:card>
+                <flux:heading size="lg">{{ __('Orders') }}</flux:heading>
+                <flux:text class="mt-2">{{ __('Confirm customer pre-orders and move them to pickup.') }}</flux:text>
+                <flux:button :href="route('employee.orders.index')" variant="ghost" size="sm" class="mt-4" wire:navigate>
+                    {{ __('Open') }}
+                </flux:button>
+            </flux:card>
+        @endcan
+
         @can('access-sales')
             <flux:card>
                 <flux:heading size="lg">{{ __('Sales') }}</flux:heading>

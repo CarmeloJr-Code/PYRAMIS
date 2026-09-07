@@ -13,6 +13,11 @@ Route::livewire('orders/{order:reference}', 'pages::storefront.order-status')->n
 Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->group(function () {
     Route::livewire('dashboard', 'pages::employee.dashboard')->name('dashboard');
 
+    Route::middleware('can:manage-orders')->group(function () {
+        Route::livewire('orders', 'pages::employee.orders.index')->name('orders.index');
+        Route::livewire('orders/{order:reference}', 'pages::employee.orders.show')->name('orders.show');
+    });
+
     Route::middleware('can:manage-outlets')->group(function () {
         Route::livewire('outlets', 'pages::employee.outlets.index')->name('outlets.index');
         Route::livewire('outlets/create', 'pages::employee.outlets.manage')->name('outlets.create');

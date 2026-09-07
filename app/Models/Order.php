@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * @property int $id
@@ -138,6 +139,27 @@ class Order extends Model
         );
 
         return number_format($centavos / 100, 2, '.', '');
+    }
+
+    /**
+     * Move the order to a new status, refusing anything the workflow does not
+     * allow.
+     *
+     * Enforced here rather than only in the component, so no code path — a
+     * crafted Livewire call included — can skip ahead, walk backwards, or
+     * reopen a finished order.
+     *
+     * @throws RuntimeException when the move is not permitted
+     */
+    public function transitionTo(OrderStatus $status): void
+    {
+        if (! $this->status->canTransitionTo($status)) {
+            throw new RuntimeException(
+                "Cannot move order {$this->reference} from {$this->status->value} to {$status->value}.",
+            );
+        }
+
+        $this->update(['status' => $status]);
     }
 
     /**

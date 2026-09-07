@@ -65,6 +65,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-outlets', fn (User $user): bool => $user->hasRole(
             UserRole::Administrator,
         ));
+
+        // "Customer Orders" in the capability matrix — Cashier included, Baker
+        // excluded. Handling orders is BR-006 cashier work.
+        Gate::define('manage-orders', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+            UserRole::Cashier,
+        ));
     }
 
     /**

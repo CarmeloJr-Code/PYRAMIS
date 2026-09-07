@@ -23,6 +23,12 @@
                         </flux:sidebar.item>
                     @endcan
 
+                    @can('manage-orders')
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('employee.orders.index')" :current="request()->routeIs('employee.orders.*')" wire:navigate>
+                            {{ __('Orders') }}
+                        </flux:sidebar.item>
+                    @endcan
+
                     @can('manage-outlets')
                         <flux:sidebar.item icon="building-storefront" :href="route('employee.outlets.index')" :current="request()->routeIs('employee.outlets.*')" wire:navigate>
                             {{ __('Outlets') }}

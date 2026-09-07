@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\GeneratesReference;
 use App\Enums\OrderStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\OrderFactory;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -38,53 +40,15 @@ use RuntimeException;
 class Order extends Model
 {
     /** @use HasFactory<OrderFactory> */
-    use HasFactory;
+    use GeneratesReference, HasFactory;
 
     /**
-     * Characters a reference is built from — Crockford-style, with I, L, O, U,
-     * 0 and 1 removed so a reference can be read aloud without ambiguity.
+     * The reference is what stands in for a customer account (BR-001), so it
+     * must not be enumerable.
      */
-    private const REFERENCE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTVWXYZ';
-
-    /**
-     * How many random characters follow the prefix. Thirty symbols to the tenth
-     * power is roughly 2^49, so walking the space is impractical — that is what
-     * stands in for an account (BR-001).
-     */
-    private const REFERENCE_LENGTH = 10;
-
-    /**
-     * Assign a reference before the row is written, so no code path can persist
-     * an order without one.
-     */
-    protected static function booted(): void
+    protected static function referencePrefix(): string
     {
-        static::creating(function (Order $order): void {
-            // getAttribute, not the property: before the row exists the
-            // attribute may simply be absent, which the persisted-shape
-            // docblock does not describe.
-            if (blank($order->getAttribute('reference'))) {
-                $order->reference = static::generateReference();
-            }
-        });
-    }
-
-    /**
-     * Build a reference no other order is already using.
-     */
-    public static function generateReference(): string
-    {
-        do {
-            $suffix = '';
-
-            for ($i = 0; $i < self::REFERENCE_LENGTH; $i++) {
-                $suffix .= self::REFERENCE_ALPHABET[random_int(0, strlen(self::REFERENCE_ALPHABET) - 1)];
-            }
-
-            $reference = 'PY-'.$suffix;
-        } while (static::where('reference', $reference)->exists());
-
-        return $reference;
+        return 'PY-';
     }
 
     /**
@@ -126,6 +90,16 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * The sale raised when this order was collected, if it has been.
+     *
+     * @return HasOne<Sale, $this>
+     */
+    public function sale(): HasOne
+    {
+        return $this->hasOne(Sale::class);
     }
 
     /**

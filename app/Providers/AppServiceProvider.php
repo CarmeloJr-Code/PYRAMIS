@@ -52,6 +52,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-workforce', fn (User $user): bool => $user->hasRole(
             UserRole::Administrator,
         ));
+
+        // The capability matrix grants Cashier no product rights, and pricing is a
+        // management decision under BR-007, so catalogue management is Administrator
+        // only — narrower than the Phase 2 spec's "administrator/cashier".
+        Gate::define('manage-products', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+        ));
     }
 
     /**

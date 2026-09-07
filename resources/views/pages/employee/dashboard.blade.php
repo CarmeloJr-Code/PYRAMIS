@@ -30,6 +30,16 @@ new #[Title('Dashboard')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <div class="grid gap-4 md:grid-cols-3">
+        @can('manage-products')
+            <flux:card>
+                <flux:heading size="lg">{{ __('Products') }}</flux:heading>
+                <flux:text class="mt-2">{{ __('Manage the catalogue, sizes and prices.') }}</flux:text>
+                <flux:button :href="route('employee.products.index')" variant="ghost" size="sm" class="mt-4" wire:navigate>
+                    {{ __('Open') }}
+                </flux:button>
+            </flux:card>
+        @endcan
+
         @can('access-sales')
             <flux:card>
                 <flux:heading size="lg">{{ __('Sales') }}</flux:heading>

@@ -32,5 +32,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'Purple Yam Cashier',
             'email' => 'cashier@purpleyam.test',
         ]);
+
+        $this->call(CatalogSeeder::class);
     }
 }

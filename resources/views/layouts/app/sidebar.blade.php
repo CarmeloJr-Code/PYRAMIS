@@ -17,6 +17,12 @@
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
 
+                    @can('manage-products')
+                        <flux:sidebar.item icon="squares-2x2" :href="route('employee.products.index')" :current="request()->routeIs('employee.products.*')" wire:navigate>
+                            {{ __('Products') }}
+                        </flux:sidebar.item>
+                    @endcan
+
                     @can('access-sales')
                         <flux:sidebar.item icon="banknotes" :href="route('employee.sales')" :current="request()->routeIs('employee.sales')" wire:navigate>
                             {{ __('Sales') }}

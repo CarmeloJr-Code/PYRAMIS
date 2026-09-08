@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Outlet;
+use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -38,6 +39,15 @@ new #[Title('Outlets')] class extends Component {
         Gate::authorize('manage-outlets');
 
         $outlet = Outlet::findOrFail($outletId);
+
+        // The main branch runs production and supplies every other outlet
+        // (BR-003, BR-004), so closing it would leave finished goods with
+        // nowhere to land.
+        if ($outlet->is_main_branch && $outlet->is_active) {
+            Flux::toast(variant: 'warning', text: __('The main branch cannot be closed.'));
+
+            return;
+        }
 
         $outlet->update(['is_active' => ! $outlet->is_active]);
 
@@ -78,7 +88,12 @@ new #[Title('Outlets')] class extends Component {
                 <flux:table.rows>
                     @foreach ($this->outlets as $outlet)
                         <flux:table.row :key="$outlet->id">
-                            <flux:table.cell class="font-medium">{{ $outlet->name }}</flux:table.cell>
+                            <flux:table.cell class="font-medium">
+                                {{ $outlet->name }}
+                                @if ($outlet->is_main_branch)
+                                    <flux:badge size="sm" color="purple" class="ms-2">{{ __('Main branch') }}</flux:badge>
+                                @endif
+                            </flux:table.cell>
                             <flux:table.cell>{{ $outlet->address }}</flux:table.cell>
                             <flux:table.cell>{{ $outlet->orders_count }}</flux:table.cell>
                             <flux:table.cell>
@@ -87,9 +102,11 @@ new #[Title('Outlets')] class extends Component {
                                 </flux:badge>
                             </flux:table.cell>
                             <flux:table.cell class="text-end">
-                                <flux:button size="sm" variant="ghost" wire:click="toggleActive({{ $outlet->id }})">
-                                    {{ $outlet->is_active ? __('Close') : __('Open') }}
-                                </flux:button>
+                                @unless ($outlet->is_main_branch && $outlet->is_active)
+                                    <flux:button size="sm" variant="ghost" wire:click="toggleActive({{ $outlet->id }})">
+                                        {{ $outlet->is_active ? __('Close') : __('Open') }}
+                                    </flux:button>
+                                @endunless
 
                                 <flux:button size="sm" variant="ghost" :href="route('employee.outlets.edit', $outlet)" wire:navigate>
                                     {{ __('Edit') }}

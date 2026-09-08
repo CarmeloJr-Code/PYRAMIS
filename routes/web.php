@@ -40,6 +40,7 @@ Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->
         // Before the wildcard, so neither is ever read as an ingredient.
         Route::livewire('inventory/create', 'pages::employee.inventory.manage')->name('inventory.create');
         Route::livewire('inventory/usage', 'pages::employee.inventory.usage')->name('inventory.usage');
+        Route::livewire('inventory/finished-goods', 'pages::employee.inventory.finished-goods')->name('inventory.finished');
         Route::livewire('inventory/{ingredient}', 'pages::employee.inventory.show')->name('inventory.show');
         Route::livewire('inventory/{ingredient}/edit', 'pages::employee.inventory.manage')->name('inventory.edit');
     });

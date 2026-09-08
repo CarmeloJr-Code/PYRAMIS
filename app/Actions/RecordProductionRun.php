@@ -3,7 +3,9 @@
 namespace App\Actions;
 
 use App\Enums\InventoryMovementType;
+use App\Enums\ProductStockMovementType;
 use App\Models\Ingredient;
+use App\Models\Outlet;
 use App\Models\ProductionRun;
 use App\Models\ProductVariant;
 use App\Models\Recipe;
@@ -86,6 +88,19 @@ class RecordProductionRun
                     $run,
                 );
             }
+
+            // What came out of the oven lands on the main branch's shelf. Under
+            // BR-003 and BR-004 that is the only place it can: outlets receive
+            // finished goods from here, they never produce their own.
+            app(RecordProductStockMovement::class)->handle(
+                $productVariant,
+                Outlet::mainBranch(),
+                $baker,
+                ProductStockMovementType::Produced,
+                $quantity,
+                null,
+                $run,
+            );
 
             return $run;
         });

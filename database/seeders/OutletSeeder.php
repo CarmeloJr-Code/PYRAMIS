@@ -19,11 +19,17 @@ class OutletSeeder extends Seeder
      */
     public function run(): void
     {
-        Outlet::create([
+        $mainBranch = Outlet::create([
             'name' => 'Main Branch',
             'address' => 'Malaybalay, Bukidnon',
             'phone' => null,
             'is_active' => true,
         ]);
+
+        // Set directly rather than through create(): is_main_branch is
+        // deliberately not mass-assignable, because which outlet runs
+        // production is structural rather than something a form may change.
+        $mainBranch->is_main_branch = true;
+        $mainBranch->save();
     }
 }

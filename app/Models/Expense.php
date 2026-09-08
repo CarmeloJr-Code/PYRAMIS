@@ -89,6 +89,21 @@ class Expense extends Model
     }
 
     /**
+     * What was spent over a stretch of days, in centavos.
+     *
+     * Summed in SQL for the same reason takings are.
+     */
+    public static function totalSpentInCentavos(string $from, string $to, ?int $outletId = null): int
+    {
+        $total = static::query()
+            ->spentBetween($from, $to)
+            ->when($outletId !== null, fn (Builder $scoped) => $scoped->where('outlet_id', $outletId))
+            ->sum('amount');
+
+        return (int) round((float) $total * 100);
+    }
+
+    /**
      * The amount in centavos.
      *
      * Integer centavos rather than bcmath: the production image does not

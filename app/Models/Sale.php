@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @property int $id
@@ -114,6 +115,32 @@ class Sale extends Model
     protected function completed(Builder $query): void
     {
         $query->where('status', SaleStatus::Completed);
+    }
+
+    /**
+     * What was taken over a stretch of days, in centavos.
+     *
+     * Summed in SQL rather than by loading the sales and adding them up: a
+     * dashboard reads a month at a time and must not pull it into memory to do
+     * so. Voided sales are excluded, as everywhere else.
+     */
+    public static function takingsInCentavos(string $from, string $to, ?int $outletId = null): int
+    {
+        // A subselect of the sales that count, rather than whereHas on the
+        // relation: the scope reads plainly on the model it belongs to, and the
+        // lines are summed against those ids in one query either way.
+        $sales = static::query()
+            ->completed()
+            ->whereDate('sold_at', '>=', $from)
+            ->whereDate('sold_at', '<=', $to)
+            ->when($outletId !== null, fn (Builder $query) => $query->where('outlet_id', $outletId))
+            ->select('id');
+
+        $total = SaleItem::query()
+            ->whereIn('sale_id', $sales)
+            ->sum(DB::raw('quantity * unit_price'));
+
+        return (int) round((float) $total * 100);
     }
 
     /**

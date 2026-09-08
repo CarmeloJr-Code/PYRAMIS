@@ -100,6 +100,17 @@ class ProductionRun extends Model
     }
 
     /**
+     * How many units came out of the oven over a stretch of days.
+     */
+    public static function unitsProduced(string $from, string $to): int
+    {
+        return (int) static::query()
+            ->whereDate('produced_at', '>=', $from)
+            ->whereDate('produced_at', '<=', $to)
+            ->sum('quantity');
+    }
+
+    /**
      * Limit the query to runs of a given day.
      *
      * @param  Builder<ProductionRun>  $query

@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property ProductStockMovementType $type
  * @property int $quantity
  * @property int|null $production_run_id
+ * @property int|null $restock_id
  * @property int $recorded_by
  * @property string|null $note
  * @property CarbonImmutable $occurred_at
@@ -37,6 +38,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'type',
     'quantity',
     'production_run_id',
+    'restock_id',
     'recorded_by',
     'note',
     'occurred_at',
@@ -88,6 +90,16 @@ class ProductStockMovement extends Model
     public function productionRun(): BelongsTo
     {
         return $this->belongsTo(ProductionRun::class);
+    }
+
+    /**
+     * The restock it travelled on, when it was one half of a transfer.
+     *
+     * @return BelongsTo<Restock, $this>
+     */
+    public function restock(): BelongsTo
+    {
+        return $this->belongsTo(Restock::class);
     }
 
     /**

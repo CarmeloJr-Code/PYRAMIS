@@ -57,6 +57,21 @@ class AppServiceProvider extends ServiceProvider
             UserRole::Baker,
         ));
 
+        // "Outlet Restock" in the capability matrix — Administrator and Baker.
+        // BR-005 gives the Baker restock preparation; the Cashier has no part
+        // in moving goods between locations.
+        Gate::define('access-restocking', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+            UserRole::Baker,
+        ));
+
+        // Scheduling one is narrower. The Phase 7 spec puts restock schedules
+        // and oversight with the Administrator and preparation with the Baker,
+        // which BR-007 says the same way.
+        Gate::define('schedule-restocks', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+        ));
+
         Gate::define('access-workforce', fn (User $user): bool => $user->hasRole(
             UserRole::Administrator,
         ));

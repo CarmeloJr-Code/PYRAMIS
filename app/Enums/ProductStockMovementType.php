@@ -6,12 +6,13 @@ namespace App\Enums;
  * Why finished stock changed at a location.
  *
  * The same shape as the ingredient ledger's types, for the same reason: stock
- * is the sum of its movements, so every change has to say what it was. Transfers
- * between the main branch and an outlet join this list when restocking is built.
+ * is the sum of its movements, so every change has to say what it was.
  */
 enum ProductStockMovementType: string
 {
     case Produced = 'produced';
+
+    case Transfer = 'transfer';
 
     case Adjustment = 'adjustment';
 
@@ -22,6 +23,7 @@ enum ProductStockMovementType: string
     {
         return match ($this) {
             self::Produced => 'Produced',
+            self::Transfer => 'Transfer',
             self::Adjustment => 'Adjustment',
         };
     }
@@ -30,14 +32,16 @@ enum ProductStockMovementType: string
      * The only direction this type may move stock in, or null when it may go
      * either way.
      *
-     * Production is finished goods arriving on the shelf. An adjustment is a
-     * correction — a miscount, or a tray dropped — and goes either way.
+     * Production is finished goods arriving on the shelf. A transfer is one
+     * half of a restock — off the main branch, onto an outlet — so it goes
+     * either way, as does an adjustment, which is a correction: a miscount, or
+     * a tray dropped.
      */
     public function fixedDirection(): ?int
     {
         return match ($this) {
             self::Produced => 1,
-            self::Adjustment => null,
+            self::Transfer, self::Adjustment => null,
         };
     }
 

@@ -7,6 +7,7 @@ use App\Models\Outlet;
 use App\Models\ProductionRun;
 use App\Models\ProductStockMovement;
 use App\Models\ProductVariant;
+use App\Models\Restock;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -15,9 +16,9 @@ use RuntimeException;
  * Writes one entry to a location's finished-goods ledger.
  *
  * The only thing in the application that changes finished stock — production
- * credits the main branch through here, and restocking will move it on through
- * here too, so the invariants live in the action rather than in whichever
- * screen happens to be calling it.
+ * credits the main branch through here, and a restock delivery moves it on
+ * through here too, so the invariants live in the action rather than in
+ * whichever screen happens to be calling it.
  */
 class RecordProductStockMovement
 {
@@ -26,6 +27,7 @@ class RecordProductStockMovement
      *
      * @param  int  $quantity  Signed whole units: positive adds stock, negative removes it.
      * @param  ProductionRun|null  $productionRun  The bake this came out of, when it came from one.
+     * @param  Restock|null  $restock  The transfer this was one half of, when it was.
      *
      * @throws RuntimeException when the movement is not a legal one
      */
@@ -37,6 +39,7 @@ class RecordProductStockMovement
         int $quantity,
         ?string $note = null,
         ?ProductionRun $productionRun = null,
+        ?Restock $restock = null,
     ): ProductStockMovement {
         $note = $note === null ? null : trim($note);
 
@@ -56,7 +59,7 @@ class RecordProductStockMovement
             throw new RuntimeException("A {$type->label()} needs a reason.");
         }
 
-        return DB::transaction(function () use ($productVariant, $outlet, $employee, $type, $quantity, $note, $productionRun): ProductStockMovement {
+        return DB::transaction(function () use ($productVariant, $outlet, $employee, $type, $quantity, $note, $productionRun, $restock): ProductStockMovement {
             // Lock the location rather than the ledger: two people drawing the
             // same shelf down at once would otherwise both read the old balance
             // and between them take more than is there.
@@ -65,9 +68,12 @@ class RecordProductStockMovement
             $onHand = $productVariant->stockAt($outlet);
 
             if ($onHand + $quantity < 0) {
-                throw new RuntimeException(
-                    "Only {$onHand} of {$productVariant->name} at {$outlet->name}.",
-                );
+                // Named by product as well as size: a restock moves several
+                // lines at once, and "Large (10x14)" belongs to more than one
+                // cake.
+                $name = "{$productVariant->product->name} · {$productVariant->name}";
+
+                throw new RuntimeException("Only {$onHand} of {$name} at {$outlet->name}.");
             }
 
             return ProductStockMovement::create([
@@ -76,6 +82,7 @@ class RecordProductStockMovement
                 'type' => $type,
                 'quantity' => $quantity,
                 'production_run_id' => $productionRun?->id,
+                'restock_id' => $restock?->id,
                 'recorded_by' => $employee->id,
                 'note' => $note ?: null,
                 'occurred_at' => now(),

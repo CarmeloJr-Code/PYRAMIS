@@ -56,7 +56,7 @@ new class extends Component {
     public function movements(): Collection
     {
         return $this->ingredient->movements()
-            ->with('recordedBy')
+            ->with(['recordedBy', 'productionRun'])
             ->orderByDesc('occurred_at')
             ->orderByDesc('id')
             ->get();
@@ -255,7 +255,15 @@ new class extends Component {
                                             {{ $movement->signedQuantity() }} {{ $ingredient->unit->abbreviation() }}
                                         </flux:table.cell>
                                         <flux:table.cell>{{ $movement->recordedBy->name }}</flux:table.cell>
-                                        <flux:table.cell class="text-zinc-500">{{ $movement->note ?? '—' }}</flux:table.cell>
+                                        <flux:table.cell class="text-zinc-500">
+                                            @if ($movement->productionRun)
+                                                <a href="{{ route('employee.production.runs.show', $movement->productionRun) }}" class="font-mono underline" wire:navigate>
+                                                    {{ $movement->productionRun->reference }}
+                                                </a>
+                                            @else
+                                                {{ $movement->note ?? '—' }}
+                                            @endif
+                                        </flux:table.cell>
                                     </flux:table.row>
                                 @endforeach
                             </flux:table.rows>

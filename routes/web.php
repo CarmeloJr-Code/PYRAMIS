@@ -36,6 +36,18 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->prefix('
         Route::livewire('sales/create', 'pages::employee.sales.create')->name('sales.create');
     });
 
+    Route::middleware('can:access-expenses')->group(function () {
+        Route::livewire('expenses', 'pages::employee.expenses.index')->name('expenses.index');
+        // Before the wildcard, so neither is ever read as an expense.
+        Route::livewire('expenses/create', 'pages::employee.expenses.manage')->name('expenses.create');
+        Route::livewire('expenses/categories', 'pages::employee.expenses.categories')
+            ->middleware('can:manage-expenses')
+            ->name('expenses.categories');
+        Route::livewire('expenses/{expense}/edit', 'pages::employee.expenses.manage')
+            ->middleware('can:manage-expenses')
+            ->name('expenses.edit');
+    });
+
     Route::middleware('can:access-inventory')->group(function () {
         Route::livewire('inventory', 'pages::employee.inventory.index')->name('inventory.index');
         // Before the wildcard, so neither is ever read as an ingredient.

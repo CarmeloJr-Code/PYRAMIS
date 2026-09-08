@@ -63,14 +63,14 @@ class SalesTest extends TestCase
     public function test_only_administrators_and_cashiers_see_sales(UserRole $role, bool $allowed): void
     {
         $response = $this->actingAs(User::factory()->create(['role' => $role]))
-            ->get(route('employee.sales'));
+            ->get(route('employee.sales.index'));
 
         $allowed ? $response->assertOk() : $response->assertForbidden();
     }
 
     public function test_guests_are_redirected_to_the_login_page(): void
     {
-        $this->get(route('employee.sales'))->assertRedirect(route('login'));
+        $this->get(route('employee.sales.index'))->assertRedirect(route('login'));
     }
 
     public function test_completing_an_order_records_a_sale_snapshotting_its_lines(): void
@@ -157,7 +157,7 @@ class SalesTest extends TestCase
         SaleItem::factory()->for($yesterday)->create(['quantity' => 1, 'unit_price' => '999.00']);
 
         Livewire::actingAs(User::factory()->cashier()->create())
-            ->test('pages::employee.sales')
+            ->test('pages::employee.sales.index')
             ->assertSeeText('1,000.00')
             ->assertDontSeeText('999.00');
     }
@@ -171,7 +171,7 @@ class SalesTest extends TestCase
         SaleItem::factory()->for($voided)->create(['quantity' => 1, 'unit_price' => '700.00']);
 
         Livewire::actingAs(User::factory()->cashier()->create())
-            ->test('pages::employee.sales')
+            ->test('pages::employee.sales.index')
             // The voided sale is still listed...
             ->assertSeeText($voided->reference)
             // ...but the day's takings are 300, not 1,000.
@@ -189,7 +189,7 @@ class SalesTest extends TestCase
         SaleItem::factory()->for($sale)->create(['quantity' => 1, 'unit_price' => '450.00']);
 
         Livewire::actingAs(User::factory()->cashier()->create())
-            ->test('pages::employee.sales')
+            ->test('pages::employee.sales.index')
             ->call('void', $sale->id);
 
         $sale->refresh();

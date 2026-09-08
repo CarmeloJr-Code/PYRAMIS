@@ -36,7 +36,7 @@
                     @endcan
 
                     @can('access-sales')
-                        <flux:sidebar.item icon="banknotes" :href="route('employee.sales')" :current="request()->routeIs('employee.sales')" wire:navigate>
+                        <flux:sidebar.item icon="banknotes" :href="route('employee.sales.index')" :current="request()->routeIs('employee.sales.*')" wire:navigate>
                             {{ __('Sales') }}
                         </flux:sidebar.item>
                     @endcan

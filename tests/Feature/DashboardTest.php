@@ -33,7 +33,7 @@ class DashboardTest extends TestCase
     {
         $this->actingAs(User::factory()->cashier()->create())
             ->get(route('employee.dashboard'))
-            ->assertSee(route('employee.sales'))
+            ->assertSee(route('employee.sales.index'))
             ->assertDontSee(route('employee.production'))
             ->assertDontSee(route('employee.workforce'));
     }

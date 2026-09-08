@@ -54,9 +54,15 @@ new #[Title('Inventory')] class extends Component {
             <flux:text class="mt-2">{{ __('Ingredient stock, counted from every movement recorded against it.') }}</flux:text>
         </div>
 
-        <flux:button :href="route('employee.inventory.create')" variant="primary" icon="plus" wire:navigate>
-            {{ __('New ingredient') }}
-        </flux:button>
+        <div class="flex items-center gap-3">
+            <flux:button :href="route('employee.inventory.usage')" variant="filled" icon="fire" wire:navigate>
+                {{ __('Record usage') }}
+            </flux:button>
+
+            <flux:button :href="route('employee.inventory.create')" variant="primary" icon="plus" wire:navigate>
+                {{ __('New ingredient') }}
+            </flux:button>
+        </div>
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

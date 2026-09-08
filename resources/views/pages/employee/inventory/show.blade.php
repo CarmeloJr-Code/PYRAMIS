@@ -110,13 +110,14 @@ new class extends Component {
 
         $type = InventoryMovementType::from($validated['type']);
 
-        $thousandths = Ingredient::quantityToThousandths($validated['quantity']);
+        // The quantity is entered as a magnitude; the type decides the sign, and
+        // only falls back to the chosen direction when it genuinely has both to
+        // choose from. A receipt cannot be talked into removing stock, and a
+        // bake cannot be talked into adding any, whatever the form submits.
+        $direction = $type->fixedDirection()
+            ?? ($validated['direction'] === 'out' ? -1 : 1);
 
-        // A receipt is stock arriving, so the direction control is not offered
-        // for it and is not honoured either.
-        if ($type->allowsDecrease() && $validated['direction'] === 'out') {
-            $thousandths = -$thousandths;
-        }
+        $thousandths = $direction * Ingredient::quantityToThousandths($validated['quantity']);
 
         try {
             app(RecordInventoryMovement::class)->handle(
@@ -197,7 +198,7 @@ new class extends Component {
                         @endforeach
                     </flux:select>
 
-                    @if ($this->chosenType->allowsDecrease())
+                    @if ($this->chosenType->fixedDirection() === null)
                         <flux:radio.group wire:model.live="direction" :label="__('Direction')" variant="segmented">
                             <flux:radio value="in" :label="__('Add')" />
                             <flux:radio value="out" :label="__('Remove')" />

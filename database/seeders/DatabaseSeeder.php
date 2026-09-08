@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             CatalogSeeder::class,
+            IngredientSeeder::class,
             OutletSeeder::class,
         ]);
     }

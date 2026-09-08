@@ -49,6 +49,14 @@ class AppServiceProvider extends ServiceProvider
             UserRole::Baker,
         ));
 
+        // "Inventory" in the capability matrix — Administrator and Baker. Under
+        // BR-005 the Baker records ingredient usage and stock updates, and the
+        // Cashier has no business in the stockroom.
+        Gate::define('access-inventory', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+            UserRole::Baker,
+        ));
+
         Gate::define('access-workforce', fn (User $user): bool => $user->hasRole(
             UserRole::Administrator,
         ));

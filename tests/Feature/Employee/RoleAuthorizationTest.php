@@ -22,6 +22,7 @@ class RoleAuthorizationTest extends TestCase
     {
         return [
             'sales' => ['employee.sales.index', [UserRole::Administrator, UserRole::Cashier]],
+            'inventory' => ['employee.inventory.index', [UserRole::Administrator, UserRole::Baker]],
             'production' => ['employee.production', [UserRole::Administrator, UserRole::Baker]],
             'workforce' => ['employee.workforce', [UserRole::Administrator]],
         ];

@@ -89,6 +89,13 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->prefix('
     // Every employee's own roster. No gate beyond being signed in: this shows
     // the signed-in employee their own work and nobody else's.
     Route::livewire('schedule', 'pages::employee.schedule')->name('schedule');
+
+    // Internal chat, which the capability matrix gives to all three roles. Each
+    // screen still scopes to the conversations the signed-in employee is in.
+    Route::livewire('messages', 'pages::employee.messages.index')->name('messages.index');
+    // Before the wildcard, so "create" is never read as a conversation.
+    Route::livewire('messages/create', 'pages::employee.messages.create')->name('messages.create');
+    Route::livewire('messages/{conversation}', 'pages::employee.messages.show')->name('messages.show');
 });
 
 require __DIR__.'/settings.php';

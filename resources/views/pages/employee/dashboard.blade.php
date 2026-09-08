@@ -110,6 +110,15 @@ new #[Title('Dashboard')] class extends Component {
             </flux:card>
         @endcan
 
+        {{-- Internal chat, open to every role. --}}
+        <flux:card>
+            <flux:heading size="lg">{{ __('Messages') }}</flux:heading>
+            <flux:text class="mt-2">{{ __('Text your colleagues about the day\'s work.') }}</flux:text>
+            <flux:button :href="route('employee.messages.index')" variant="ghost" size="sm" class="mt-4" wire:navigate>
+                {{ __('Open') }}
+            </flux:button>
+        </flux:card>
+
         {{-- Every employee has a roster, whatever else their role can reach. --}}
         <flux:card>
             <flux:heading size="lg">{{ __('My schedule') }}</flux:heading>

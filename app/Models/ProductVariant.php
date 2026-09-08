@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property int $id
@@ -47,6 +48,16 @@ class ProductVariant extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * What this size is made of, once the business has written it down.
+     *
+     * @return HasOne<Recipe, $this>
+     */
+    public function recipe(): HasOne
+    {
+        return $this->hasOne(Recipe::class);
     }
 
     /**

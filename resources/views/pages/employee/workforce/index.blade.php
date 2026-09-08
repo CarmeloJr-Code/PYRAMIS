@@ -84,6 +84,7 @@ new #[Title('Workforce')] class extends Component {
             ->unique();
 
         return User::query()
+            ->active()
             ->whereKeyNot($assigned->all())
             ->orderBy('name')
             ->get();
@@ -107,9 +108,15 @@ new #[Title('Workforce')] class extends Component {
             <flux:text class="mt-2">{{ __('Who is working, where, and when.') }}</flux:text>
         </div>
 
-        <flux:button :href="route('employee.workforce.shifts.create')" variant="primary" icon="plus" wire:navigate>
-            {{ __('New shift') }}
-        </flux:button>
+        <div class="flex items-center gap-3">
+            <flux:button :href="route('employee.workforce.employees.index')" variant="ghost" icon="identification" wire:navigate>
+                {{ __('Employees') }}
+            </flux:button>
+
+            <flux:button :href="route('employee.workforce.shifts.create')" variant="primary" icon="plus" wire:navigate>
+                {{ __('New shift') }}
+            </flux:button>
+        </div>
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

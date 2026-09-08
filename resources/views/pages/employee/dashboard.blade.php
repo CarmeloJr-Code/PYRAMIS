@@ -99,5 +99,14 @@ new #[Title('Dashboard')] class extends Component {
                 </flux:button>
             </flux:card>
         @endcan
+
+        {{-- Every employee has a roster, whatever else their role can reach. --}}
+        <flux:card>
+            <flux:heading size="lg">{{ __('My schedule') }}</flux:heading>
+            <flux:text class="mt-2">{{ __('The shifts you are assigned to.') }}</flux:text>
+            <flux:button :href="route('employee.schedule')" variant="ghost" size="sm" class="mt-4" wire:navigate>
+                {{ __('Open') }}
+            </flux:button>
+        </flux:card>
     </div>
 </section>

@@ -9,6 +9,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Str;
@@ -49,6 +51,26 @@ class User extends Authenticatable implements PasskeyUser
             'password' => 'hashed',
             'role' => UserRole::class,
         ];
+    }
+
+    /**
+     * The employee's places on the schedule.
+     *
+     * @return HasMany<ShiftAssignment, $this>
+     */
+    public function shiftAssignments(): HasMany
+    {
+        return $this->hasMany(ShiftAssignment::class);
+    }
+
+    /**
+     * The shifts the employee is on.
+     *
+     * @return BelongsToMany<Shift, $this>
+     */
+    public function shifts(): BelongsToMany
+    {
+        return $this->belongsToMany(Shift::class, 'shift_assignments')->withTimestamps();
     }
 
     /**

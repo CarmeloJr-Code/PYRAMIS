@@ -62,9 +62,17 @@ Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->
         Route::livewire('production/recipes/{productVariant}', 'pages::employee.production.recipes.manage')->name('production.recipes.manage');
     });
 
-    Route::livewire('workforce', 'pages::employee.workforce')
-        ->middleware('can:access-workforce')
-        ->name('workforce');
+    Route::middleware('can:access-workforce')->group(function () {
+        Route::livewire('workforce', 'pages::employee.workforce.index')->name('workforce');
+        // Before the wildcard, so "create" is never read as a shift.
+        Route::livewire('workforce/create', 'pages::employee.workforce.manage')->name('workforce.shifts.create');
+        Route::livewire('workforce/{shift}', 'pages::employee.workforce.show')->name('workforce.shifts.show');
+        Route::livewire('workforce/{shift}/edit', 'pages::employee.workforce.manage')->name('workforce.shifts.edit');
+    });
+
+    // Every employee's own roster. No gate beyond being signed in: this shows
+    // the signed-in employee their own work and nobody else's.
+    Route::livewire('schedule', 'pages::employee.schedule')->name('schedule');
 });
 
 require __DIR__.'/settings.php';

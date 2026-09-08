@@ -25,7 +25,9 @@ class ProductionRunFactory extends Factory
             'recipe_id' => $recipe,
             // The run has to make the size its recipe describes, so the variant
             // is taken from the recipe rather than made up separately.
-            'product_variant_id' => fn (array $attributes): int => Recipe::findOrFail($attributes['recipe_id'])->product_variant_id,
+            'product_variant_id' => fn (array $attributes): int => (int) Recipe::query()
+                ->whereKey($attributes['recipe_id'])
+                ->value('product_variant_id'),
             'quantity' => fake()->numberBetween(1, 20),
             'recorded_by' => User::factory()->baker(),
             'notes' => null,

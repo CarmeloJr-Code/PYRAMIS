@@ -3,13 +3,18 @@
 namespace App\Models;
 
 use App\Concerns\FormatsQuantities;
+use App\Enums\IngredientUnit;
 use App\Enums\InventoryMovementType;
 use Carbon\CarbonImmutable;
 use Database\Factories\InventoryMovementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One entry in an ingredient's stock ledger.
@@ -113,5 +118,59 @@ class InventoryMovement extends Model
         $thousandths = $this->quantityInThousandths();
 
         return ($thousandths > 0 ? '+' : '−').static::formatQuantity(abs($thousandths));
+    }
+
+    /**
+     * Limit the query to movements over a stretch of days, both ends included.
+     *
+     * @param  Builder<InventoryMovement>  $query
+     */
+    #[Scope]
+    protected function occurredBetween(Builder $query, string $from, string $to): void
+    {
+        $query->whereDate('occurred_at', '>=', $from)->whereDate('occurred_at', '<=', $to);
+    }
+
+    /**
+     * What moved through the stockroom over a stretch of days, by ingredient.
+     *
+     * The three directions are separated in one pass of conditional sums
+     * rather than three queries, and the totals are thousandths so they can be
+     * formatted the same way stock is everywhere else.
+     *
+     * @return Collection<int, array{ingredient_id: int, name: string, unit: IngredientUnit, entries: int, received: int, used: int, adjusted: int}>
+     */
+    public static function summaryByIngredient(string $from, string $to): Collection
+    {
+        $sumWhere = fn (InventoryMovementType $type): string => sprintf(
+            "sum(case when inventory_movements.type = '%s' then inventory_movements.quantity else 0 end)",
+            $type->value,
+        );
+
+        return DB::table('inventory_movements')
+            ->join('ingredients', 'ingredients.id', '=', 'inventory_movements.ingredient_id')
+            ->whereDate('occurred_at', '>=', $from)
+            ->whereDate('occurred_at', '<=', $to)
+            ->groupBy('ingredients.id')
+            ->orderBy('ingredients.name')
+            ->select([
+                'ingredients.id as ingredient_id',
+                'ingredients.name as name',
+                'ingredients.unit as unit',
+                DB::raw('count(*) as entries'),
+                DB::raw($sumWhere(InventoryMovementType::Received).' as received'),
+                DB::raw($sumWhere(InventoryMovementType::Usage).' as used'),
+                DB::raw($sumWhere(InventoryMovementType::Adjustment).' as adjusted'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'ingredient_id' => (int) $row->ingredient_id,
+                'name' => (string) $row->name,
+                'unit' => IngredientUnit::from((string) $row->unit),
+                'entries' => (int) $row->entries,
+                'received' => static::quantityToThousandths((float) ($row->received ?? 0)),
+                'used' => static::quantityToThousandths((float) ($row->used ?? 0)),
+                'adjusted' => static::quantityToThousandths((float) ($row->adjusted ?? 0)),
+            ]);
     }
 }

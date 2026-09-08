@@ -42,6 +42,20 @@ class RestockFactory extends Factory
     }
 
     /**
+     * A restock whose goods reached the outlet, optionally on a given day.
+     */
+    public function delivered(?string $on = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => RestockStatus::Delivered,
+            'prepared_at' => $on ?? now(),
+            'prepared_by' => User::factory()->baker(),
+            'delivered_at' => $on ?? now(),
+            'delivered_by' => User::factory()->baker(),
+        ]);
+    }
+
+    /**
      * A restock called off before it travelled.
      */
     public function cancelled(): static

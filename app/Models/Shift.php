@@ -105,6 +105,19 @@ class Shift extends Model
     }
 
     /**
+     * Limit the query to shifts starting over a stretch of days.
+     *
+     * Same rule as startingOn, widened: a shift belongs to the day it starts.
+     *
+     * @param  Builder<Shift>  $query
+     */
+    #[Scope]
+    protected function startingBetween(Builder $query, string $from, string $to): void
+    {
+        $query->whereDate('starts_at', '>=', $from)->whereDate('starts_at', '<=', $to);
+    }
+
+    /**
      * Limit the query to shifts overlapping the given stretch of time.
      *
      * Touching at the edges is not an overlap: a shift ending at 17:00 and one
@@ -119,14 +132,32 @@ class Shift extends Model
     }
 
     /**
+     * How long the shift runs, in minutes.
+     *
+     * Measured in PHP rather than SQL: subtracting timestamps is spelt
+     * differently on SQLite and Postgres, and a roster is small enough to add
+     * up in memory (docs/testing.md — CI is the Postgres gate).
+     */
+    public function durationInMinutes(): int
+    {
+        return (int) $this->starts_at->diffInMinutes($this->ends_at);
+    }
+
+    /**
      * How long the shift runs, for reading.
      */
     public function duration(): string
     {
-        $minutes = $this->starts_at->diffInMinutes($this->ends_at);
+        return static::formatMinutes($this->durationInMinutes());
+    }
 
-        $hours = intdiv((int) $minutes, 60);
-        $rest = (int) $minutes % 60;
+    /**
+     * A stretch of minutes as hours and minutes.
+     */
+    public static function formatMinutes(int $minutes): string
+    {
+        $hours = intdiv($minutes, 60);
+        $rest = $minutes % 60;
 
         return $rest === 0 ? "{$hours}h" : "{$hours}h {$rest}m";
     }

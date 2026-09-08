@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Money that left the business, and what it was for.
@@ -101,6 +104,62 @@ class Expense extends Model
             ->sum('amount');
 
         return (int) round((float) $total * 100);
+    }
+
+    /**
+     * Spending broken down by heading, biggest first.
+     *
+     * @return Collection<int, array{name: string, entries: int, total: int}>
+     */
+    public static function totalsByCategory(string $from, string $to, ?int $outletId = null): Collection
+    {
+        return DB::table('expenses')
+            ->join('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
+            ->whereDate('spent_on', '>=', $from)
+            ->whereDate('spent_on', '<=', $to)
+            ->when($outletId !== null, fn (QueryBuilder $query) => $query->where('expenses.outlet_id', $outletId))
+            ->groupBy('expense_categories.id')
+            ->orderByDesc('total')
+            ->select([
+                'expense_categories.name as name',
+                DB::raw('count(*) as entries'),
+                DB::raw('sum(expenses.amount) as total'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'name' => (string) $row->name,
+                'entries' => (int) $row->entries,
+                'total' => (int) round((float) $row->total * 100),
+            ]);
+    }
+
+    /**
+     * Spending broken down by location, keyed by outlet so an outlet report can
+     * look itself up.
+     *
+     * @return Collection<int, array{outlet_id: int, name: string, entries: int, total: int}>
+     */
+    public static function totalsByOutlet(string $from, string $to): Collection
+    {
+        return DB::table('expenses')
+            ->join('outlets', 'outlets.id', '=', 'expenses.outlet_id')
+            ->whereDate('spent_on', '>=', $from)
+            ->whereDate('spent_on', '<=', $to)
+            ->groupBy('outlets.id')
+            ->orderByDesc('total')
+            ->select([
+                'outlets.id as outlet_id',
+                'outlets.name as name',
+                DB::raw('count(*) as entries'),
+                DB::raw('sum(expenses.amount) as total'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'outlet_id' => (int) $row->outlet_id,
+                'name' => (string) $row->name,
+                'entries' => (int) $row->entries,
+                'total' => (int) round((float) $row->total * 100),
+            ]);
     }
 
     /**

@@ -280,6 +280,9 @@ new #[Title('Dashboard')] class extends Component {
     <flux:heading size="lg">{{ __('Go to') }}</flux:heading>
 
     <div class="mt-4 flex flex-wrap gap-2">
+        {{-- The detail behind every tile above. --}}
+        <flux:button :href="route('employee.reports.index')" variant="ghost" size="sm" wire:navigate>{{ __('Reports') }}</flux:button>
+
         @can('manage-products')
             <flux:button :href="route('employee.products.index')" variant="ghost" size="sm" wire:navigate>{{ __('Products') }}</flux:button>
         @endcan

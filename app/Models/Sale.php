@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -118,6 +120,31 @@ class Sale extends Model
     }
 
     /**
+     * The sale lines that count, over a stretch of days.
+     *
+     * Every figure a sales report shows is this same set grouped a different
+     * way, so "counts" — completed, in range, and optionally at one outlet —
+     * is decided once here rather than restated per report.
+     */
+    private static function completedLines(string $from, string $to, ?int $outletId = null): QueryBuilder
+    {
+        return DB::table('sale_items')
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->where('sales.status', SaleStatus::Completed->value)
+            ->whereDate('sales.sold_at', '>=', $from)
+            ->whereDate('sales.sold_at', '<=', $to)
+            ->when($outletId !== null, fn (QueryBuilder $query) => $query->where('sales.outlet_id', $outletId));
+    }
+
+    /**
+     * A decimal total as whole centavos.
+     */
+    private static function centavos(float|int|string|null $amount): int
+    {
+        return (int) round((float) $amount * 100);
+    }
+
+    /**
      * What was taken over a stretch of days, in centavos.
      *
      * Summed in SQL rather than by loading the sales and adding them up: a
@@ -126,21 +153,108 @@ class Sale extends Model
      */
     public static function takingsInCentavos(string $from, string $to, ?int $outletId = null): int
     {
-        // A subselect of the sales that count, rather than whereHas on the
-        // relation: the scope reads plainly on the model it belongs to, and the
-        // lines are summed against those ids in one query either way.
-        $sales = static::query()
+        return self::centavos(
+            self::completedLines($from, $to, $outletId)
+                ->sum(DB::raw('sale_items.quantity * sale_items.unit_price')),
+        );
+    }
+
+    /**
+     * Takings day by day — the series behind both "daily sales" and the trend.
+     *
+     * @return Collection<int, array{day: string, sales: int, units: int, takings: int}>
+     */
+    public static function dailyTakings(string $from, string $to, ?int $outletId = null): Collection
+    {
+        // date() rather than a cast: both SQLite and Postgres have it and both
+        // return the day as a plain string, where CAST(... AS DATE) would give
+        // SQLite numeric affinity and hand back the year.
+        return self::completedLines($from, $to, $outletId)
+            ->groupBy(DB::raw('date(sales.sold_at)'))
+            ->orderBy('day')
+            ->select([
+                DB::raw('date(sales.sold_at) as day'),
+                DB::raw('count(distinct sales.id) as sales'),
+                DB::raw('sum(sale_items.quantity) as units'),
+                DB::raw('sum(sale_items.quantity * sale_items.unit_price) as takings'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'day' => (string) $row->day,
+                'sales' => (int) $row->sales,
+                'units' => (int) $row->units,
+                'takings' => self::centavos($row->takings),
+            ]);
+    }
+
+    /**
+     * What sold, biggest earner first.
+     *
+     * @return Collection<int, array{product: string, size: string, units: int, takings: int}>
+     */
+    public static function takingsByProduct(string $from, string $to, ?int $outletId = null): Collection
+    {
+        return self::completedLines($from, $to, $outletId)
+            ->join('product_variants', 'product_variants.id', '=', 'sale_items.product_variant_id')
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            // Grouped by key, not by name: two products may legitimately share
+            // one, and merging them would report a size that never sold.
+            ->groupBy('product_variants.id', 'products.id')
+            ->orderByDesc('takings')
+            ->select([
+                'products.name as product',
+                'product_variants.name as size',
+                DB::raw('sum(sale_items.quantity) as units'),
+                DB::raw('sum(sale_items.quantity * sale_items.unit_price) as takings'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'product' => (string) $row->product,
+                'size' => (string) $row->size,
+                'units' => (int) $row->units,
+                'takings' => self::centavos($row->takings),
+            ]);
+    }
+
+    /**
+     * Where it sold, keyed by outlet so an outlet report can look itself up.
+     *
+     * @return Collection<int, array{outlet_id: int, name: string, sales: int, units: int, takings: int}>
+     */
+    public static function takingsByOutlet(string $from, string $to): Collection
+    {
+        return self::completedLines($from, $to)
+            ->join('outlets', 'outlets.id', '=', 'sales.outlet_id')
+            ->groupBy('outlets.id')
+            ->orderByDesc('takings')
+            ->select([
+                'outlets.id as outlet_id',
+                'outlets.name as name',
+                DB::raw('count(distinct sales.id) as sales'),
+                DB::raw('sum(sale_items.quantity) as units'),
+                DB::raw('sum(sale_items.quantity * sale_items.unit_price) as takings'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'outlet_id' => (int) $row->outlet_id,
+                'name' => (string) $row->name,
+                'sales' => (int) $row->sales,
+                'units' => (int) $row->units,
+                'takings' => self::centavos($row->takings),
+            ]);
+    }
+
+    /**
+     * How many completed sales were rung up over a stretch of days.
+     */
+    public static function countCompleted(string $from, string $to, ?int $outletId = null): int
+    {
+        return static::query()
             ->completed()
             ->whereDate('sold_at', '>=', $from)
             ->whereDate('sold_at', '<=', $to)
             ->when($outletId !== null, fn (Builder $query) => $query->where('outlet_id', $outletId))
-            ->select('id');
-
-        $total = SaleItem::query()
-            ->whereIn('sale_id', $sales)
-            ->sum(DB::raw('quantity * unit_price'));
-
-        return (int) round((float) $total * 100);
+            ->count();
     }
 
     /**

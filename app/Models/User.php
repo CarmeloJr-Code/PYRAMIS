@@ -13,8 +13,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
@@ -66,6 +69,52 @@ class User extends Authenticatable implements PasskeyUser
     protected function active(Builder $query): void
     {
         $query->where('is_active', true);
+    }
+
+    /**
+     * What each employee put on the record over a stretch of days.
+     *
+     * Correlated counts rather than four separate queries and a merge in PHP:
+     * the workforce report wants one row per employee, and this is one query.
+     * Every table names its recorder the same way, which is what makes it read
+     * as a single question.
+     *
+     * @return Collection<int, array{id: int, name: string, role: UserRole, is_active: bool, sales: int, runs: int, movements: int, expenses: int, total: int}>
+     */
+    public static function recordedBetween(string $from, string $to): Collection
+    {
+        $countOf = fn (string $table, string $dateColumn): QueryBuilder => DB::table($table)
+            ->selectRaw('count(*)')
+            ->whereColumn($table.'.recorded_by', 'users.id')
+            ->whereDate($table.'.'.$dateColumn, '>=', $from)
+            ->whereDate($table.'.'.$dateColumn, '<=', $to);
+
+        return DB::table('users')
+            ->orderBy('users.name')
+            ->select('users.id', 'users.name', 'users.role', 'users.is_active')
+            ->selectSub($countOf('sales', 'sold_at'), 'sales_recorded')
+            ->selectSub($countOf('production_runs', 'produced_at'), 'runs_logged')
+            ->selectSub($countOf('inventory_movements', 'occurred_at'), 'movements_logged')
+            ->selectSub($countOf('expenses', 'spent_on'), 'expenses_recorded')
+            ->get()
+            ->map(function (object $row): array {
+                $sales = (int) $row->sales_recorded;
+                $runs = (int) $row->runs_logged;
+                $movements = (int) $row->movements_logged;
+                $expenses = (int) $row->expenses_recorded;
+
+                return [
+                    'id' => (int) $row->id,
+                    'name' => (string) $row->name,
+                    'role' => UserRole::from((string) $row->role),
+                    'is_active' => (bool) $row->is_active,
+                    'sales' => $sales,
+                    'runs' => $runs,
+                    'movements' => $movements,
+                    'expenses' => $expenses,
+                    'total' => $sales + $runs + $movements + $expenses,
+                ];
+            });
     }
 
     /**

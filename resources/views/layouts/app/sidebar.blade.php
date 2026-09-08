@@ -71,6 +71,11 @@
                         </flux:sidebar.item>
                     @endcan
 
+                    {{-- Internal chat, open to every role. --}}
+                    <flux:sidebar.item icon="chat-bubble-left-right" :href="route('employee.messages.index')" :current="request()->routeIs('employee.messages.*')" wire:navigate>
+                        {{ __('Messages') }}
+                    </flux:sidebar.item>
+
                     {{-- Every employee's own roster, whatever their role. --}}
                     <flux:sidebar.item icon="calendar" :href="route('employee.schedule')" :current="request()->routeIs('employee.schedule')" wire:navigate>
                         {{ __('My schedule') }}

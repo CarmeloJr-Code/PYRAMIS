@@ -46,6 +46,8 @@ Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->
 
     Route::middleware('can:access-production')->group(function () {
         Route::livewire('production', 'pages::employee.production.index')->name('production');
+        Route::livewire('production/runs', 'pages::employee.production.runs.index')->name('production.runs.index');
+        Route::livewire('production/runs/{productionRun:reference}', 'pages::employee.production.runs.show')->name('production.runs.show');
         Route::livewire('production/recipes', 'pages::employee.production.recipes.index')->name('production.recipes.index');
         Route::livewire('production/recipes/{productVariant}', 'pages::employee.production.recipes.manage')->name('production.recipes.manage');
     });

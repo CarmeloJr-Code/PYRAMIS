@@ -71,7 +71,7 @@ new #[Title('Ingredient usage')] class extends Component {
         return InventoryMovement::query()
             ->where('type', InventoryMovementType::Usage)
             ->whereDate('occurred_at', $this->date)
-            ->with(['ingredient', 'recordedBy'])
+            ->with(['ingredient', 'recordedBy', 'productionRun'])
             ->orderByDesc('occurred_at')
             ->orderByDesc('id')
             ->get();
@@ -302,7 +302,15 @@ new #[Title('Ingredient usage')] class extends Component {
                                         {{ $movement->magnitude() }} {{ $movement->ingredient->unit->abbreviation() }}
                                     </flux:table.cell>
                                     <flux:table.cell>{{ $movement->recordedBy->name }}</flux:table.cell>
-                                    <flux:table.cell class="text-zinc-500">{{ $movement->note ?? '—' }}</flux:table.cell>
+                                    <flux:table.cell class="text-zinc-500">
+                                        @if ($movement->productionRun)
+                                            <a href="{{ route('employee.production.runs.show', $movement->productionRun) }}" class="font-mono underline" wire:navigate>
+                                                {{ $movement->productionRun->reference }}
+                                            </a>
+                                        @else
+                                            {{ $movement->note ?? '—' }}
+                                        @endif
+                                    </flux:table.cell>
                                 </flux:table.row>
                             @endforeach
                         </flux:table.rows>

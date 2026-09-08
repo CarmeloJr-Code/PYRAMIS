@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ProductionRun;
 use App\Models\Recipe;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -23,6 +24,17 @@ new #[Title('Production')] class extends Component {
     {
         return Recipe::query()->count();
     }
+
+    /**
+     * How many units came out of the oven today.
+     */
+    #[Computed]
+    public function producedToday(): int
+    {
+        return (int) ProductionRun::query()
+            ->producedOn(now()->toDateString())
+            ->sum('quantity');
+    }
 }; ?>
 
 <section class="w-full">
@@ -32,6 +44,20 @@ new #[Title('Production')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <div class="grid gap-4 md:grid-cols-3">
+        <flux:card>
+            <flux:heading size="lg">{{ __('Runs') }}</flux:heading>
+            <flux:text class="mt-2">
+                {{ trans_choice(
+                    '{0} Nothing produced today.|{1} One unit produced today.|[2,*] :count units produced today.',
+                    $this->producedToday,
+                    ['count' => $this->producedToday],
+                ) }}
+            </flux:text>
+            <flux:button :href="route('employee.production.runs.index')" variant="ghost" size="sm" class="mt-4" wire:navigate>
+                {{ __('Open') }}
+            </flux:button>
+        </flux:card>
+
         <flux:card>
             <flux:heading size="lg">{{ __('Recipes') }}</flux:heading>
             <flux:text class="mt-2">
@@ -54,11 +80,4 @@ new #[Title('Production')] class extends Component {
             </flux:button>
         </flux:card>
     </div>
-
-    <flux:callout icon="wrench-screwdriver" class="mt-6">
-        <flux:callout.heading>{{ __('Production logging is next') }}</flux:callout.heading>
-        <flux:callout.text>
-            {{ __('Recipes are in place, so a baking run can be logged against one — consuming its ingredients and adding the finished product in a single step. Until then, record what a bake used under Inventory.') }}
-        </flux:callout.text>
-    </flux:callout>
 </section>

@@ -23,12 +23,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property InventoryMovementType $type
  * @property string $quantity
  * @property int $recorded_by
+ * @property int|null $production_run_id
  * @property string|null $note
  * @property CarbonImmutable $occurred_at
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['ingredient_id', 'type', 'quantity', 'recorded_by', 'note', 'occurred_at'])]
+#[Fillable(['ingredient_id', 'type', 'quantity', 'recorded_by', 'production_run_id', 'note', 'occurred_at'])]
 class InventoryMovement extends Model
 {
     /** @use HasFactory<InventoryMovementFactory> */
@@ -56,6 +57,17 @@ class InventoryMovement extends Model
     public function ingredient(): BelongsTo
     {
         return $this->belongsTo(Ingredient::class);
+    }
+
+    /**
+     * The bake that consumed it, when it came from one rather than being
+     * recorded by hand at the stockroom.
+     *
+     * @return BelongsTo<ProductionRun, $this>
+     */
+    public function productionRun(): BelongsTo
+    {
+        return $this->belongsTo(ProductionRun::class);
     }
 
     /**

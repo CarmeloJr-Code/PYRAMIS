@@ -6,6 +6,7 @@ use App\Concerns\FormatsQuantities;
 use App\Enums\InventoryMovementType;
 use App\Models\Ingredient;
 use App\Models\InventoryMovement;
+use App\Models\ProductionRun;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -13,9 +14,9 @@ use RuntimeException;
 /**
  * Writes one entry to an ingredient's stock ledger.
  *
- * The only thing in the application that changes stock. Production usage will
- * come through here too in Phase 6, so the invariants live in the action
- * rather than in whichever screen happens to be calling it.
+ * The only thing in the application that changes stock — the stockroom
+ * screens and a production run both come through here, so the invariants live
+ * in the action rather than in whichever screen happens to be calling it.
  */
 class RecordInventoryMovement
 {
@@ -25,6 +26,7 @@ class RecordInventoryMovement
      * Record the movement, refusing anything that would corrupt the ledger.
      *
      * @param  int  $quantityInThousandths  Signed: positive adds stock, negative removes it.
+     * @param  ProductionRun|null  $productionRun  The bake this came out of, when it came from one.
      *
      * @throws RuntimeException when the movement is not a legal one
      */
@@ -34,6 +36,7 @@ class RecordInventoryMovement
         InventoryMovementType $type,
         int $quantityInThousandths,
         ?string $note = null,
+        ?ProductionRun $productionRun = null,
     ): InventoryMovement {
         $note = $note === null ? null : trim($note);
 
@@ -53,7 +56,7 @@ class RecordInventoryMovement
             throw new RuntimeException("A {$type->label()} needs a reason.");
         }
 
-        return DB::transaction(function () use ($ingredient, $employee, $type, $quantityInThousandths, $note): InventoryMovement {
+        return DB::transaction(function () use ($ingredient, $employee, $type, $quantityInThousandths, $note, $productionRun): InventoryMovement {
             // Lock the ingredient row rather than the ledger: two employees
             // drawing stock down at the same moment would otherwise both read
             // the old balance and between them take more than exists.
@@ -71,6 +74,7 @@ class RecordInventoryMovement
                 'type' => $type,
                 'quantity' => static::quantityFromThousandths($quantityInThousandths),
                 'recorded_by' => $employee->id,
+                'production_run_id' => $productionRun?->id,
                 'note' => $note ?: null,
                 'occurred_at' => now(),
             ]);

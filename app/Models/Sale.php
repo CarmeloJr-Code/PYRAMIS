@@ -95,6 +95,17 @@ class Sale extends Model
     }
 
     /**
+     * What this sale took off the outlet's shelf, and put back if it was
+     * voided.
+     *
+     * @return HasMany<ProductStockMovement, $this>
+     */
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(ProductStockMovement::class);
+    }
+
+    /**
      * Limit the query to sales that count towards takings.
      *
      * @param  Builder<Sale>  $query

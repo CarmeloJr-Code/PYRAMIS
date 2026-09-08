@@ -248,7 +248,16 @@ new #[Title('Finished goods')] class extends Component {
                                     <flux:table.row :key="$variant->id">
                                         <flux:table.cell class="font-medium">{{ $variant->product->name }}</flux:table.cell>
                                         <flux:table.cell>{{ $variant->name }}</flux:table.cell>
-                                        <flux:table.cell>{{ $variant->stockInUnits() }}</flux:table.cell>
+                                        <flux:table.cell>
+                                            @if ($variant->stockInUnits() < 0)
+                                                {{-- A sale is allowed to outrun the count. A negative means a
+                                                     bake or a delivery went unrecorded, not that the sale was wrong. --}}
+                                                <flux:badge size="sm" color="red">{{ $variant->stockInUnits() }}</flux:badge>
+                                                <span class="ms-2 text-sm text-zinc-500">{{ __('sold more than was recorded') }}</span>
+                                            @else
+                                                {{ $variant->stockInUnits() }}
+                                            @endif
+                                        </flux:table.cell>
                                     </flux:table.row>
                                 @endforeach
                             </flux:table.rows>

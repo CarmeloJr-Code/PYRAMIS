@@ -54,7 +54,7 @@ new #[Title('Dashboard')] class extends Component {
             <flux:card>
                 <flux:heading size="lg">{{ __('Sales') }}</flux:heading>
                 <flux:text class="mt-2">{{ __('Record transactions and manage customer orders.') }}</flux:text>
-                <flux:button :href="route('employee.sales')" variant="ghost" size="sm" class="mt-4" wire:navigate>
+                <flux:button :href="route('employee.sales.index')" variant="ghost" size="sm" class="mt-4" wire:navigate>
                     {{ __('Open') }}
                 </flux:button>
             </flux:card>

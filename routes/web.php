@@ -30,9 +30,10 @@ Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->
         Route::livewire('products/{product}/edit', 'pages::employee.products.manage')->name('products.edit');
     });
 
-    Route::livewire('sales', 'pages::employee.sales')
-        ->middleware('can:access-sales')
-        ->name('sales');
+    Route::middleware('can:access-sales')->group(function () {
+        Route::livewire('sales', 'pages::employee.sales.index')->name('sales.index');
+        Route::livewire('sales/create', 'pages::employee.sales.create')->name('sales.create');
+    });
 
     Route::livewire('production', 'pages::employee.production')
         ->middleware('can:access-production')

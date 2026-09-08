@@ -78,9 +78,15 @@ new #[Title('Sales')] class extends Component {
 }; ?>
 
 <section class="w-full">
-    <div class="flex flex-col gap-2">
-        <flux:heading size="xl" level="1">{{ __('Sales') }}</flux:heading>
-        <flux:text>{{ __('Transactions recorded at the counter and from collected pre-orders.') }}</flux:text>
+    <div class="flex items-start justify-between gap-4">
+        <div class="flex flex-col gap-2">
+            <flux:heading size="xl" level="1">{{ __('Sales') }}</flux:heading>
+            <flux:text>{{ __('Transactions recorded at the counter and from collected pre-orders.') }}</flux:text>
+        </div>
+
+        <flux:button :href="route('employee.sales.create')" variant="primary" icon="plus" wire:navigate>
+            {{ __('Record counter sale') }}
+        </flux:button>
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

@@ -21,7 +21,7 @@ class RoleAuthorizationTest extends TestCase
     public static function sectionProvider(): array
     {
         return [
-            'sales' => ['employee.sales', [UserRole::Administrator, UserRole::Cashier]],
+            'sales' => ['employee.sales.index', [UserRole::Administrator, UserRole::Cashier]],
             'production' => ['employee.production', [UserRole::Administrator, UserRole::Baker]],
             'workforce' => ['employee.workforce', [UserRole::Administrator]],
         ];
@@ -58,7 +58,7 @@ class RoleAuthorizationTest extends TestCase
         $this->actingAs(User::factory()->baker()->create())
             ->get(route('employee.dashboard'))
             ->assertSee(route('employee.production'))
-            ->assertDontSee(route('employee.sales'))
+            ->assertDontSee(route('employee.sales.index'))
             ->assertDontSee(route('employee.workforce'));
     }
 }

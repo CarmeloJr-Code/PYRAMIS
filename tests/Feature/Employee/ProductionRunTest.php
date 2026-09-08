@@ -8,6 +8,7 @@ use App\Enums\InventoryMovementType;
 use App\Enums\UserRole;
 use App\Models\Ingredient;
 use App\Models\InventoryMovement;
+use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductionRun;
 use App\Models\ProductVariant;
@@ -22,6 +23,17 @@ use Tests\TestCase;
 class ProductionRunTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * A run puts its output on the main branch's shelf, so every test needs
+     * one to exist (BR-003, BR-004).
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Outlet::factory()->mainBranch()->create(['name' => 'Main Branch']);
+    }
 
     /**
      * An ingredient holding stock a bake can draw on.

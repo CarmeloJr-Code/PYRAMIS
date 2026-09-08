@@ -55,6 +55,10 @@ new #[Title('Inventory')] class extends Component {
         </div>
 
         <div class="flex items-center gap-3">
+            <flux:button :href="route('employee.inventory.finished')" variant="ghost" icon="cake" wire:navigate>
+                {{ __('Finished goods') }}
+            </flux:button>
+
             <flux:button :href="route('employee.inventory.usage')" variant="filled" icon="fire" wire:navigate>
                 {{ __('Record usage') }}
             </flux:button>

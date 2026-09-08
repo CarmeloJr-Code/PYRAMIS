@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -61,6 +62,16 @@ class ProductVariant extends Model
     }
 
     /**
+     * Every finished-goods movement of this size, at any location.
+     *
+     * @return HasMany<ProductStockMovement, $this>
+     */
+    public function productStockMovements(): HasMany
+    {
+        return $this->hasMany(ProductStockMovement::class);
+    }
+
+    /**
      * Limit the query to variants the bakery can currently sell.
      *
      * @param  Builder<ProductVariant>  $query
@@ -69,5 +80,40 @@ class ProductVariant extends Model
     protected function available(Builder $query): void
     {
         $query->where('is_available', true);
+    }
+
+    /**
+     * Aggregate one location's shelf in SQL, so a stock listing stays one query.
+     *
+     * @param  Builder<ProductVariant>  $query
+     */
+    #[Scope]
+    protected function withStockAt(Builder $query, Outlet $outlet): void
+    {
+        $query->withSum([
+            'productStockMovements as stock_sum' => fn (Builder $movements) => $movements->where('outlet_id', $outlet->id),
+        ], 'quantity');
+    }
+
+    /**
+     * The stock the withStockAt scope selected.
+     *
+     * array_key_exists, not ??: the aggregate is null for a size with no
+     * movements at that location, and falling through to a query there would
+     * put one behind every empty row of a listing.
+     */
+    public function stockInUnits(): int
+    {
+        return (int) ($this->attributes['stock_sum'] ?? 0);
+    }
+
+    /**
+     * How many of this size are on the shelf at the given location.
+     */
+    public function stockAt(Outlet $outlet): int
+    {
+        return (int) $this->productStockMovements()
+            ->where('outlet_id', $outlet->id)
+            ->sum('quantity');
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $address
  * @property string|null $phone
  * @property bool $is_active
+ * @property bool $is_main_branch
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
@@ -35,7 +37,19 @@ class Outlet extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_main_branch' => 'boolean',
         ];
+    }
+
+    /**
+     * The branch that runs production and supplies every other outlet
+     * (BR-003, BR-004).
+     *
+     * @throws ModelNotFoundException<Outlet> when the business has none
+     */
+    public static function mainBranch(): self
+    {
+        return static::query()->where('is_main_branch', true)->firstOrFail();
     }
 
     /**

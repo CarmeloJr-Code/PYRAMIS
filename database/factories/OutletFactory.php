@@ -26,6 +26,20 @@ class OutletFactory extends Factory
     }
 
     /**
+     * The branch that runs production and supplies the others.
+     *
+     * Not a state on the attributes: the flag is deliberately not
+     * mass-assignable, so nothing but a deliberate write can move it.
+     */
+    public function mainBranch(): static
+    {
+        return $this->afterCreating(function (Outlet $outlet): void {
+            $outlet->is_main_branch = true;
+            $outlet->save();
+        });
+    }
+
+    /**
      * Indicate that the outlet is no longer accepting pickups.
      */
     public function inactive(): static

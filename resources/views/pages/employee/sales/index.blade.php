@@ -1,7 +1,9 @@
 <?php
 
+use App\Actions\VoidSale;
 use App\Models\Sale;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -65,13 +67,14 @@ new #[Title('Sales')] class extends Component {
     }
 
     /**
-     * Void a sale recorded in error. Kept, never deleted.
+     * Void a sale recorded in error. Kept, never deleted — and whatever it took
+     * off the outlet's shelf goes back, since the goods never left.
      */
     public function void(int $saleId): void
     {
         Gate::authorize('access-sales');
 
-        Sale::findOrFail($saleId)->void();
+        app(VoidSale::class)->handle(Sale::findOrFail($saleId), Auth::user());
 
         unset($this->sales, $this->dailyTotal, $this->completedCount);
     }

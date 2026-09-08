@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $quantity
  * @property int|null $production_run_id
  * @property int|null $restock_id
+ * @property int|null $sale_id
  * @property int $recorded_by
  * @property string|null $note
  * @property CarbonImmutable $occurred_at
@@ -39,6 +40,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'quantity',
     'production_run_id',
     'restock_id',
+    'sale_id',
     'recorded_by',
     'note',
     'occurred_at',
@@ -100,6 +102,16 @@ class ProductStockMovement extends Model
     public function restock(): BelongsTo
     {
         return $this->belongsTo(Restock::class);
+    }
+
+    /**
+     * The sale it was rung up on, when one took it off the shelf.
+     *
+     * @return BelongsTo<Sale, $this>
+     */
+    public function sale(): BelongsTo
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     /**

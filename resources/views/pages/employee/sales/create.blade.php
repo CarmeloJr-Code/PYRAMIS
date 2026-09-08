@@ -1,5 +1,7 @@
 <?php
 
+use App\Actions\RecordProductStockMovement;
+use App\Enums\ProductStockMovementType;
 use App\Enums\SaleStatus;
 use App\Models\Outlet;
 use App\Models\ProductVariant;
@@ -142,15 +144,19 @@ new #[Title('Record counter sale')] class extends Component {
             return;
         }
 
-        $sale = DB::transaction(function () use ($validated, $variants): Sale {
+        $outlet = Outlet::query()->active()->findOrFail($validated['outlet_id']);
+
+        $sale = DB::transaction(function () use ($validated, $variants, $outlet): Sale {
             $sale = Sale::create([
-                'outlet_id' => $validated['outlet_id'],
+                'outlet_id' => $outlet->id,
                 // A walk-in sale has no originating pre-order.
                 'order_id' => null,
                 'recorded_by' => Auth::id(),
                 'status' => SaleStatus::Completed,
                 'sold_at' => now(),
             ]);
+
+            $movements = app(RecordProductStockMovement::class);
 
             foreach ($validated['lines'] as $line) {
                 $variant = $variants[$line['product_variant_id']];
@@ -160,6 +166,21 @@ new #[Title('Record counter sale')] class extends Component {
                     'quantity' => $line['quantity'],
                     'unit_price' => $variant->price,
                 ]);
+
+                // The goods leave the outlet they were rung up at. A sale may
+                // take that shelf negative — it went over the counter whatever
+                // the count believed.
+                $movements->handle(
+                    $variant,
+                    $outlet,
+                    Auth::user(),
+                    ProductStockMovementType::Sale,
+                    -$line['quantity'],
+                    null,
+                    null,
+                    null,
+                    $sale,
+                );
             }
 
             return $sale;

@@ -14,6 +14,8 @@ enum ProductStockMovementType: string
 
     case Transfer = 'transfer';
 
+    case Sale = 'sale';
+
     case Adjustment = 'adjustment';
 
     /**
@@ -24,6 +26,7 @@ enum ProductStockMovementType: string
         return match ($this) {
             self::Produced => 'Produced',
             self::Transfer => 'Transfer',
+            self::Sale => 'Sale',
             self::Adjustment => 'Adjustment',
         };
     }
@@ -33,16 +36,32 @@ enum ProductStockMovementType: string
      * either way.
      *
      * Production is finished goods arriving on the shelf. A transfer is one
-     * half of a restock — off the main branch, onto an outlet — so it goes
-     * either way, as does an adjustment, which is a correction: a miscount, or
-     * a tray dropped.
+     * half of a restock — off the main branch, onto an outlet — and a sale
+     * takes goods off it, or puts them back when the sale is voided, so both
+     * go either way. So does an adjustment, which is a correction: a miscount,
+     * or a tray dropped.
      */
     public function fixedDirection(): ?int
     {
         return match ($this) {
             self::Produced => 1,
-            self::Transfer, self::Adjustment => null,
+            self::Transfer, self::Sale, self::Adjustment => null,
         };
+    }
+
+    /**
+     * Whether this type may take a shelf below zero.
+     *
+     * Only a sale may. A transfer or an adjustment is an assertion about what
+     * is there, and asserting more than exists is a mistake worth refusing. A
+     * sale is a record of money that changed hands: it happened, whatever the
+     * ledger believed, and refusing it would lose the takings rather than fix
+     * the count. The negative that results is the signal that a bake or a
+     * delivery went unrecorded.
+     */
+    public function mayGoNegative(): bool
+    {
+        return $this === self::Sale;
     }
 
     /**

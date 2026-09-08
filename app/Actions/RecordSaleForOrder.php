@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\OrderStatus;
+use App\Enums\ProductStockMovementType;
 use App\Enums\SaleStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -51,7 +52,9 @@ class RecordSaleForOrder
                 'sold_at' => now(),
             ]);
 
-            $order->load('items');
+            $order->load('items.productVariant');
+
+            $movements = app(RecordProductStockMovement::class);
 
             foreach ($order->items as $item) {
                 /** @var OrderItem $item */
@@ -60,6 +63,21 @@ class RecordSaleForOrder
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
                 ]);
+
+                // The goods leave the outlet the customer collected from. A
+                // sale may take that shelf negative — the cake went out of the
+                // door whatever the count believed.
+                $movements->handle(
+                    $item->productVariant,
+                    $order->outlet,
+                    $cashier,
+                    ProductStockMovementType::Sale,
+                    -$item->quantity,
+                    null,
+                    null,
+                    null,
+                    $sale,
+                );
             }
 
             return $sale;

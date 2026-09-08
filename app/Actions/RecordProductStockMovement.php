@@ -8,6 +8,7 @@ use App\Models\ProductionRun;
 use App\Models\ProductStockMovement;
 use App\Models\ProductVariant;
 use App\Models\Restock;
+use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -28,6 +29,7 @@ class RecordProductStockMovement
      * @param  int  $quantity  Signed whole units: positive adds stock, negative removes it.
      * @param  ProductionRun|null  $productionRun  The bake this came out of, when it came from one.
      * @param  Restock|null  $restock  The transfer this was one half of, when it was.
+     * @param  Sale|null  $sale  The sale that rang it up, when one did.
      *
      * @throws RuntimeException when the movement is not a legal one
      */
@@ -40,6 +42,7 @@ class RecordProductStockMovement
         ?string $note = null,
         ?ProductionRun $productionRun = null,
         ?Restock $restock = null,
+        ?Sale $sale = null,
     ): ProductStockMovement {
         $note = $note === null ? null : trim($note);
 
@@ -59,7 +62,7 @@ class RecordProductStockMovement
             throw new RuntimeException("A {$type->label()} needs a reason.");
         }
 
-        return DB::transaction(function () use ($productVariant, $outlet, $employee, $type, $quantity, $note, $productionRun, $restock): ProductStockMovement {
+        return DB::transaction(function () use ($productVariant, $outlet, $employee, $type, $quantity, $note, $productionRun, $restock, $sale): ProductStockMovement {
             // Lock the location rather than the ledger: two people drawing the
             // same shelf down at once would otherwise both read the old balance
             // and between them take more than is there.
@@ -67,7 +70,7 @@ class RecordProductStockMovement
 
             $onHand = $productVariant->stockAt($outlet);
 
-            if ($onHand + $quantity < 0) {
+            if ($onHand + $quantity < 0 && ! $type->mayGoNegative()) {
                 // Named by product as well as size: a restock moves several
                 // lines at once, and "Large (10x14)" belongs to more than one
                 // cake.
@@ -83,6 +86,7 @@ class RecordProductStockMovement
                 'quantity' => $quantity,
                 'production_run_id' => $productionRun?->id,
                 'restock_id' => $restock?->id,
+                'sale_id' => $sale?->id,
                 'recorded_by' => $employee->id,
                 'note' => $note ?: null,
                 'occurred_at' => now(),

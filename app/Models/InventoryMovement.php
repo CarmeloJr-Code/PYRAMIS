@@ -85,6 +85,15 @@ class InventoryMovement extends Model
     }
 
     /**
+     * The quantity, unsigned — for a listing whose column already says which
+     * way it went.
+     */
+    public function magnitude(): string
+    {
+        return static::formatQuantity(abs($this->quantityInThousandths()));
+    }
+
+    /**
      * The quantity, formatted with the sign that shows which way it went.
      */
     public function signedQuantity(): string

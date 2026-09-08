@@ -41,6 +41,18 @@ class InventoryMovementFactory extends Factory
     }
 
     /**
+     * Stock consumed by baking. Always a decrease, so the quantity is signed.
+     */
+    public function usage(string $quantity, ?string $note = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => InventoryMovementType::Usage,
+            'quantity' => $quantity,
+            'note' => $note,
+        ]);
+    }
+
+    /**
      * A hand-made correction, which always carries its reason.
      */
     public function adjustment(string $quantity, string $note = 'Stock count correction'): static

@@ -37,8 +37,9 @@ Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->
 
     Route::middleware('can:access-inventory')->group(function () {
         Route::livewire('inventory', 'pages::employee.inventory.index')->name('inventory.index');
-        // Before the wildcard, so "create" is never read as an ingredient.
+        // Before the wildcard, so neither is ever read as an ingredient.
         Route::livewire('inventory/create', 'pages::employee.inventory.manage')->name('inventory.create');
+        Route::livewire('inventory/usage', 'pages::employee.inventory.usage')->name('inventory.usage');
         Route::livewire('inventory/{ingredient}', 'pages::employee.inventory.show')->name('inventory.show');
         Route::livewire('inventory/{ingredient}/edit', 'pages::employee.inventory.manage')->name('inventory.edit');
     });

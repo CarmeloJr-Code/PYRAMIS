@@ -45,6 +45,10 @@ class RecordInventoryMovement
             throw new RuntimeException("A {$type->label()} movement cannot reduce stock.");
         }
 
+        if ($quantityInThousandths > 0 && ! $type->allowsIncrease()) {
+            throw new RuntimeException("A {$type->label()} movement cannot add stock.");
+        }
+
         if ($type->requiresNote() && blank($note)) {
             throw new RuntimeException("A {$type->label()} needs a reason.");
         }
@@ -56,8 +60,10 @@ class RecordInventoryMovement
             $ingredient = Ingredient::query()->lockForUpdate()->findOrFail($ingredient->id);
 
             if ($ingredient->stockInThousandths() + $quantityInThousandths < 0) {
+                // Named, because a batch of usage lines is recorded in one go
+                // and the employee has to know which one is short.
                 throw new RuntimeException(
-                    "Only {$ingredient->stock()} {$ingredient->unit->abbreviation()} in stock.",
+                    "Only {$ingredient->stock()} {$ingredient->unit->abbreviation()} of {$ingredient->name} in stock.",
                 );
             }
 

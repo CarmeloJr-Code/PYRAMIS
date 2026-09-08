@@ -45,6 +45,15 @@ Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->
         Route::livewire('inventory/{ingredient}/edit', 'pages::employee.inventory.manage')->name('inventory.edit');
     });
 
+    Route::middleware('can:access-restocking')->group(function () {
+        Route::livewire('restocks', 'pages::employee.restocks.index')->name('restocks.index');
+        // Before the wildcard, so "create" is never read as a reference.
+        Route::livewire('restocks/create', 'pages::employee.restocks.create')
+            ->middleware('can:schedule-restocks')
+            ->name('restocks.create');
+        Route::livewire('restocks/{restock:reference}', 'pages::employee.restocks.show')->name('restocks.show');
+    });
+
     Route::middleware('can:access-production')->group(function () {
         Route::livewire('production', 'pages::employee.production.index')->name('production');
         Route::livewire('production/runs', 'pages::employee.production.runs.index')->name('production.runs.index');

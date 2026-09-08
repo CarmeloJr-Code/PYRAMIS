@@ -47,6 +47,12 @@
                         </flux:sidebar.item>
                     @endcan
 
+                    @can('access-restocking')
+                        <flux:sidebar.item icon="truck" :href="route('employee.restocks.index')" :current="request()->routeIs('employee.restocks.*')" wire:navigate>
+                            {{ __('Restocking') }}
+                        </flux:sidebar.item>
+                    @endcan
+
                     @can('access-production')
                         <flux:sidebar.item icon="fire" :href="route('employee.production')" :current="request()->routeIs('employee.production*')" wire:navigate>
                             {{ __('Production') }}

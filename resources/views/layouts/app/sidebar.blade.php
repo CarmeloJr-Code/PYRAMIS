@@ -60,10 +60,15 @@
                     @endcan
 
                     @can('access-workforce')
-                        <flux:sidebar.item icon="users" :href="route('employee.workforce')" :current="request()->routeIs('employee.workforce')" wire:navigate>
+                        <flux:sidebar.item icon="users" :href="route('employee.workforce')" :current="request()->routeIs('employee.workforce*')" wire:navigate>
                             {{ __('Workforce') }}
                         </flux:sidebar.item>
                     @endcan
+
+                    {{-- Every employee's own roster, whatever their role. --}}
+                    <flux:sidebar.item icon="calendar" :href="route('employee.schedule')" :current="request()->routeIs('employee.schedule')" wire:navigate>
+                        {{ __('My schedule') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

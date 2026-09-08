@@ -72,6 +72,21 @@ class AppServiceProvider extends ServiceProvider
             UserRole::Administrator,
         ));
 
+        // "Expense Management" in the capability matrix — Administrator and
+        // Cashier. BR-006 gives the Cashier expenses alongside sales and orders;
+        // the Baker has none.
+        Gate::define('access-expenses', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+            UserRole::Cashier,
+        ));
+
+        // Changing or removing one that is already filed is oversight, which
+        // BR-007 puts with the Administrator. A Cashier records; a mistake is
+        // taken to a manager.
+        Gate::define('manage-expenses', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+        ));
+
         Gate::define('access-workforce', fn (User $user): bool => $user->hasRole(
             UserRole::Administrator,
         ));

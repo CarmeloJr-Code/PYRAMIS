@@ -8,6 +8,8 @@ use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +25,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $name
  * @property string $email
  * @property UserRole $role
+ * @property bool $is_active
  * @property CarbonImmutable|null $email_verified_at
  * @property string $password
  * @property string|null $two_factor_secret
@@ -32,7 +35,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['name', 'email', 'role', 'password'])]
+#[Fillable(['name', 'email', 'role', 'is_active', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -50,7 +53,19 @@ class User extends Authenticatable implements PasskeyUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
+            'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * Limit the query to employees who still work here.
+     *
+     * @param  Builder<User>  $query
+     */
+    #[Scope]
+    protected function active(Builder $query): void
+    {
+        $query->where('is_active', true);
     }
 
     /**

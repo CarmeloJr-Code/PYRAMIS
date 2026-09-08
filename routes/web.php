@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureEmployeeIsActive;
 use Illuminate\Support\Facades\Route;
 
 // Purple Yam Malaybalay storefront. No authentication — customers never hold
@@ -10,7 +11,7 @@ Route::livewire('products/{product:slug}', 'pages::storefront.product')->name('p
 Route::livewire('order', 'pages::storefront.order')->name('order');
 Route::livewire('orders/{order:reference}', 'pages::storefront.order-status')->name('orders.show');
 
-Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->group(function () {
+Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->prefix('employee')->name('employee.')->group(function () {
     Route::livewire('dashboard', 'pages::employee.dashboard')->name('dashboard');
 
     Route::middleware('can:manage-orders')->group(function () {
@@ -64,8 +65,11 @@ Route::middleware(['auth', 'verified'])->prefix('employee')->name('employee.')->
 
     Route::middleware('can:access-workforce')->group(function () {
         Route::livewire('workforce', 'pages::employee.workforce.index')->name('workforce');
-        // Before the wildcard, so "create" is never read as a shift.
+        // Before the wildcard, so none of these is ever read as a shift.
         Route::livewire('workforce/create', 'pages::employee.workforce.manage')->name('workforce.shifts.create');
+        Route::livewire('workforce/employees', 'pages::employee.workforce.employees.index')->name('workforce.employees.index');
+        Route::livewire('workforce/employees/create', 'pages::employee.workforce.employees.manage')->name('workforce.employees.create');
+        Route::livewire('workforce/employees/{user}/edit', 'pages::employee.workforce.employees.manage')->name('workforce.employees.edit');
         Route::livewire('workforce/{shift}', 'pages::employee.workforce.show')->name('workforce.shifts.show');
         Route::livewire('workforce/{shift}/edit', 'pages::employee.workforce.manage')->name('workforce.shifts.edit');
     });

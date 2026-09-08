@@ -40,7 +40,8 @@ new class extends Component {
     }
 
     /**
-     * Everyone who could be put on it, minus whoever already is.
+     * Everyone who could be put on it, minus whoever already is. A closed
+     * account is not somebody to give work to.
      *
      * People already working elsewhere at the time are still listed: the clash
      * is explained when it is refused, which says more than a name quietly
@@ -52,6 +53,7 @@ new class extends Component {
     public function candidates(): Collection
     {
         return User::query()
+            ->active()
             ->whereKeyNot($this->shift->assignments->pluck('user_id')->all())
             ->orderBy('name')
             ->get();

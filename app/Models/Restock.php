@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
@@ -135,6 +137,55 @@ class Restock extends Model
     protected function open(Builder $query): void
     {
         $query->whereIn('status', [RestockStatus::Requested, RestockStatus::Preparing]);
+    }
+
+    /**
+     * Limit the query to restocks delivered over a stretch of days.
+     *
+     * Dated by delivery rather than by when it was asked for: a restock counts
+     * towards an outlet's month in the month the goods actually arrived.
+     *
+     * @param  Builder<Restock>  $query
+     */
+    #[Scope]
+    protected function deliveredBetween(Builder $query, string $from, string $to): void
+    {
+        $query->where('status', RestockStatus::Delivered)
+            ->whereDate('delivered_at', '>=', $from)
+            ->whereDate('delivered_at', '<=', $to);
+    }
+
+    /**
+     * What each outlet actually received, keyed by outlet.
+     *
+     * Counted from what was set aside rather than what was asked for — the
+     * prepared quantity is what left the main branch (BR-003).
+     *
+     * @return Collection<int, array{outlet_id: int, name: string, restocks: int, units: int}>
+     */
+    public static function deliveriesByOutlet(string $from, string $to): Collection
+    {
+        return DB::table('restocks')
+            ->join('outlets', 'outlets.id', '=', 'restocks.outlet_id')
+            ->leftJoin('restock_items', 'restock_items.restock_id', '=', 'restocks.id')
+            ->where('restocks.status', RestockStatus::Delivered->value)
+            ->whereDate('restocks.delivered_at', '>=', $from)
+            ->whereDate('restocks.delivered_at', '<=', $to)
+            ->groupBy('outlets.id')
+            ->orderByDesc('units')
+            ->select([
+                'outlets.id as outlet_id',
+                'outlets.name as name',
+                DB::raw('count(distinct restocks.id) as restocks'),
+                DB::raw('sum(restock_items.quantity_prepared) as units'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'outlet_id' => (int) $row->outlet_id,
+                'name' => (string) $row->name,
+                'restocks' => (int) $row->restocks,
+                'units' => (int) ($row->units ?? 0),
+            ]);
     }
 
     /**

@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * One baking run: what was made, how much of it, and what it took.
@@ -104,10 +106,82 @@ class ProductionRun extends Model
      */
     public static function unitsProduced(string $from, string $to): int
     {
-        return (int) static::query()
+        return (int) static::query()->producedBetween($from, $to)->sum('quantity');
+    }
+
+    /**
+     * How many runs were logged over a stretch of days.
+     */
+    public static function runsLogged(string $from, string $to): int
+    {
+        return static::query()->producedBetween($from, $to)->count();
+    }
+
+    /**
+     * Output day by day — the production history, one row per baking day.
+     *
+     * @return Collection<int, array{day: string, runs: int, units: int}>
+     */
+    public static function dailyOutput(string $from, string $to): Collection
+    {
+        // date() rather than a cast, for the same reason as the sales series:
+        // both engines have it and both hand back a plain day string.
+        return DB::table('production_runs')
             ->whereDate('produced_at', '>=', $from)
             ->whereDate('produced_at', '<=', $to)
-            ->sum('quantity');
+            ->groupBy(DB::raw('date(produced_at)'))
+            ->orderBy('day')
+            ->select([
+                DB::raw('date(produced_at) as day'),
+                DB::raw('count(*) as runs'),
+                DB::raw('sum(quantity) as units'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'day' => (string) $row->day,
+                'runs' => (int) $row->runs,
+                'units' => (int) $row->units,
+            ]);
+    }
+
+    /**
+     * What came out of the oven, by size, most produced first.
+     *
+     * @return Collection<int, array{product: string, size: string, runs: int, units: int}>
+     */
+    public static function outputByVariant(string $from, string $to): Collection
+    {
+        return DB::table('production_runs')
+            ->join('product_variants', 'product_variants.id', '=', 'production_runs.product_variant_id')
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->whereDate('produced_at', '>=', $from)
+            ->whereDate('produced_at', '<=', $to)
+            ->groupBy('product_variants.id', 'products.id')
+            ->orderByDesc('units')
+            ->select([
+                'products.name as product',
+                'product_variants.name as size',
+                DB::raw('count(*) as runs'),
+                DB::raw('sum(production_runs.quantity) as units'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'product' => (string) $row->product,
+                'size' => (string) $row->size,
+                'runs' => (int) $row->runs,
+                'units' => (int) $row->units,
+            ]);
+    }
+
+    /**
+     * Limit the query to runs over a stretch of days, both ends included.
+     *
+     * @param  Builder<ProductionRun>  $query
+     */
+    #[Scope]
+    protected function producedBetween(Builder $query, string $from, string $to): void
+    {
+        $query->whereDate('produced_at', '>=', $from)->whereDate('produced_at', '<=', $to);
     }
 
     /**

@@ -86,6 +86,35 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->prefix('
         Route::livewire('workforce/{shift}/edit', 'pages::employee.workforce.manage')->name('workforce.shifts.edit');
     });
 
+    // Reports. The hub is open to any signed-in employee and lists only what
+    // they can reach; each report keeps the gate that guards the screens its
+    // figures come from, so the matrix's "relevant subset" is enforced by the
+    // abilities already in use rather than a second set of rules.
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::livewire('/', 'pages::employee.reports.index')->name('index');
+
+        Route::livewire('sales', 'pages::employee.reports.sales')
+            ->middleware('can:access-sales')->name('sales');
+
+        Route::livewire('inventory', 'pages::employee.reports.inventory')
+            ->middleware('can:access-inventory')->name('inventory');
+
+        Route::livewire('production', 'pages::employee.reports.production')
+            ->middleware('can:access-production')->name('production');
+
+        Route::livewire('expenses', 'pages::employee.reports.expenses')
+            ->middleware('can:access-expenses')->name('expenses');
+
+        Route::livewire('workforce', 'pages::employee.reports.workforce')
+            ->middleware('can:access-workforce')->name('workforce');
+
+        // Outlet performance reads across sales, restocking and expenses at
+        // once, which no single operational gate covers. Outlet records are
+        // management territory (BR-007), so it follows manage-outlets.
+        Route::livewire('outlets', 'pages::employee.reports.outlets')
+            ->middleware('can:manage-outlets')->name('outlets');
+    });
+
     // Every employee's own roster. No gate beyond being signed in: this shows
     // the signed-in employee their own work and nobody else's.
     Route::livewire('schedule', 'pages::employee.schedule')->name('schedule');

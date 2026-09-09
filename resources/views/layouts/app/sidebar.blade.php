@@ -71,6 +71,12 @@
                         </flux:sidebar.item>
                     @endcan
 
+                    {{-- Reports, open to every role: each one lists only what
+                         that role's abilities already let it see. --}}
+                    <flux:sidebar.item icon="chart-bar" :href="route('employee.reports.index')" :current="request()->routeIs('employee.reports.*')" wire:navigate>
+                        {{ __('Reports') }}
+                    </flux:sidebar.item>
+
                     {{-- Internal chat, open to every role. --}}
                     <flux:sidebar.item icon="chat-bubble-left-right" :href="route('employee.messages.index')" :current="request()->routeIs('employee.messages.*')" wire:navigate>
                         {{ __('Messages') }}

@@ -9,9 +9,7 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
-                /* @chisel-passkeys */
                 'resources/js/passkeys.js',
-                /* @end-chisel-passkeys */
                 // Storefront brand mark, so Vite::asset() can resolve it in Blade.
                 'resources/images/purple-yam-logo.png',
             ],

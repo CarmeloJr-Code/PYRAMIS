@@ -5,7 +5,7 @@ Centralized bakery management + AI-assisted forecasting for **Purple Yam Malayba
 - **Purple Yam Malaybalay** — public storefront: browse, pre-order, pick a pickup outlet, track status. No customer accounts, no delivery.
 - **PYRAMIS** — authenticated employee workspace: Administrator, Baker, Cashier.
 
-**Status:** Phase 0 (Foundation) done — stock Livewire starter kit plus Docker/Render/Supabase/Boost wiring. No business tables, roles, or features exist yet. Next: Phase 1 — app shell, employee auth, RBAC.
+**Status:** Phases 0–12 done — employee auth and RBAC, the product catalogue and storefront, customer pre-orders through to sales, ingredients and production, outlet restocking, workforce scheduling, expenses, internal messaging, the dashboard and its reports, and both halves of forecasting (the deterministic outlook and the AI reading on top of it). Next: Phase 13 — integration, validating the full cross-module workflow end to end.
 
 ## Verified stack
 
@@ -16,7 +16,7 @@ Checked against this repo — don't assume otherwise.
 - Auth: Fortify, plus passkeys (`@laravel/passkeys`)
 - PostgreSQL via Supabase, through Eloquent
 - Deploy: Render (`render.yaml`, `Dockerfile` committed)
-- AI (Phase 12, not yet installed): Laravel AI SDK + OpenAI GPT-5 Nano
+- AI: Laravel AI SDK (`laravel/ai`) + Groq `openai/gpt-oss-20b`. The spec named OpenAI GPT-5 Nano; no OpenAI key could be obtained, and this is the nearest model Groq serves. Provider and model are named only by the attributes on `app/Ai/Agents/ForecastReadingAgent.php`; the vendor `config/ai.php` already reads `GROQ_API_KEY`, so nothing is published.
 - Laravel Boost + MCP server wired up (`.mcp.json`)
 
 Confirm package APIs against installed versions (`composer show --direct`, `package.json`) — never assume a major version.

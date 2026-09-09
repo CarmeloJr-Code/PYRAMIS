@@ -46,3 +46,8 @@ services:
         value: database
       - key: QUEUE_CONNECTION
         value: database
+
+      # Groq — the AI reading on the forecast screen. Absent, the screen still
+      # renders every deterministic figure and simply offers no reading.
+      - key: GROQ_API_KEY
+        sync: false          # https://console.groq.com/keys

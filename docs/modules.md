@@ -20,10 +20,12 @@
 
 Development proceeds as dependency-aware vertical slices (one business capability + its full stack per task), not layer-by-layer and not multiple modules at once.
 
+Phases 0–12 are built. Milestones **A** through **E** are complete, and what remains is **F** Production Release.
+
 | Phase | Slice | Primary outcome |
 |---|---|---|
-| 0 | Foundation | Runnable Laravel app — **current status** |
-| 1 | Authentication + RBAC | Secure employee workspace — **next up** |
+| 0 | Foundation | Runnable Laravel app |
+| 1 | Authentication + RBAC | Secure employee workspace |
 | 2 | Product Catalog | Shared product foundation for customers and employees |
 | 3 | Customer Ordering | End-to-end customer pre-order flow |
 | 4 | Sales | Transaction recording tied to orders |
@@ -34,8 +36,8 @@ Development proceeds as dependency-aware vertical slices (one business capabilit
 | 9 | Expenses | Operational expense management |
 | 10 | Communication | Internal employee text chat |
 | 11 | Reporting | Business dashboards and reports |
-| 12 | AI Forecasting | Decision-support intelligence (see `docs/ai-forecasting.md`) |
-| 13 | Integration | Full cross-module business workflow validated end-to-end |
+| 12 | AI Forecasting | Decision-support intelligence (see `docs/ai-forecasting.md`) — **done** |
+| 13 | Integration | Full cross-module business workflow validated end-to-end — **next up** |
 | 14 | Hardening | Security, data integrity, UX, performance pass |
 | 15 | Testing | Systematic unit/feature/authorization/browser test pass |
 | 16 | Evaluation | Functionality + usability evaluation (capstone criteria) |

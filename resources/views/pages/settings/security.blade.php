@@ -9,13 +9,9 @@ use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 use Livewire\Attributes\Title;
 use Livewire\Component;
-/* @chisel-passkeys */
 use Laravel\Passkeys\Actions\DeletePasskey;
 use Livewire\Attributes\Locked;
-/* @end-chisel-passkeys */
-/* @chisel-2fa */
 use Livewire\Attributes\On;
-/* @end-chisel-2fa */
 
 new #[Title('Security settings')] class extends Component {
     use PasswordValidationRules;
@@ -24,15 +20,12 @@ new #[Title('Security settings')] class extends Component {
     public string $password = '';
     public string $password_confirmation = '';
 
-    /* @chisel-2fa */
     public bool $canManageTwoFactor;
 
     public bool $twoFactorEnabled;
 
     public bool $requiresConfirmation;
-    /* @end-chisel-2fa */
 
-    /* @chisel-passkeys */
     #[Locked]
     public bool $canManagePasskeys;
 
@@ -46,14 +39,12 @@ new #[Title('Security settings')] class extends Component {
 
     #[Locked]
     public string $deletingPasskeyName = '';
-    /* @end-chisel-passkeys */
 
     /**
      * Mount the component.
      */
     public function mount(DisableTwoFactorAuthentication $disableTwoFactorAuthentication): void
     {
-        /* @chisel-2fa */
         $this->canManageTwoFactor = Features::canManageTwoFactorAuthentication();
 
         if ($this->canManageTwoFactor) {
@@ -64,15 +55,12 @@ new #[Title('Security settings')] class extends Component {
             $this->twoFactorEnabled = auth()->user()->hasEnabledTwoFactorAuthentication();
             $this->requiresConfirmation = Features::optionEnabled(Features::twoFactorAuthentication(), 'confirm');
         }
-        /* @end-chisel-2fa */
 
-        /* @chisel-passkeys */
         $this->canManagePasskeys = Features::canManagePasskeys();
 
         if ($this->canManagePasskeys) {
             $this->loadPasskeys();
         }
-        /* @end-chisel-passkeys */
     }
 
     /**
@@ -100,7 +88,6 @@ new #[Title('Security settings')] class extends Component {
         Flux::toast(variant: 'success', text: __('Password updated.'));
     }
 
-    /* @chisel-passkeys */
     /**
      * Load the user's passkeys.
      */
@@ -158,9 +145,7 @@ new #[Title('Security settings')] class extends Component {
         $this->deletingPasskeyId = null;
         $this->deletingPasskeyName = '';
     }
-    /* @end-chisel-passkeys */
 
-    /* @chisel-2fa */
     /**
      * Handle the two-factor authentication enabled event.
      */
@@ -179,7 +164,6 @@ new #[Title('Security settings')] class extends Component {
 
         $this->twoFactorEnabled = false;
     }
-    /* @end-chisel-2fa */
 }; ?>
 
 <section class="w-full">
@@ -223,7 +207,6 @@ new #[Title('Security settings')] class extends Component {
             </div>
         </form>
 
-        {{-- @chisel-2fa --}}
         @if ($canManageTwoFactor)
             <section class="mt-12">
                 <flux:heading>{{ __('Two-factor authentication') }}</flux:heading>
@@ -268,9 +251,7 @@ new #[Title('Security settings')] class extends Component {
                 </div>
             </section>
         @endif
-        {{-- @end-chisel-2fa --}}
 
-        {{-- @chisel-passkeys --}}
         @if ($canManagePasskeys)
             <section class="mt-12">
                 <flux:heading>{{ __('Passkeys') }}</flux:heading>
@@ -325,10 +306,8 @@ new #[Title('Security settings')] class extends Component {
                 </div>
             </section>
         @endif
-        {{-- @end-chisel-passkeys --}}
     </x-pages::settings.layout>
 
-    {{-- @chisel-passkeys --}}
     <flux:modal
         name="delete-passkey-modal"
         class="max-w-md md:min-w-md"
@@ -359,5 +338,4 @@ new #[Title('Security settings')] class extends Component {
             </div>
         </div>
     </flux:modal>
-    {{-- @end-chisel-passkeys --}}
 </section>

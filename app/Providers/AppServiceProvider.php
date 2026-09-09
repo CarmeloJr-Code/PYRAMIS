@@ -91,6 +91,13 @@ class AppServiceProvider extends ServiceProvider
             UserRole::Administrator,
         ));
 
+        // "AI Forecasting" in the capability matrix — Administrator alone, the
+        // only row besides workforce with no second role against it. BR-007
+        // puts forecasting with whoever decides what to do about it.
+        Gate::define('access-forecasting', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+        ));
+
         // The capability matrix grants Cashier no product rights, and pricing is a
         // management decision under BR-007, so catalogue management is Administrator
         // only — narrower than the Phase 2 spec's "administrator/cashier".

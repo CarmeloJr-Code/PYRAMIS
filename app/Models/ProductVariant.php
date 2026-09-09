@@ -96,6 +96,21 @@ class ProductVariant extends Model
     }
 
     /**
+     * Aggregate every location's shelf at once.
+     *
+     * What the business holds of a size, wherever it is standing — which is
+     * what a demand outlook weighs projected demand against, since goods can
+     * be moved between locations (BR-004).
+     *
+     * @param  Builder<ProductVariant>  $query
+     */
+    #[Scope]
+    protected function withStockEverywhere(Builder $query): void
+    {
+        $query->withSum('productStockMovements as stock_sum', 'quantity');
+    }
+
+    /**
      * The stock the withStockAt scope selected.
      *
      * array_key_exists, not ??: the aggregate is null for a size with no

@@ -86,6 +86,12 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->prefix('
         Route::livewire('workforce/{shift}/edit', 'pages::employee.workforce.manage')->name('workforce.shifts.edit');
     });
 
+    // Decision support. Administrator only, per the capability matrix. The
+    // outlook only reads: nothing here writes to inventory, production, orders
+    // or schedules (BR-008, BR-009).
+    Route::livewire('forecast', 'pages::employee.forecast')
+        ->middleware('can:access-forecasting')->name('forecast');
+
     // Reports. The hub is open to any signed-in employee and lists only what
     // they can reach; each report keeps the gate that guards the screens its
     // figures come from, so the matrix's "relevant subset" is enforced by the

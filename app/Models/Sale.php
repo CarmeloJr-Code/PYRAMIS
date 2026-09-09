@@ -245,6 +245,30 @@ class Sale extends Model
     }
 
     /**
+     * How many of each size sold, keyed by nothing but the size itself.
+     *
+     * The forecast reads demand per size and joins it to the catalogue in PHP,
+     * so this stays a bare count against the id rather than repeating the
+     * product joins the reports need.
+     *
+     * @return Collection<int, array{product_variant_id: int, units: int}>
+     */
+    public static function unitsSoldByVariant(string $from, string $to): Collection
+    {
+        return self::completedLines($from, $to)
+            ->groupBy('sale_items.product_variant_id')
+            ->select([
+                'sale_items.product_variant_id as product_variant_id',
+                DB::raw('sum(sale_items.quantity) as units'),
+            ])
+            ->get()
+            ->map(fn (object $row): array => [
+                'product_variant_id' => (int) $row->product_variant_id,
+                'units' => (int) $row->units,
+            ]);
+    }
+
+    /**
      * How many completed sales were rung up over a stretch of days.
      */
     public static function countCompleted(string $from, string $to, ?int $outletId = null): int

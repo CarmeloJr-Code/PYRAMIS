@@ -71,6 +71,12 @@
                         </flux:sidebar.item>
                     @endcan
 
+                    @can('access-forecasting')
+                        <flux:sidebar.item icon="sparkles" :href="route('employee.forecast')" :current="request()->routeIs('employee.forecast')" wire:navigate>
+                            {{ __('Forecast') }}
+                        </flux:sidebar.item>
+                    @endcan
+
                     {{-- Reports, open to every role: each one lists only what
                          that role's abilities already let it see. --}}
                     <flux:sidebar.item icon="chart-bar" :href="route('employee.reports.index')" :current="request()->routeIs('employee.reports.*')" wire:navigate>

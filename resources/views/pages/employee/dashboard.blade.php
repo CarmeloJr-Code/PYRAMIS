@@ -283,6 +283,10 @@ new #[Title('Dashboard')] class extends Component {
         {{-- The detail behind every tile above. --}}
         <flux:button :href="route('employee.reports.index')" variant="ghost" size="sm" wire:navigate>{{ __('Reports') }}</flux:button>
 
+        @can('access-forecasting')
+            <flux:button :href="route('employee.forecast')" variant="ghost" size="sm" wire:navigate>{{ __('Forecast') }}</flux:button>
+        @endcan
+
         @can('manage-products')
             <flux:button :href="route('employee.products.index')" variant="ghost" size="sm" wire:navigate>{{ __('Products') }}</flux:button>
         @endcan

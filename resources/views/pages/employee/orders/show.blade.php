@@ -21,14 +21,23 @@ new class extends Component {
     {
         Gate::authorize('manage-orders');
 
-        $this->order = $order->load(['outlet', 'items.productVariant.product']);
+        $this->order = $order;
     }
 
     /**
-     * Name the tab after the reference being worked on.
+     * Name the tab after the reference being worked on, and make sure the lines
+     * it is about to draw are in hand.
+     *
+     * Loaded here rather than in mount() because mount() runs once. Livewire
+     * re-resolves the model from the database on every request after the first,
+     * and refresh() brings back only the relations already on the model by
+     * name, so a nested one is gone either way. Asking each render is what
+     * keeps the item table off one query per line.
      */
     public function rendering(View $view): void
     {
+        $this->order->loadMissing(['outlet', 'items.productVariant.product']);
+
         $view->title(__('Order :reference', ['reference' => $this->order->reference]));
     }
 

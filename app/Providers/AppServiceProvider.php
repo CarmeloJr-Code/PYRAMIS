@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Enums\UserRole;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -125,6 +126,16 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // Everywhere but production, turn the three quiet Eloquent failures
+        // into loud ones: a relation loaded one row at a time, an attribute
+        // dropped by fill() because it is not fillable, and a read of a column
+        // the query never selected. All three are bugs that otherwise show up
+        // as a slow page or a silently missing value rather than as an error.
+        //
+        // Left off in production deliberately. A lazy load that slipped through
+        // should serve the customer a slow page, not a broken one.
+        Model::shouldBeStrict(! app()->isProduction());
 
         DB::prohibitDestructiveCommands(
             app()->isProduction(),

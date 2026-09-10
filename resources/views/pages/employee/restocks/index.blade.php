@@ -1,14 +1,25 @@
 <?php
 
 use App\Models\Restock;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Title('Restocking')] class extends Component {
+    use WithPagination;
+
+    /**
+     * How many restocks a page holds.
+     *
+     * Enough that the open queue almost always fits on one, so the everyday
+     * view is unchanged.
+     */
+    private const PER_PAGE = 25;
+
     #[Url(as: 'all', except: false)]
     public bool $includeFinished = false;
 
@@ -23,17 +34,28 @@ new #[Title('Restocking')] class extends Component {
     /**
      * The restock queue, in the order it is worked through.
      *
-     * @return Collection<int, Restock>
+     * Paged. The open queue is short by nature, but asking to see finished ones
+     * asks for every restock the shop has ever run, and that list only grows.
+     *
+     * @return LengthAwarePaginator<int, Restock>
      */
     #[Computed]
-    public function restocks(): Collection
+    public function restocks(): LengthAwarePaginator
     {
         return Restock::query()
             ->with(['outlet', 'items', 'requestedBy'])
             ->unless($this->includeFinished, fn ($query) => $query->open())
             ->orderBy('scheduled_for')
             ->orderBy('id')
-            ->get();
+            ->paginate(self::PER_PAGE);
+    }
+
+    /**
+     * Showing finished ones is a different list, so it starts at the top.
+     */
+    public function updatedIncludeFinished(): void
+    {
+        $this->resetPage();
     }
 
     /**
@@ -83,7 +105,7 @@ new #[Title('Restocking')] class extends Component {
         </flux:callout>
     @else
         <div class="overflow-x-auto">
-            <flux:table>
+            <flux:table :paginate="$this->restocks">
                 <flux:table.columns>
                     <flux:table.column>{{ __('Restock') }}</flux:table.column>
                     <flux:table.column>{{ __('Outlet') }}</flux:table.column>

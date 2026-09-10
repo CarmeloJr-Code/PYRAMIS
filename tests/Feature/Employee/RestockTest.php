@@ -339,4 +339,28 @@ class RestockTest extends TestCase
             ->set('includeFinished', true)
             ->assertSee($done->reference);
     }
+
+    public function test_the_finished_list_is_paged_rather_than_drawn_whole(): void
+    {
+        // Twenty-six cancelled restocks, scheduled a day apart so which page a
+        // reference lands on is not a matter of luck. The open queue is short by
+        // nature; asking to see finished ones asks for every restock ever run.
+        $restocks = collect(range(1, 26))->map(fn (int $day): Restock => Restock::factory()
+            ->for($this->kiosk)
+            ->cancelled()
+            ->create(['scheduled_for' => now()->addDays($day)]));
+
+        $component = Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.restocks.index')
+            ->set('includeFinished', true);
+
+        $component
+            ->assertSee($restocks->first()->reference)
+            ->assertDontSee($restocks->last()->reference);
+
+        $component
+            ->call('gotoPage', 2)
+            ->assertSee($restocks->last()->reference)
+            ->assertDontSee($restocks->first()->reference);
+    }
 }

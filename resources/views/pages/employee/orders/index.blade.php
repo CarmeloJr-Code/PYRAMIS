@@ -2,14 +2,25 @@
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Title('Orders')] class extends Component {
+    use WithPagination;
+
+    /**
+     * How many orders a page holds.
+     *
+     * Enough that the open queue almost always fits on one, so the counter's
+     * everyday view is unchanged.
+     */
+    private const PER_PAGE = 25;
+
     #[Url(as: 'status', except: '')]
     public string $statusFilter = '';
 
@@ -25,10 +36,18 @@ new #[Title('Orders')] class extends Component {
      * The order queue — open orders first, oldest pickup first, because that is
      * the order the counter works through.
      *
-     * @return Collection<int, Order>
+     * Paged. Left to itself the default view is small, but a status filter asks
+     * for every completed or cancelled order the shop has ever taken, and that
+     * list only grows.
+     *
+     * Two pickups can fall on the same minute, so the id breaks the tie: without
+     * a total order the database is free to return equal rows in any order it
+     * likes, and a row can appear on two pages or on none.
+     *
+     * @return LengthAwarePaginator<int, Order>
      */
     #[Computed]
-    public function orders(): Collection
+    public function orders(): LengthAwarePaginator
     {
         return Order::query()
             ->with(['outlet', 'items'])
@@ -41,7 +60,19 @@ new #[Title('Orders')] class extends Component {
                 ]),
             )
             ->orderBy('pickup_at')
-            ->get();
+            ->orderBy('id')
+            ->paginate(self::PER_PAGE);
+    }
+
+    /**
+     * A different filter is a different list, so it starts at the top.
+     *
+     * Without this, filtering while on page four asks for page four of the new
+     * list, which is usually empty.
+     */
+    public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
     }
 
     /**
@@ -102,7 +133,7 @@ new #[Title('Orders')] class extends Component {
         </flux:callout>
     @else
         <div class="overflow-x-auto">
-            <flux:table>
+            <flux:table :paginate="$this->orders">
                 <flux:table.columns>
                     <flux:table.column>{{ __('Reference') }}</flux:table.column>
                     <flux:table.column>{{ __('Customer') }}</flux:table.column>

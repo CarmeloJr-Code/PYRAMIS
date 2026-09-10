@@ -5,7 +5,7 @@ Centralized bakery management + AI-assisted forecasting for **Purple Yam Malayba
 - **Purple Yam Malaybalay** — public storefront: browse, pre-order, pick a pickup outlet, track status. No customer accounts, no delivery.
 - **PYRAMIS** — authenticated employee workspace: Administrator, Baker, Cashier.
 
-**Status:** Phases 0–12 done — employee auth and RBAC, the product catalogue and storefront, customer pre-orders through to sales, ingredients and production, outlet restocking, workforce scheduling, expenses, internal messaging, the dashboard and its reports, and both halves of forecasting (the deterministic outlook and the AI reading on top of it). Next: Phase 13 — integration, validating the full cross-module workflow end to end.
+**Status:** Phases 0–13 done — employee auth and RBAC, the product catalogue and storefront, customer pre-orders through to sales, ingredients and production, outlet restocking, workforce scheduling, expenses, internal messaging, the dashboard and its reports, both halves of forecasting (the deterministic outlook and the AI reading on top of it), and the cross-module workflow validated end to end (`tests/Feature/Integration/`). Next: Phase 14 — hardening: security, data integrity, UX and performance.
 
 ## Verified stack
 

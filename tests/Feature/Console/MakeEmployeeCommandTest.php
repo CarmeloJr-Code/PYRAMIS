@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Console;
 
+use App\Console\Commands\MakeEmployeeCommand;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,12 +79,50 @@ class MakeEmployeeCommandTest extends TestCase
 
         $this->assertSame(0, $exitCode);
 
-        preg_match('/^\s+(\S{24})\s*$/m', Artisan::output(), $matches);
+        // Whatever was printed, not a 24-character token: a password mangled on
+        // the way out is shorter, and matching loosely here means the failure
+        // reads as "printed something that does not work" rather than as
+        // "printed nothing".
+        preg_match('/^\s+(\S+)\s*$/m', Artisan::output(), $matches);
 
         $this->assertNotEmpty($matches, 'The generated password was not printed.');
 
         $this->assertTrue(
             Hash::check($matches[1], User::firstWhere('email', 'ana@purpleyam.test')->password),
+        );
+    }
+
+    public function test_a_password_carrying_console_markup_prints_as_it_was_stored(): void
+    {
+        // Str::password draws "<" and ">" from its symbol pool, and the console
+        // formatter reads "<...>" as a style tag and swallows it. A password
+        // could reach the terminal shorter than the one stored — about one draw
+        // in a hundred and fifty. Nothing about the account looked wrong; the
+        // new employee simply could not sign in.
+        //
+        // The generator is random and the command takes no password to hand it,
+        // so rather than draw until the shape that breaks turns up, this stands
+        // a command in front of it whose draw is fixed to exactly that shape.
+        Artisan::registerCommand(new MarkupPasswordCommand);
+
+        Artisan::call('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => 'ana@purpleyam.test',
+            '--role' => 'baker',
+            '--generate-password' => true,
+        ]);
+
+        $this->assertStringContainsString(
+            MarkupPasswordCommand::PASSWORD,
+            Artisan::output(),
+            'The password reached the terminal with its markup eaten.',
+        );
+
+        $this->assertTrue(
+            Hash::check(
+                MarkupPasswordCommand::PASSWORD,
+                User::firstWhere('email', 'ana@purpleyam.test')->password,
+            ),
         );
     }
 
@@ -157,5 +196,23 @@ class MakeEmployeeCommandTest extends TestCase
             ->assertFailed();
 
         $this->assertDatabaseEmpty('users');
+    }
+}
+
+/**
+ * make:employee with its random draw replaced by a fixed one.
+ *
+ * The password is the shape that broke: sequences the console formatter reads
+ * as style tags, including a real one it would happily consume. Registering
+ * this takes the command's name, so the test drives the ordinary code path and
+ * only the draw is decided.
+ */
+class MarkupPasswordCommand extends MakeEmployeeCommand
+{
+    public const PASSWORD = 'aa<info>bb<x/>cc<>dd1234';
+
+    protected function generatePassword(): ?string
+    {
+        return self::PASSWORD;
     }
 }

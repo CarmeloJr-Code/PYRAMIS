@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Symfony\Component\Console\Output\OutputInterface;
 
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\select;
@@ -126,7 +127,14 @@ class MakeEmployeeCommand extends Command
             // put it in the service logs.
             $this->newLine();
             $this->components->warn('Generated password — copy it now, it will not be shown again:');
-            $this->line("  {$password}");
+
+            // Raw, never line(). The console formatter reads "<...>" as a style
+            // tag and swallows it, and Str::password draws "<" and ">" from its
+            // symbol pool — so roughly one generated password in a hundred and
+            // fifty reached the terminal shorter than the one that was stored.
+            // Whoever ran this copied it, and the new employee could not sign in
+            // to an account nothing about it looked wrong with.
+            $this->output->writeln("  {$password}", OutputInterface::OUTPUT_RAW);
             $this->newLine();
             $this->components->warn('Change it after the first sign-in.');
         }

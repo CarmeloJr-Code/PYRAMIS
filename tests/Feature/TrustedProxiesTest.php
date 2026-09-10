@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Tests\TestCase;
 
 /**
@@ -21,6 +22,8 @@ class TrustedProxiesTest extends TestCase
     /**
      * Run a request through the trusted-proxy middleware as the app configures
      * it, and hand back the request as the rest of the app would see it.
+     *
+     * @param  array<string, string>  $headers
      */
     private function forwarded(array $headers): Request
     {
@@ -33,13 +36,11 @@ class TrustedProxiesTest extends TestCase
             $request->headers->set($name, $value);
         }
 
-        $seen = null;
+        // The middleware settles what to trust on the request it is given, so
+        // the one handed back is the one to read.
+        (new TrustProxies)->handle($request, fn (): Response => new Response);
 
-        (new TrustProxies)->handle($request, function (Request $request) use (&$seen): void {
-            $seen = $request;
-        });
-
-        return $seen;
+        return $request;
     }
 
     public function test_the_caller_is_the_first_address_in_the_forwarded_chain(): void

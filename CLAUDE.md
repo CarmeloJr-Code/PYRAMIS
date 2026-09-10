@@ -5,7 +5,7 @@ Centralized bakery management + AI-assisted forecasting for **Purple Yam Malayba
 - **Purple Yam Malaybalay** — public storefront: browse, pre-order, pick a pickup outlet, track status. No customer accounts, no delivery.
 - **PYRAMIS** — authenticated employee workspace: Administrator, Baker, Cashier.
 
-**Status:** Phases 0–13 done — employee auth and RBAC, the product catalogue and storefront, customer pre-orders through to sales, ingredients and production, outlet restocking, workforce scheduling, expenses, internal messaging, the dashboard and its reports, both halves of forecasting (the deterministic outlook and the AI reading on top of it), and the cross-module workflow validated end to end (`tests/Feature/Integration/`). Next: Phase 14 — hardening: security, data integrity, UX and performance.
+**Status:** Phases 0–13 done — employee auth and RBAC, the product catalogue and storefront, customer pre-orders through to sales, ingredients and production, outlet restocking, workforce scheduling, expenses, internal messaging, the dashboard and its reports, both halves of forecasting (the deterministic outlook and the AI reading on top of it), and the cross-module workflow validated end to end (`tests/Feature/Integration/`). Phase 15 is done too — the systematic test pass: the ability and guarded-screen matrices, unit cover for the isolated arithmetic, and the four role journeys in a real browser (`tests/Browser/`). Still open: Phase 14 — hardening: security, data integrity, UX and performance, of which only parts have landed.
 
 ## Verified stack
 
@@ -73,6 +73,7 @@ Dependency-aware vertical slices. One task = one business capability with its fu
 - Every code change adds or updates a test: happy path, invalid input, unauthorized access, edge cases, and resulting DB state — and nothing beyond.
 - PHPUnit. Create with `php artisan make:test --phpunit SomeFeatureTest` (no suite dir in the name); most tests are feature tests. Use factories and their custom states.
 - Run the narrowest set: `php artisan test --compact <path|--filter=testName>`, or `vendor/bin/phpunit` directly. Rerun after each change.
+- Browser journeys (`tests/Browser/`) run on Dusk, outside `php artisan test`: build the front end, serve the app, then `composer test:browser`. See `docs/testing.md`.
 - Read the `testing-best-practices` skill first. Don't write verification scripts or tinker for what tests already prove.
 
 ## Skills

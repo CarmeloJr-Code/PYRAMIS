@@ -12,7 +12,34 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Render reaches the container through Cloudflare and its own load
+        // balancer, so every request arrives from a proxy address and over
+        // plain HTTP. Left untrusted, request()->ip() is the balancer rather
+        // than the customer — enough on its own to make any limiter keyed by
+        // address count the whole internet as a single caller.
         //
+        // Trusting every address is what the platform asks for: Render
+        // publishes no stable inbound range, and Laravel already does the same
+        // by default for its own Cloud, Forge and Vapor hosts. What makes it
+        // safe rather than merely convenient is that Render sets the first
+        // entry of X-Forwarded-For to the real client itself instead of
+        // appending to whatever arrived, and Symfony reads exactly that entry
+        // when the whole chain is trusted. The address a limiter counts is
+        // therefore not one the caller gets to choose.
+        //
+        // The forwarded host is deliberately left out. It is client-settable in
+        // the general case — which is why Laravel strips it on Forge and Vapor
+        // — and a trusted one rewrites every generated link. Nothing here needs
+        // it: Render routes on the Host header, which already gives the right
+        // answer. Proto and port are needed, or the app behind the terminating
+        // proxy believes it is serving plain HTTP and writes http:// into every
+        // URL and secure cookie.
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -25,6 +25,16 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
      */
     private const HOURLY_ORDER_LIMIT = 5;
 
+    /**
+     * How many pre-orders one address may place in an hour.
+     *
+     * Four times the per-browser allowance, because an address here is not one
+     * customer: mobile carriers put many behind a single one, so this counts a
+     * neighbourhood and has to leave room for a busy afternoon. It is the floor
+     * under the browser limit, not a replacement for it.
+     */
+    private const HOURLY_ADDRESS_LIMIT = 20;
+
     public ?int $outlet_id = null;
 
     public string $customer_name = '';
@@ -193,7 +203,9 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
         // Counted here, on an order actually written, and never on an attempt:
         // a customer fumbling the form should not spend what a real order
         // costs.
-        RateLimiter::hit($this->throttleKey(), 3600);
+        foreach (array_keys($this->throttles()) as $key) {
+            RateLimiter::hit($key, 3600);
+        }
 
         Session::forget('cart');
 
@@ -201,37 +213,44 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     }
 
     /**
-     * The limiter key for the browser placing this order.
+     * The limiters an order has to get past, as key => allowance.
      *
-     * Keyed by session rather than by address. Customers hold no account
-     * (BR-001), so neither one is an identity, but the deployed app sits
-     * behind Render's load balancer with no trusted proxies configured:
-     * every request arrives carrying the balancer's address, so an address
-     * key would count the whole internet as one customer and shut the form
-     * for everybody after five orders.
+     * Customers hold no account (BR-001), so neither the session nor the
+     * address is really an identity, and each covers the other's gap: clearing
+     * cookies buys a fresh browser allowance, and a shared connection puts
+     * strangers behind one address. So both are counted, with the address given
+     * the looser limit because it is the one that can be a whole neighbourhood.
+     *
+     * @return array<string, int>
      */
-    private function throttleKey(): string
+    private function throttles(): array
     {
-        return 'place-order:'.Session::getId();
+        return [
+            'place-order:session:'.Session::getId() => self::HOURLY_ORDER_LIMIT,
+            'place-order:address:'.request()->ip() => self::HOURLY_ADDRESS_LIMIT,
+        ];
     }
 
     /**
-     * Refuse a browser that has already placed its hour's worth.
+     * Refuse an order that has already had its hour's worth.
      *
      * @throws ValidationException
      */
     private function throttle(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), self::HOURLY_ORDER_LIMIT)) {
-            return;
-        }
+        foreach ($this->throttles() as $key => $allowance) {
+            if (! RateLimiter::tooManyAttempts($key, $allowance)) {
+                continue;
+            }
 
-        throw ValidationException::withMessages([
-            'throttle' => __('You have placed :count pre-orders in the last hour. Please try again in :minutes minutes.', [
-                'count' => self::HOURLY_ORDER_LIMIT,
-                'minutes' => max(1, (int) ceil(RateLimiter::availableIn($this->throttleKey()) / 60)),
-            ]),
-        ]);
+            // Which limit was reached is the shop's business, not the
+            // customer's. All they can act on is when to come back.
+            throw ValidationException::withMessages([
+                'throttle' => __('That is more pre-orders than we can take from one place in an hour. Please try again in :minutes minutes.', [
+                    'minutes' => max(1, (int) ceil(RateLimiter::availableIn($key) / 60)),
+                ]),
+            ]);
+        }
     }
 }; ?>
 

@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -46,6 +47,17 @@ class PlaceOrderTest extends TestCase
             ->set('customer_phone', '09171234567')
             ->set('outlet_id', $this->outlet->id)
             ->set('pickup_at', now()->addDay()->format('Y-m-d\TH:i'));
+    }
+
+    /**
+     * Place one complete, valid pre-order.
+     */
+    protected function placeOrder(): Testable
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        return $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->call('submit');
     }
 
     public function test_a_guest_places_a_multi_item_pre_order(): void
@@ -174,6 +186,68 @@ class PlaceOrderTest extends TestCase
             ->assertHasErrors('cart');
 
         $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_it_refuses_a_sixth_pre_order_within_the_hour(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->placeOrder()->assertHasNoErrors();
+        }
+
+        $this->placeOrder()->assertHasErrors('throttle');
+
+        $this->assertSame(5, Order::count());
+    }
+
+    public function test_a_refused_order_costs_nothing_against_the_limit(): void
+    {
+        $variant = $this->variant();
+
+        // Ten submissions of a form that was never going to be accepted. None
+        // of them becomes an order, so none of them should spend the allowance.
+        for ($i = 0; $i < 10; $i++) {
+            Session::put('cart', [$variant->id => 1]);
+
+            Livewire::test('pages::storefront.order')
+                ->call('submit')
+                ->assertHasErrors('customer_name');
+        }
+
+        $this->placeOrder()->assertHasNoErrors();
+
+        $this->assertSame(1, Order::count());
+    }
+
+    public function test_the_limit_lifts_once_the_hour_is_up(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->placeOrder()->assertHasNoErrors();
+        }
+
+        $this->placeOrder()->assertHasErrors('throttle');
+
+        $this->travel(61)->minutes();
+
+        $this->placeOrder()->assertHasNoErrors();
+
+        $this->assertSame(6, Order::count());
+    }
+
+    public function test_the_limit_follows_the_browser_not_the_whole_storefront(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->placeOrder()->assertHasNoErrors();
+        }
+
+        $this->placeOrder()->assertHasErrors('throttle');
+
+        // The next customer through the door is a different browser, and one
+        // shop's worth of orders is not their fault.
+        Session::setId(Str::random(40));
+
+        $this->placeOrder()->assertHasNoErrors();
+
+        $this->assertSame(6, Order::count());
     }
 
     public function test_removing_the_last_line_empties_the_cart(): void

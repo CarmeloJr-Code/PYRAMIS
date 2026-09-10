@@ -48,13 +48,13 @@ new #[Title('Inventory')] class extends Component {
 }; ?>
 
 <section class="w-full">
-    <div class="flex items-start justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Inventory') }}</flux:heading>
             <flux:text class="mt-2">{{ __('Ingredient stock, counted from every movement recorded against it.') }}</flux:text>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
             <flux:button :href="route('employee.inventory.finished')" variant="ghost" icon="cake" wire:navigate>
                 {{ __('Finished goods') }}
             </flux:button>

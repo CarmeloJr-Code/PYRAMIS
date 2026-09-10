@@ -42,6 +42,11 @@ services:
 
       - key: SESSION_DRIVER
         value: database
+      # config/session.php already derives this from APP_ENV. Set here as well
+      # so the flag is visible where the deployment is described, rather than
+      # only implied by the environment name.
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
       - key: CACHE_STORE
         value: database
       - key: QUEUE_CONNECTION

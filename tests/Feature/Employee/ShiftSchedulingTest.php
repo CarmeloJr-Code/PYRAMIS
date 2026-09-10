@@ -271,4 +271,41 @@ class ShiftSchedulingTest extends TestCase
             ->assertSee('Counter cover')
             ->assertDontSee('Next week');
     }
+
+    public function test_the_roster_steps_a_week_at_a_time_in_both_directions(): void
+    {
+        $monday = now()->startOfWeek();
+
+        Shift::factory()->for($this->outlet)
+            ->on($monday->toDateString())
+            ->create(['name' => 'Standing bake']);
+
+        Shift::factory()->for($this->outlet)
+            ->on($monday->addWeek()->toDateString())
+            ->create(['name' => 'Fiesta cover']);
+
+        Shift::factory()->for($this->outlet)
+            ->on($monday->subWeek()->toDateString())
+            ->create(['name' => 'Stocktake']);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.index')
+            ->assertSee('Standing bake')
+            ->call('shiftWeek', 1)
+            ->assertSee('Fiesta cover')
+            ->assertDontSee('Standing bake')
+            ->call('shiftWeek', -2)
+            ->assertSee('Stocktake')
+            ->assertDontSee('Fiesta cover');
+    }
+
+    public function test_the_week_arrows_say_which_way_they_go(): void
+    {
+        // Arrows on their own announce as nothing but "button", and they are
+        // the only way off the current week.
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.index')
+            ->assertSee('Show the previous week')
+            ->assertSee('Show the next week');
+    }
 }

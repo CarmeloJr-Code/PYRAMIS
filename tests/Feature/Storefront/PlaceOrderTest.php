@@ -51,10 +51,13 @@ class PlaceOrderTest extends TestCase
 
     /**
      * Place one complete, valid pre-order.
+     *
+     * Takes a variant when the caller places more orders than the factory has
+     * distinct size names for, which is eleven.
      */
-    protected function placeOrder(): Testable
+    protected function placeOrder(?ProductVariant $variant = null): Testable
     {
-        Session::put('cart', [$this->variant()->id => 1]);
+        Session::put('cart', [($variant ?? $this->variant())->id => 1]);
 
         return $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
             ->call('submit');
@@ -248,6 +251,25 @@ class PlaceOrderTest extends TestCase
         $this->placeOrder()->assertHasNoErrors();
 
         $this->assertSame(6, Order::count());
+    }
+
+    public function test_the_address_still_counts_when_the_browser_limit_is_dodged(): void
+    {
+        $variant = $this->variant();
+
+        // A fresh session every time is exactly what clearing cookies buys, so
+        // the per-browser limit never bites. The address behind it still adds up.
+        for ($i = 0; $i < 20; $i++) {
+            Session::setId(Str::random(40));
+
+            $this->placeOrder($variant)->assertHasNoErrors();
+        }
+
+        Session::setId(Str::random(40));
+
+        $this->placeOrder($variant)->assertHasErrors('throttle');
+
+        $this->assertSame(20, Order::count());
     }
 
     public function test_removing_the_last_line_empties_the_cart(): void

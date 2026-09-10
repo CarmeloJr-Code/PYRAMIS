@@ -19,6 +19,13 @@ class OutletSeeder extends Seeder
      */
     public function run(): void
     {
+        // Only ever seeds an empty list. The name and address here are
+        // placeholders; once the Administrator has corrected them, or added the
+        // real pickup outlets, this must not put the placeholder back.
+        if (Outlet::query()->exists()) {
+            return;
+        }
+
         $mainBranch = Outlet::create([
             'name' => 'Main Branch',
             'address' => 'Malaybalay, Bukidnon',

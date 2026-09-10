@@ -34,7 +34,10 @@ class DeliverRestock
             // Deliver at the same moment cannot both move the same goods.
             $restock = Restock::query()->lockForUpdate()->findOrFail($restock->id);
 
-            $restock->load('items.productVariant');
+            // Down to the product, and the outlet alongside it: a line that the
+            // main branch cannot cover is named by product as well as size, and
+            // every line is credited to the receiving outlet.
+            $restock->load(['items.productVariant.product', 'outlet']);
 
             if ($restock->status !== RestockStatus::Preparing) {
                 throw new RuntimeException(

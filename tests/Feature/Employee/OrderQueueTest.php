@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -166,5 +167,53 @@ class OrderQueueTest extends TestCase
         $this->get(route('orders.show', $order->fresh()))
             ->assertOk()
             ->assertSeeText('Ready for pickup');
+    }
+
+    public function test_the_item_table_does_not_cost_a_query_a_line(): void
+    {
+        // Strict models turn a lazy load into an exception, but only while they
+        // are switched on. This says the same thing in a way that outlives the
+        // setting: the lines are fetched together, so drawing five costs what
+        // drawing one costs.
+        $this->assertSame(
+            $this->queriesRenderingAnOrderOf(1),
+            $this->queriesRenderingAnOrderOf(5),
+        );
+    }
+
+    /**
+     * Count the queries it takes to open an order carrying the given number of
+     * lines, advance it, and draw the result.
+     *
+     * Advancing matters: mount() runs once, and everything after it works from
+     * a model Livewire re-resolved and refreshed.
+     */
+    private function queriesRenderingAnOrderOf(int $lines): int
+    {
+        $order = Order::factory()
+            ->status(OrderStatus::Pending)
+            ->for(Outlet::factory()->create())
+            ->create();
+
+        // A distinct size per line: an order may not carry the same one twice.
+        for ($line = 0; $line < $lines; $line++) {
+            OrderItem::factory()
+                ->for($order)
+                ->for(ProductVariant::factory()->for(Product::factory()->create())->create())
+                ->create(['quantity' => 1, 'unit_price' => '990.00']);
+        }
+
+        $component = Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.show', ['order' => $order->fresh()]);
+
+        $count = 0;
+
+        DB::listen(function () use (&$count): void {
+            $count++;
+        });
+
+        $component->call('advance')->assertOk();
+
+        return $count;
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Outlet;
 use App\Models\ProductVariant;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +16,15 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Component {
+    /**
+     * How many pre-orders one browser may place in an hour.
+     *
+     * A customer orders once per visit. Five is far past anything a real
+     * one does, and well short of the volume that would make the cashier's
+     * queue useless to work from.
+     */
+    private const HOURLY_ORDER_LIMIT = 5;
+
     public ?int $outlet_id = null;
 
     public string $customer_name = '';
@@ -118,6 +128,12 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
      */
     public function submit(): void
     {
+        // First, before the form is even read. A browser already over the
+        // limit is over it whatever the form says, and saying so plainly
+        // beats failing validation on an order that was never going to be
+        // accepted anyway.
+        $this->throttle();
+
         $validated = $this->validate([
             'outlet_id' => [
                 'required', 'integer',
@@ -174,9 +190,48 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             return $order;
         });
 
+        // Counted here, on an order actually written, and never on an attempt:
+        // a customer fumbling the form should not spend what a real order
+        // costs.
+        RateLimiter::hit($this->throttleKey(), 3600);
+
         Session::forget('cart');
 
         $this->redirectRoute('orders.show', ['order' => $order->reference], navigate: true);
+    }
+
+    /**
+     * The limiter key for the browser placing this order.
+     *
+     * Keyed by session rather than by address. Customers hold no account
+     * (BR-001), so neither one is an identity, but the deployed app sits
+     * behind Render's load balancer with no trusted proxies configured:
+     * every request arrives carrying the balancer's address, so an address
+     * key would count the whole internet as one customer and shut the form
+     * for everybody after five orders.
+     */
+    private function throttleKey(): string
+    {
+        return 'place-order:'.Session::getId();
+    }
+
+    /**
+     * Refuse a browser that has already placed its hour's worth.
+     *
+     * @throws ValidationException
+     */
+    private function throttle(): void
+    {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), self::HOURLY_ORDER_LIMIT)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'throttle' => __('You have placed :count pre-orders in the last hour. Please try again in :minutes minutes.', [
+                'count' => self::HOURLY_ORDER_LIMIT,
+                'minutes' => max(1, (int) ceil(RateLimiter::availableIn($this->throttleKey()) / 60)),
+            ]),
+        ]);
     }
 }; ?>
 
@@ -186,9 +241,9 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
         <p class="max-w-2xl text-snow-500">{{ __('Pre-order for pickup. No account needed — we will give you a reference to track it with.') }}</p>
     </header>
 
-    @error('cart')
-        <p class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">{{ $message }}</p>
-    @enderror
+    @if ($errors->hasAny(['cart', 'throttle']))
+        <p class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">{{ $errors->first('cart') ?: $errors->first('throttle') }}</p>
+    @endif
 
     @if ($this->variants->isEmpty())
         <div class="flex flex-col items-start gap-4 rounded-xl border border-snow-200 bg-white p-8">

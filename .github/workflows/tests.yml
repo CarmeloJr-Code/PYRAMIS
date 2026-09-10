@@ -68,6 +68,82 @@ jobs:
       - name: Run CI Checks
         run: composer ci:check
 
+  # The four role journeys, in a real Chrome. Kept out of the `ci` job because they
+  # need a browser and a server rather than a database, and because a browser failure
+  # should be readable as a browser failure rather than buried in the unit run.
+  browser:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      # The pages are served through Vite's manifest, so an unbuilt front end is a
+      # 500 on every screen rather than a missing stylesheet.
+      - name: Build the front end
+        run: |
+          npm ci
+          npm run build
+
+      # Dusk swaps .env.dusk.local in for the run. Copying it into place first means
+      # the server started below is reading the same file, and the same sqlite
+      # database, as the tests.
+      - name: Prepare the browser environment
+        run: |
+          cp .env.dusk.local .env
+          touch database/dusk.sqlite
+
+      # --detect matches the driver to whatever Chrome the runner image ships,
+      # which moves without warning.
+      - name: Match ChromeDriver to Chrome
+        run: php artisan dusk:chrome-driver --detect
+
+      - name: Start the application
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8000/up; then
+              echo "server up after ${i} attempt(s)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::the application never answered on 127.0.0.1:8000"
+          exit 1
+
+      - name: Run browser tests
+        run: php artisan dusk --without-tty
+
+      # What the browser saw when it gave up, which is the only way to read a
+      # failure that cannot be reproduced on the machine that reported it.
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dusk-failures
+          path: |
+            tests/Browser/screenshots
+            tests/Browser/console
+          if-no-files-found: ignore
+
   # Render builds this image on every push to main (render.yaml autoDeploy: true) and
   # nothing else verifies it — there is no Docker on the dev machine. Build it here and
   # boot it the way Render does, so a broken image fails the PR, not the deployed app.

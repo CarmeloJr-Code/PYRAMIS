@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+>
+    <!--
+        The browser journeys, which `php artisan dusk` runs and `php artisan
+        test` does not: they need Chrome and a server, so they stay out of the
+        suite that runs on every change.
+
+        No <php> block, unlike phpunit.xml. Dusk swaps .env.dusk.local in for
+        the run, and the browser reaches the application through a real server
+        reading that same file — overriding the connection here would point the
+        test process at one database and the server at another.
+    -->
+    <testsuites>
+        <testsuite name="Browser">
+            <directory suffix="Test.php">tests/Browser</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

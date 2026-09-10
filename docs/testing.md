@@ -20,6 +20,18 @@ Every meaningful vertical slice ships with tests. A slice is not done because th
 - **Authorization tests** — one test per role per protected action, verifying both the allowed and the restricted cases (Administrator → allowed, Cashier/Baker/Customer → restricted, per action).
 - **Browser/UI tests** — critical journeys per role (customer: browse → select → order → submit → track; cashier: login → view orders → process → record sale; baker: login → view production → record → prepare restock; administrator: login → dashboard → workforce → restock → reports → forecast).
 
+## Running the browser tests
+
+Dusk drives a real Chrome, so it needs a built front end and a running server, and it is deliberately outside `php artisan test`:
+
+```
+npm run build                                  # the pages are served through Vite's manifest
+php artisan serve --host=127.0.0.1 --port=8000 # in one terminal
+composer test:browser                          # in another
+```
+
+Dusk swaps `.env.dusk.local` in for the run — its own SQLite file at `database/dusk.sqlite`, migrated from empty — so the browser journeys never touch the database being developed against. Add `--browse` to watch them run. If Chrome updates and the run stops with a version mismatch, `php artisan dusk:chrome-driver --detect` re-matches the driver. CI runs the same four journeys and uploads the screenshots on failure.
+
 ## Project conventions
 
 - Use `php artisan make:test` (feature by default, `--unit` for unit tests); most tests should be feature tests.

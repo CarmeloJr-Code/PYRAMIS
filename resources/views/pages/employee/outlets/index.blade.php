@@ -56,7 +56,7 @@ new #[Title('Outlets')] class extends Component {
 }; ?>
 
 <section class="w-full">
-    <div class="flex items-start justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Outlets') }}</flux:heading>
             <flux:text class="mt-2">{{ __('Pickup locations customers can choose when pre-ordering.') }}</flux:text>

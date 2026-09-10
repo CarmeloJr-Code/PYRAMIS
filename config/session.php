@@ -169,7 +169,12 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Defaulted from the environment rather than left null. Render terminates
+    // TLS in front of the container, so an unflagged session cookie is one the
+    // browser will hand back over plain HTTP — and the session it identifies is
+    // a signed-in employee's. Local development is served over http, where the
+    // flag would stop the cookie being set at all, so it stays off there.
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

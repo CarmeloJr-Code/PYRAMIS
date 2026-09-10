@@ -123,11 +123,26 @@ new #[Title('Workforce')] class extends Component {
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-2">
-            <flux:button size="sm" variant="ghost" icon="chevron-left" wire:click="shiftWeek(-1)" />
+            {{-- Named for a screen reader: an arrow on its own announces as
+                 nothing but "button", and these two are the only way to move
+                 off the current week. --}}
+            <flux:button
+                size="sm"
+                variant="ghost"
+                icon="chevron-left"
+                wire:click="shiftWeek(-1)"
+                :aria-label="__('Show the previous week')"
+            />
             <span class="text-sm font-medium">
                 {{ $this->days->first()->format('d M') }} &ndash; {{ $this->days->last()->format('d M Y') }}
             </span>
-            <flux:button size="sm" variant="ghost" icon="chevron-right" wire:click="shiftWeek(1)" />
+            <flux:button
+                size="sm"
+                variant="ghost"
+                icon="chevron-right"
+                wire:click="shiftWeek(1)"
+                :aria-label="__('Show the next week')"
+            />
         </div>
 
         @if ($this->unstaffedCount > 0)

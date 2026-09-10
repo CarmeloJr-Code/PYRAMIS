@@ -20,7 +20,7 @@
 
 Development proceeds as dependency-aware vertical slices (one business capability + its full stack per task), not layer-by-layer and not multiple modules at once.
 
-Phases 0–13 and 15 are built. Milestones **A** through **E** are complete, and **F** Production Release is under way — the hardening pass of Phase 14 continues alongside it.
+Phases 0–15 are built. Milestones **A** through **E** are complete, and **F** Production Release is under way.
 
 | Phase | Slice | Primary outcome |
 |---|---|---|
@@ -38,7 +38,7 @@ Phases 0–13 and 15 are built. Milestones **A** through **E** are complete, and
 | 11 | Reporting | Business dashboards and reports |
 | 12 | AI Forecasting | Decision-support intelligence (see `docs/ai-forecasting.md`) |
 | 13 | Integration | Full cross-module business workflow validated end-to-end — **done** |
-| 14 | Hardening | Security, data integrity, UX, performance pass — **in progress** |
+| 14 | Hardening | Security, data integrity, UX, performance pass — **done** |
 | 15 | Testing | Systematic unit/feature/authorization/browser test pass — **done** |
 | 16 | Evaluation | Functionality + usability evaluation (capstone criteria) — **next up** |
 | 17 | Deployment | Operational system on Render/Supabase |

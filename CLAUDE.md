@@ -5,7 +5,7 @@ Centralized bakery management + AI-assisted forecasting for **Purple Yam Malayba
 - **Purple Yam Malaybalay** — public storefront: browse, pre-order, pick a pickup outlet, track status. No customer accounts, no delivery.
 - **PYRAMIS** — authenticated employee workspace: Administrator, Baker, Cashier.
 
-**Status:** Phases 0–13 done — employee auth and RBAC, the product catalogue and storefront, customer pre-orders through to sales, ingredients and production, outlet restocking, workforce scheduling, expenses, internal messaging, the dashboard and its reports, both halves of forecasting (the deterministic outlook and the AI reading on top of it), and the cross-module workflow validated end to end (`tests/Feature/Integration/`). Phases 14 and 15 are done too — the hardening pass (security headers, a secure session cookie, CSRF actually exercised, a responsive sweep, and a query budget no screen may exceed) and the systematic test pass (the ability and guarded-screen matrices, unit cover for the isolated arithmetic, and the four role journeys in a real browser, `tests/Browser/`). Next: Phase 16 — the capstone functionality and usability evaluation.
+**Status:** Phases 0–13 done — employee auth and RBAC, the product catalogue and storefront, customer pre-orders through to sales, ingredients and production, outlet restocking, workforce scheduling, expenses, internal messaging, the dashboard and its reports, both halves of forecasting (the deterministic outlook and the AI reading on top of it), and the cross-module workflow validated end to end (`tests/Feature/Integration/`). Phases 14 and 15 are done too — the hardening pass (security headers, a secure session cookie, CSRF actually exercised, a responsive sweep, and a query budget no screen may exceed) and the systematic test pass (the ability and guarded-screen matrices, unit cover for the isolated arithmetic, and the four role journeys in a real browser, `tests/Browser/`). Phase 16 is done as well — the evidence-based assessment in `docs/evaluation.md`, which passes on all five functionality criteria and leaves learnability, error recovery and perceived ease of use open for want of user testing. Next: Phase 17 — deployment.
 
 ## Verified stack
 
@@ -32,7 +32,7 @@ Confirm package APIs against installed versions (`composer show --direct`, `pack
 
 Never invent requirements, roles, permissions, or features outside approved scope. When requirements conflict or are ambiguous, stop and ask rather than guess.
 
-Docs: `docs/architecture.md`, `business-rules.md`, `roles-and-permissions.md`, `modules.md` (phase roadmap), `database.md`, `testing.md`, `ai-forecasting.md`. Capstone sources verbatim in `docs/reference/`.
+Docs: `docs/architecture.md`, `business-rules.md`, `roles-and-permissions.md`, `modules.md` (phase roadmap), `database.md`, `testing.md`, `ai-forecasting.md`, `evaluation.md` (the Phase 16 assessment). Capstone sources verbatim in `docs/reference/`.
 
 Brand/logo sources, product recipes, and scanned business forms live in `docs/reference/{brand,recipes,forms}/` — reference only, never served, and **not** evidence that a feature was scoped (there is no recipes table and no printable-forms requirement). Read each folder's README before building from it. Web-ready logo assets go in `resources/views/components/app-logo-icon.blade.php` (inline SVG) and `public/favicon.*`, not in `docs/`.
 

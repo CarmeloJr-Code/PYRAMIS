@@ -20,7 +20,7 @@
 
 Development proceeds as dependency-aware vertical slices (one business capability + its full stack per task), not layer-by-layer and not multiple modules at once.
 
-Phases 0–15 are built. Milestones **A** through **E** are complete, and **F** Production Release is under way.
+Phases 0–16 are built. Milestones **A** through **E** are complete, and **F** Production Release is under way — only deployment remains.
 
 | Phase | Slice | Primary outcome |
 |---|---|---|
@@ -40,8 +40,8 @@ Phases 0–15 are built. Milestones **A** through **E** are complete, and **F** 
 | 13 | Integration | Full cross-module business workflow validated end-to-end — **done** |
 | 14 | Hardening | Security, data integrity, UX, performance pass — **done** |
 | 15 | Testing | Systematic unit/feature/authorization/browser test pass — **done** |
-| 16 | Evaluation | Functionality + usability evaluation (capstone criteria) — **next up** |
-| 17 | Deployment | Operational system on Render/Supabase |
+| 16 | Evaluation | Functionality + usability evaluation (capstone criteria) — **done**, see `docs/evaluation.md` |
+| 17 | Deployment | Operational system on Render/Supabase — **next up** |
 
 Grouped milestones: **A** Foundation (0–2) · **B** Transaction System (3–4) · **C** Operations System (5–9) · **D** Management System (10–11) · **E** Decision Support (12) · **F** Production Release (13–17).
 

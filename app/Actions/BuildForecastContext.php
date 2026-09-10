@@ -236,8 +236,13 @@ final class BuildForecastContext
         $recentSold = Sale::unitsSoldByVariant($recent->from(), $recent->to())->keyBy('product_variant_id');
         $previousSold = Sale::unitsSoldByVariant($previous->from(), $previous->to())->keyBy('product_variant_id');
 
+        // "Available for sale" means the same thing here as at the counter and
+        // in the storefront: the size is available and its product is still
+        // published. Reading only the size would put a withdrawn product in a
+        // table headed "what to consider baking".
         $variants = ProductVariant::query()
             ->available()
+            ->whereHas('product', fn ($query) => $query->where('is_active', true))
             ->with('product')
             ->withStockEverywhere()
             ->withExists('recipe as has_recipe')

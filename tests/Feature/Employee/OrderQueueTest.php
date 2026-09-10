@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -104,6 +105,60 @@ class OrderQueueTest extends TestCase
             ->set('statusFilter', OrderStatus::Completed->value)
             ->assertSeeText($done->reference)
             ->assertDontSeeText($open->reference);
+    }
+
+    /**
+     * Completed orders with a known pickup order, so which page a reference
+     * lands on is not a matter of luck.
+     *
+     * @return Collection<int, Order>
+     */
+    private function finishedOrders(int $count): Collection
+    {
+        $outlet = Outlet::factory()->create();
+
+        return collect(range(1, $count))->map(fn (int $day): Order => Order::factory()
+            ->status(OrderStatus::Completed)
+            ->for($outlet)
+            ->create(['pickup_at' => now()->addDays($day)]));
+    }
+
+    public function test_the_finished_list_is_paged_rather_than_drawn_whole(): void
+    {
+        // The open queue stays short by itself. Asking for finished orders asks
+        // for every one the shop has ever taken, and that list only grows.
+        $orders = $this->finishedOrders(26);
+
+        $component = Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.index')
+            ->set('statusFilter', OrderStatus::Completed->value);
+
+        $component
+            ->assertSeeText($orders->first()->reference)
+            ->assertDontSeeText($orders->last()->reference);
+
+        $component
+            ->call('gotoPage', 2)
+            ->assertSeeText($orders->last()->reference)
+            ->assertDontSeeText($orders->first()->reference);
+    }
+
+    public function test_changing_the_filter_starts_the_new_list_at_the_top(): void
+    {
+        $open = $this->order(OrderStatus::Pending);
+        $this->finishedOrders(26);
+
+        $component = Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.index')
+            ->set('statusFilter', OrderStatus::Completed->value)
+            ->call('gotoPage', 2);
+
+        // The open queue is one page long. Asked for its second page — which is
+        // what a filter change would do if it left the page number alone — it
+        // would come back empty.
+        $component
+            ->set('statusFilter', '')
+            ->assertSeeText($open->reference);
     }
 
     public function test_a_cashier_walks_an_order_through_the_whole_workflow(): void

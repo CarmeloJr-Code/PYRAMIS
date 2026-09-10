@@ -21,6 +21,13 @@ class ExpenseCategorySeeder extends Seeder
      */
     public function run(): void
     {
+        // These are placeholders the Administrator is expected to rename or
+        // retire, so seeding them again after that would be putting back
+        // exactly what somebody deliberately changed.
+        if (ExpenseCategory::query()->exists()) {
+            return;
+        }
+
         $categories = [
             'Ingredients and supplies',
             'Packaging',

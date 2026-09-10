@@ -25,6 +25,12 @@ class IngredientSeeder extends Seeder
      */
     public function run(): void
     {
+        // Only ever seeds an empty stockroom, so a later deploy cannot put back
+        // an ingredient the business stopped carrying, or undo a rename.
+        if (Ingredient::query()->exists()) {
+            return;
+        }
+
         $ingredients = [
             ['Purple Yam Dry Premix', IngredientUnit::Pack],
             ['Purple Yam Wet Premix', IngredientUnit::Pack],

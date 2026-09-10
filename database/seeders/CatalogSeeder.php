@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -78,6 +79,14 @@ class CatalogSeeder extends Seeder
      */
     public function run(): void
     {
+        // Only ever seeds an empty catalogue. Once the business has a product
+        // list — renamed, repriced, withdrawn — this is no longer the truth
+        // about it, and writing the menu board back over a curated catalogue
+        // on the next deploy would undo somebody's work.
+        if (Product::query()->exists()) {
+            return;
+        }
+
         foreach ($this->menu as $categoryName => $products) {
             $category = Category::create([
                 'name' => $categoryName,

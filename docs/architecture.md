@@ -81,6 +81,8 @@ php artisan make:employee --env=production --name "…" --email … --role admin
 
 (`--role baker` and `--role cashier` likewise). Only a bcrypt hash is written, so the workstation's own `APP_KEY` is fine. Remove the file, or blank `DB_PASSWORD`, when done. `php artisan test` is unaffected either way — `phpunit.xml` pins it to SQLite `:memory:`.
 
+The workstation's PHP must have `pdo_pgsql`. The `herd-lite` build from php.new does not, and cannot load one; the official Windows build from windows.php.net does — unzip it anywhere, enable `pdo_pgsql`, `openssl`, `mbstring`, `curl`, `fileinfo` and `intl` in its `php.ini`, and run `artisan` with that binary. A quick way to tell which database a command actually reached: `migrate:status --env=production` looks identical against a fully migrated local SQLite, so check `php -m | grep pdo_pgsql` first.
+
 **Free-instance behaviour worth knowing:** the container spins down after about fifteen idle minutes, and the next request pays a cold start of roughly a minute; open the site shortly before a demonstration. Logs live in the Render dashboard (`LOG_CHANNEL=stderr`); the entrypoint's migrate and seed output appears there on each deploy.
 
 ## Visual direction

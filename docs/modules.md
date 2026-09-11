@@ -20,7 +20,7 @@
 
 Development proceeds as dependency-aware vertical slices (one business capability + its full stack per task), not layer-by-layer and not multiple modules at once.
 
-Phases 0–16 are built. Milestones **A** through **E** are complete, and **F** Production Release is under way — only deployment remains.
+All seventeen phases are built and milestones **A** through **F** are complete. The system is live at https://pyramis.onrender.com — the Deployment section of `docs/architecture.md` covers how it runs and how it is operated.
 
 | Phase | Slice | Primary outcome |
 |---|---|---|
@@ -41,7 +41,7 @@ Phases 0–16 are built. Milestones **A** through **E** are complete, and **F** 
 | 14 | Hardening | Security, data integrity, UX, performance pass — **done** |
 | 15 | Testing | Systematic unit/feature/authorization/browser test pass — **done** |
 | 16 | Evaluation | Functionality + usability evaluation (capstone criteria) — **done**, see `docs/evaluation.md` |
-| 17 | Deployment | Operational system on Render/Supabase — **next up** |
+| 17 | Deployment | Operational system on Render/Supabase — **done**, live at https://pyramis.onrender.com |
 
 Grouped milestones: **A** Foundation (0–2) · **B** Transaction System (3–4) · **C** Operations System (5–9) · **D** Management System (10–11) · **E** Decision Support (12) · **F** Production Release (13–17).
 

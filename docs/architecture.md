@@ -73,7 +73,7 @@ Live at https://pyramis.onrender.com. Render web service `pyramis` (Singapore, f
 
 **Configuration** is declared in `render.yaml`. Four values are secrets set in the Render dashboard rather than the file: `APP_KEY`, `APP_URL`, `DB_PASSWORD`, `GROQ_API_KEY`. Without `GROQ_API_KEY` the forecast screen still renders every deterministic figure and simply offers no AI reading. Changing an env var in the dashboard redeploys the current image.
 
-**Employee accounts** are minted one at a time with `make:employee`, which prints a generated password exactly once and marks the address verified so the account can sign in immediately. The free instance has no shell, so run it from a workstation against the live database: create a gitignored `.env.production` carrying the `DB_*` values from `render.yaml` plus the Supabase password, then
+**Employee accounts** are created by an Administrator in the workspace — Workforce → Employees → *New employee* — which generates a password, shows it once, and marks the address verified so the account can sign in immediately. Only the *first* administrator has to be minted another way, since there is nobody to sign in and create it: `make:employee` does the same thing from the command line. The free instance has no shell, so run it from a workstation against the live database: create a gitignored `.env.production` carrying the `DB_*` values from `render.yaml` plus the Supabase password, then
 
 ```
 php artisan make:employee --env=production --name "…" --email … --role administrator --generate-password

@@ -122,7 +122,7 @@ Phase 14 also confirmed a performance result worth stating: query counts are fla
 
 Stated so the evaluation is not read as stronger than it is.
 
-1. **No user testing.** Learnability, perceived ease of use and overall satisfaction are unevaluated. Establishing them needs staff at Purple Yam Malaybalay performing task scenarios, most usefully with an instrument scoring each NFR-01 property.
+1. **No user testing.** Learnability, perceived ease of use and overall satisfaction are unevaluated. Establishing them needs staff at Purple Yam Malaybalay performing task scenarios, most usefully with an instrument scoring each NFR-01 property. The protocol for that session — scenarios, instrument, and how its results feed back into this document — is `docs/usability-testing.md`.
 2. **Performance measured at seeded scale, not production volume.** Constant query counts hold up to four times the seeded data; no load or soak testing was performed, and the Render free plan has not been measured under concurrent use.
 3. **The AI reading depends on a third-party service.** Groq availability, rate limits and model behaviour are outside the system. The screen degrades to the deterministic outlook when no key is configured, which is tested — but the quality of the readings themselves is not evaluated here, and by BR-008 they are explicitly not predictions.
 4. **Postgres behaviour is gated in CI, not locally.** Local runs use SQLite; index and query behaviour specific to Postgres is only exercised on CI against Postgres 17.

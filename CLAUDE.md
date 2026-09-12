@@ -34,7 +34,7 @@ Never invent requirements, roles, permissions, or features outside approved scop
 
 Docs: `docs/architecture.md`, `business-rules.md`, `roles-and-permissions.md`, `modules.md` (phase roadmap), `database.md`, `testing.md`, `ai-forecasting.md`, `evaluation.md` (the Phase 16 assessment), `usability-testing.md` (the user-testing protocol that assessment calls for). Capstone sources verbatim in `docs/reference/`.
 
-Brand/logo sources, product recipes, and scanned business forms live in `docs/reference/{brand,recipes,forms}/` — reference only, never served, and **not** evidence that a feature was scoped (there is no recipes table and no printable-forms requirement). Read each folder's README before building from it. Web-ready logo assets go in `resources/views/components/app-logo-icon.blade.php` (inline SVG) and `public/favicon.*`, not in `docs/`.
+Brand/logo sources, product recipes, and scanned business forms live in `docs/reference/{brand,recipes,forms}/` — reference only, never served, and **not** evidence that a feature was scoped (the `recipes` table that exists came from the Phase 6 production slice, not from this folder; there is no printable-forms requirement). Read each folder's README before building from it. Web-ready logo assets go in `resources/views/components/app-logo-icon.blade.php` (inline SVG) and `public/favicon.*`, not in `docs/`.
 
 ## Non-negotiable business rules
 

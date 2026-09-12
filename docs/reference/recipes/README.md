@@ -4,17 +4,15 @@ Recipes for Purple Yam Malaybalay products, as supplied by the business.
 
 **Status: reference only. These are not application data.**
 
-There is no recipes table, model, or migration, and no approved specification for one. Do not read this folder as evidence that a recipes module was scoped. The only mention of recipes anywhere in the specs is the Phase 6 objective in `../vertical-slice-implementation-plan.md`:
+The application does have recipes as structured data — `recipes` and `recipe_items`, one recipe per product variant, written by a Baker or Administrator under Production → Recipes. That schema was designed in the Phase 6 production slice, whose objective is the only mention of recipes in the specs (`../vertical-slice-implementation-plan.md`):
 
 > Connect products, recipes/ingredients, production activities, and inventory.
 
+This folder is not where those rows come from. Nothing reads it, nothing seeds from it, and it is not evidence that any further recipe feature — costing, scaling, printing, versioning — was scoped.
+
 ## Why these are kept
 
-Phase 6 (Production) has to model how a product consumes ingredients — production logging, ingredient usage, and finished-product output. These documents are the ground truth for what that schema needs to represent. They inform the design; they are not the design.
-
-If and when recipes become structured data, that schema gets designed in the slice that needs it, per `../../database.md`:
-
-> The exact schema is finalized per vertical slice (design it right before implementing the feature that needs it), not assumed upfront.
+They are the ground truth for what the Phase 6 schema had to represent, and they are what a baker would transcribe into the Recipes screen on the live system. `IngredientSeeder` takes its ingredient names and purchasing units from them. They inform the design; they are not the design.
 
 ## What belongs here
 

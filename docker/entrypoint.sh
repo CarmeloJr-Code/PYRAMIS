@@ -16,7 +16,8 @@ fi
 # the catalogue, the stockroom list, the expense headings, the main branch.
 # Every seeder it calls leaves an already-populated table alone, so this fills
 # what is empty on the first deploy and does nothing on the rest. It creates no
-# accounts: those are minted one at a time with make:employee.
+# accounts: the first administrator is minted with make:employee, the rest
+# in the workspace under Workforce → Employees.
 if [ "${RUN_SEEDERS:-true}" = "true" ]; then
     php artisan db:seed --class=ProductionSeeder --force
 fi

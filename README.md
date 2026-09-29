@@ -14,4 +14,4 @@ Laravel 13 · PHP 8.4+ · Livewire 4 + Flux UI · Tailwind CSS v4 · Laravel For
 
 ## Status
 
-All seventeen phases complete; live at https://pyramis.onrender.com. See `docs/modules.md` for the roadmap and `docs/architecture.md` for how the deployment runs.
+All seventeen phases complete; live at https://www.purpleyam.store. See `docs/modules.md` for the roadmap and `docs/architecture.md` for how the deployment runs.

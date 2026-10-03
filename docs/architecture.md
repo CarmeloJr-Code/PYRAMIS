@@ -53,7 +53,7 @@ Employee journey: Sign In → Authentication → Role Identification → Role-Ba
 | ORM | Laravel Eloquent | Laravel default |
 | Database | PostgreSQL via Supabase | PRD §20, `.env` |
 | AI | Laravel AI SDK (`laravel/ai`) + Groq `openai/gpt-oss-20b` | `app/Ai/Agents/ForecastReadingAgent.php` — the PRD named OpenAI GPT-5 Nano; no key could be obtained, and this is the nearest model Groq serves |
-| Deploy | Render (Docker, FrankenPHP) + Supabase Postgres — https://pyramis.onrender.com | `render.yaml`, `Dockerfile`, `docker/` |
+| Deploy | Render (Docker, FrankenPHP) + Supabase Postgres — https://www.purpleyam.store | `render.yaml`, `Dockerfile`, `docker/` |
 | Dev tooling | Composer, npm/Vite, Git, Laravel Boost (MCP) | repo root, `.mcp.json` |
 
 ## Design principles
@@ -67,11 +67,11 @@ Employee journey: Sign In → Authentication → Role Identification → Role-Ba
 
 ## Deployment
 
-Live at https://pyramis.onrender.com. Render web service `pyramis` (Singapore, free instance) builds `Dockerfile` from `main` on every push and swaps it in once `/up` answers. The database is the Supabase project's Postgres, reached through the Supavisor session pooler (IPv4, `sslmode=require`) as the single user Laravel connects as — no RLS, no Supabase Auth; authorization stays in Laravel policies.
+Live at https://www.purpleyam.store. Render web service `pyramis` (Singapore, free instance) builds `Dockerfile` from `main` on every push and swaps it in once `/up` answers. The database is the Supabase project's Postgres, reached through the Supavisor session pooler (IPv4, `sslmode=require`) as the single user Laravel connects as — no RLS, no Supabase Auth; authorization stays in Laravel policies.
 
 **What happens on every boot** (`docker/entrypoint.sh`): cache config, routes and views; `migrate --force` (skip with `RUN_MIGRATIONS=false`); `db:seed --class=ProductionSeeder --force` (skip with `RUN_SEEDERS=false`); then FrankenPHP serves on `$PORT`. `ProductionSeeder` fills only what is empty — the catalogue, the ingredient list, the expense headings, the main branch — and never overwrites a row the business has since edited. It creates no accounts.
 
-**Configuration** is declared in `render.yaml`. Four values are secrets set in the Render dashboard rather than the file: `APP_KEY`, `APP_URL`, `DB_PASSWORD`, `GROQ_API_KEY`. Without `GROQ_API_KEY` the forecast screen still renders every deterministic figure and simply offers no AI reading. Changing an env var in the dashboard redeploys the current image.
+**Configuration** is declared in `render.yaml`. Four values are secrets set in the Render dashboard rather than the file: `APP_KEY`, `APP_URL`, `DB_PASSWORD`, `GROQ_API_KEY`. Without `GROQ_API_KEY` the forecast screen still renders every deterministic figure and simply offers no AI reading. Changing an env var in the dashboard redeploys the current image. Passkeys are bound to `APP_URL`'s host, so moving the site to a new URL invalidates every registered passkey — employees sign in with their password and register a new one. The domain `purpleyam.store` is registered at Namecheap, whose DNS points `www` (CNAME) and the apex (ALIAS) at `pyramis.onrender.com`; Render holds both as custom domains, issues their certificates, and redirects the apex to `www`. `pyramis.onrender.com` still answers.
 
 **Employee accounts** are created by an Administrator in the workspace — Workforce → Employees → *New employee* — which generates a password, shows it once, and marks the address verified so the account can sign in immediately. Only the *first* administrator has to be minted another way, since there is nobody to sign in and create it: `make:employee` does the same thing from the command line. The free instance has no shell, so run it from a workstation against the live database: create a gitignored `.env.production` carrying the `DB_*` values from `render.yaml` plus the Supabase password, then
 

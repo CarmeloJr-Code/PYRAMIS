@@ -2,7 +2,7 @@
 
 The user testing `docs/evaluation.md` names as its first limitation. Its purpose is to establish the three things the system cannot evidence about itself — learnability, error recovery by a person, and perceived ease of use — and to score the six NFR-01 properties and the six aspects the implementation plan lists (navigation, clarity, learnability, task completion, error recovery, overall experience) from the only source that can: staff of Purple Yam Malaybalay using the live system.
 
-Everything below runs on https://pyramis.onrender.com with the real accounts. It creates real records; see *Data* at the end.
+Everything below runs on https://www.purpleyam.store with the real accounts. It creates real records; see *Data* at the end.
 
 ## Participants
 

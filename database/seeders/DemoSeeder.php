@@ -128,7 +128,7 @@ class DemoSeeder extends Seeder
      * Sample figures to make production draw on the stockroom, not the
      * bakery's recipes (docs/reference/recipes/ is reference only).
      *
-     * @var array<string, array<string, float>>
+     * @var array<string, array<string, int|float>>
      */
     private const RECIPES = [
         'Ube Cake' => [
@@ -305,7 +305,7 @@ class DemoSeeder extends Seeder
         $this->refuseOutsideDevelopment();
 
         if (Sale::query()->exists()) {
-            $this->command?->warn('Sales already exist, so the demo history has been seeded before. Run migrate:fresh --seed first.');
+            $this->command->warn('Sales already exist, so the demo history has been seeded before. Run migrate:fresh --seed first.');
 
             return;
         }
@@ -1103,6 +1103,7 @@ class DemoSeeder extends Seeder
         $rows = ProductStockMovement::query()
             ->selectRaw('outlet_id, product_variant_id, SUM(quantity) as units')
             ->groupBy('outlet_id', 'product_variant_id')
+            ->toBase()
             ->get();
 
         foreach ($rows as $row) {

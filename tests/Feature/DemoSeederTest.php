@@ -16,8 +16,12 @@ use App\Models\Sale;
 use App\Models\ShiftAssignment;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DemoSeeder;
+use Illuminate\Console\Command;
+use Illuminate\Console\OutputStyle;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\NullOutput;
 use Tests\TestCase;
 
 /**
@@ -118,6 +122,9 @@ class DemoSeederTest extends TestCase
     {
         $this->travelTo(CarbonImmutable::parse(self::NOW));
 
-        (new DemoSeeder(days: $days))->setContainer($this->app)->__invoke();
+        $command = new Command;
+        $command->setOutput(new OutputStyle(new ArrayInput([]), new NullOutput));
+
+        (new DemoSeeder(days: $days))->setContainer($this->app)->setCommand($command)->__invoke();
     }
 }

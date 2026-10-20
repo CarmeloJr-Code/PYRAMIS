@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -17,7 +18,10 @@ return new class extends Migration
      * typed in by someone in Malaybalay, so they already hold local time, and
      * the date-only columns hold a day rather than a moment.
      *
-     * @var array<string, list<string>>
+     * Plain identifiers, so they go into the SQL as they are: none needs
+     * quoting in SQLite or Postgres.
+     *
+     * @var array<literal-string, list<literal-string>>
      */
     private const COLUMNS = [
         'users' => ['email_verified_at', 'two_factor_confirmed_at', 'created_at', 'updated_at'],
@@ -51,39 +55,45 @@ return new class extends Migration
 
     public function up(): void
     {
-        $this->shift(8);
+        $this->shift('+8 hours');
     }
 
     public function down(): void
     {
-        $this->shift(-8);
+        $this->shift('-8 hours');
     }
 
     /**
-     * Move every listed column by a number of hours, nulls left as they are.
+     * Move every listed column by the offset, nulls left as they are.
+     *
+     * @param  '+8 hours'|'-8 hours'  $offset
      */
-    private function shift(int $hours): void
+    private function shift(string $offset): void
     {
         foreach (self::COLUMNS as $table => $columns) {
-            DB::table($table)->update(collect($columns)->mapWithKeys(
-                fn (string $column): array => [$column => DB::raw($this->moved($column, $hours))],
-            )->all());
+            $moved = [];
+
+            foreach ($columns as $column) {
+                $moved[$column] = new Expression($this->moved($column, $offset));
+            }
+
+            DB::table($table)->update($moved);
         }
     }
 
     /**
-     * The column moved by some hours, in the dialect of the connection: SQLite
+     * The column moved by the offset, in the dialect of the connection: SQLite
      * for the test suite, Postgres everywhere else.
+     *
+     * @param  literal-string  $column
+     * @param  '+8 hours'|'-8 hours'  $offset
+     * @return literal-string
      */
-    private function moved(string $column, int $hours): string
+    private function moved(string $column, string $offset): string
     {
-        $grammar = DB::connection()->getQueryGrammar();
-        $wrapped = $grammar->wrap($column);
-        $offset = sprintf('%+d hours', $hours);
-
         return match (DB::connection()->getDriverName()) {
-            'sqlite' => "datetime({$wrapped}, '{$offset}')",
-            'pgsql' => "{$wrapped} + interval '{$offset}'",
+            'sqlite' => "datetime({$column}, '{$offset}')",
+            'pgsql' => "{$column} + interval '{$offset}'",
             default => throw new RuntimeException('Timestamps can only be moved on SQLite or Postgres.'),
         };
     }

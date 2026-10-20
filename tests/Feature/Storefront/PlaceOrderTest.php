@@ -46,7 +46,8 @@ class PlaceOrderTest extends TestCase
             ->set('customer_name', 'Ana Reyes')
             ->set('customer_phone', '09171234567')
             ->set('outlet_id', $this->outlet->id)
-            ->set('pickup_at', now()->addDay()->format('Y-m-d\TH:i'));
+            ->set('pickup_date', now()->addDay()->toDateString())
+            ->set('pickup_time', '10:30');
     }
 
     /**
@@ -130,22 +131,80 @@ class PlaceOrderTest extends TestCase
             ->set('customer_name', '')
             ->set('customer_phone', '')
             ->set('outlet_id', null)
-            ->set('pickup_at', '')
+            ->set('pickup_date', '')
+            ->set('pickup_time', '')
             ->call('submit')
-            ->assertHasErrors(['customer_name', 'customer_phone', 'outlet_id', 'pickup_at']);
+            ->assertHasErrors(['customer_name', 'customer_phone', 'outlet_id', 'pickup_date', 'pickup_time']);
 
         $this->assertDatabaseEmpty('orders');
     }
 
-    public function test_it_rejects_a_pickup_time_in_the_past(): void
+    public function test_the_pickup_date_and_time_are_stored_as_one_moment(): void
+    {
+        $this->placeOrder()->assertHasNoErrors();
+
+        $this->assertSame(
+            now()->addDay()->setTime(10, 30)->toDateTimeString(),
+            Order::first()->pickup_at->toDateTimeString(),
+        );
+    }
+
+    public function test_it_rejects_a_pickup_date_in_the_past(): void
     {
         $variant = $this->variant();
         Session::put('cart', [$variant->id => 1]);
 
         $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
-            ->set('pickup_at', now()->subDay()->format('Y-m-d\TH:i'))
+            ->set('pickup_date', now()->subDay()->toDateString())
             ->call('submit')
-            ->assertHasErrors('pickup_at');
+            ->assertHasErrors('pickup_date');
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_it_rejects_a_time_already_passed_today(): void
+    {
+        $this->travelTo(now()->setTime(14, 0));
+
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_date', now()->toDateString())
+            ->set('pickup_time', '09:00')
+            ->call('submit')
+            ->assertHasNoErrors('pickup_date')
+            ->assertHasErrors('pickup_time');
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_a_later_time_today_is_accepted(): void
+    {
+        $this->travelTo(now()->setTime(14, 0));
+
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_date', now()->toDateString())
+            ->set('pickup_time', '16:00')
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $this->assertSame(now()->setTime(16, 0)->toDateTimeString(), Order::first()->pickup_at->toDateTimeString());
+    }
+
+    public function test_it_rejects_a_malformed_pickup_date_or_time(): void
+    {
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_date', 'tomorrow')
+            ->set('pickup_time', '25:99')
+            ->call('submit')
+            ->assertHasErrors(['pickup_date', 'pickup_time']);
 
         $this->assertDatabaseEmpty('orders');
     }

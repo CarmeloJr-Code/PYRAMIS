@@ -26,9 +26,9 @@ class CustomerJourneyTest extends DuskTestCase
 
         $variant = $this->cake('Ube Cake', 'Large (10x14)', '1250.00');
 
-        $pickup = now()->addDay()->format('Y-m-d\TH:i');
+        $pickupDate = now()->addDay()->toDateString();
 
-        $this->browse(function (Browser $browser) use ($pickup): void {
+        $this->browse(function (Browser $browser) use ($pickupDate): void {
             $browser->visit('/')
                 ->assertSee('Ube cakes and pastries, baked in Malaybalay.')
                 ->clickLink('See the menu')
@@ -51,7 +51,8 @@ class CustomerJourneyTest extends DuskTestCase
                 ->type('customer_name', 'Ana Reyes')
                 ->type('customer_phone', '09171234567')
                 ->select('outlet_id', (string) $this->kiosk->id)
-                ->fillDateField('pickup_at', $pickup)
+                ->fillDateField('pickup_date', $pickupDate)
+                ->fillDateField('pickup_time', '10:30')
                 ->press('Place pre-order')
 
                 // The reference is the only thing a customer holds, so the

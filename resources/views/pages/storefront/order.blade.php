@@ -4,6 +4,7 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\ProductVariant;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -43,7 +44,9 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
 
     public string $customer_email = '';
 
-    public string $pickup_at = '';
+    public string $pickup_date = '';
+
+    public string $pickup_time = '';
 
     public string $notes = '';
 
@@ -152,9 +155,21 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_phone' => ['required', 'string', 'max:50'],
             'customer_email' => ['nullable', 'email', 'max:255'],
-            'pickup_at' => ['required', 'date', 'after:now'],
+            'pickup_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'pickup_time' => ['required', 'date_format:H:i'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        // Each half can be fine on its own and the pair still be in the past:
+        // a time earlier than now on today's date. The time is the half the
+        // customer can fix without changing their day, so it takes the error.
+        $pickupAt = Carbon::createFromFormat('Y-m-d H:i', $validated['pickup_date'].' '.$validated['pickup_time']);
+
+        if ($pickupAt->isPast()) {
+            throw ValidationException::withMessages([
+                'pickup_time' => __('That time has already passed. Please choose a later one.'),
+            ]);
+        }
 
         $cart = $this->cart();
 
@@ -178,13 +193,13 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             ]);
         }
 
-        $order = DB::transaction(function () use ($validated, $variants, $cart): Order {
+        $order = DB::transaction(function () use ($validated, $pickupAt, $variants, $cart): Order {
             $order = Order::create([
                 'outlet_id' => $validated['outlet_id'],
                 'customer_name' => $validated['customer_name'],
                 'customer_phone' => $validated['customer_phone'],
                 'customer_email' => $validated['customer_email'] ?: null,
-                'pickup_at' => $validated['pickup_at'],
+                'pickup_at' => $pickupAt,
                 'notes' => $validated['notes'] ?: null,
                 'status' => OrderStatus::Pending,
             ]);
@@ -323,7 +338,10 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     @endforeach
                 </flux:select>
 
-                <flux:input wire:model="pickup_at" :label="__('Pickup date and time')" type="datetime-local" required />
+                <div class="grid gap-5 sm:grid-cols-2">
+                    <flux:input wire:model="pickup_date" :label="__('Pickup date')" type="date" :min="today()->toDateString()" required />
+                    <flux:input wire:model="pickup_time" :label="__('Pickup time')" type="time" required />
+                </div>
 
                 <flux:textarea wire:model="notes" :label="__('Notes')" rows="2" :description="__('Anything we should know — a message on the cake, for example.')" />
 

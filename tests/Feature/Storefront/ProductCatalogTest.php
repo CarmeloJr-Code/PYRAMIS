@@ -56,6 +56,27 @@ class ProductCatalogTest extends TestCase
             ->assertDontSeeText('Empty Shelf');
     }
 
+    public function test_the_home_page_shows_each_categorys_illustration(): void
+    {
+        $this->product('Ube Cake', Category::factory()->create(['name' => 'Ube Cakes', 'slug' => 'ube-cakes']));
+        $this->product('Seasonal Roll', Category::factory()->create(['name' => 'Seasonal', 'slug' => 'seasonal']));
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee(asset('images/categories/ube-cakes.svg'), false)
+            ->assertSee(asset('images/product.svg'), false)
+            ->assertDontSee('images/categories/seasonal.svg', false);
+    }
+
+    public function test_every_category_on_the_menu_board_has_its_own_illustration(): void
+    {
+        $this->seed(CatalogSeeder::class);
+
+        Category::all()->each(function (Category $category): void {
+            $this->assertSame(asset("images/categories/{$category->slug}.svg"), $category->imageUrl(), $category->name);
+        });
+    }
+
     public function test_a_guest_can_open_a_product_and_see_every_size(): void
     {
         $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);

@@ -74,11 +74,7 @@ class Product extends Model
             return asset($path);
         }
 
-        if (is_file(public_path($path = "images/categories/{$this->category->slug}.svg"))) {
-            return asset($path);
-        }
-
-        return asset('images/product.svg');
+        return $this->category->imageUrl();
     }
 
     /**

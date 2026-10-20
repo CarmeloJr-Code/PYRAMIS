@@ -61,6 +61,27 @@ class Product extends Model
     }
 
     /**
+     * The storefront illustration for this product.
+     *
+     * The artwork ships with the app under public/images, named by slug. A
+     * product nobody has drawn yet (one added after the art was made, or
+     * renamed so its slug moved) borrows its category's, and failing that a
+     * generic one — so the card never shows a broken image.
+     */
+    public function imageUrl(): string
+    {
+        if (is_file(public_path($path = "images/products/{$this->slug}.svg"))) {
+            return asset($path);
+        }
+
+        if (is_file(public_path($path = "images/categories/{$this->category->slug}.svg"))) {
+            return asset($path);
+        }
+
+        return asset('images/product.svg');
+    }
+
+    /**
      * Limit the query to products published in the catalogue.
      *
      * @param  Builder<Product>  $query

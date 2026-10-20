@@ -89,25 +89,29 @@ new #[Layout('layouts::storefront')] #[Title('Products')] class extends Componen
 
                 <a
                     href="{{ route('products.show', $product) }}"
-                    class="flex flex-col gap-3 rounded-xl border border-snow-200 bg-white p-6 transition hover:border-orchid-300"
+                    class="flex flex-col overflow-hidden rounded-xl border border-snow-200 bg-white transition hover:border-orchid-300"
                     wire:key="product-{{ $product->id }}"
                     wire:navigate
                 >
-                    <span class="text-xs font-medium tracking-[0.15em] text-snow-400 uppercase">{{ $product->category->name }}</span>
+                    <img src="{{ $product->imageUrl() }}" alt="" width="400" height="300" loading="lazy" class="aspect-4/3 w-full border-b border-snow-200 object-cover">
 
-                    <span class="text-lg font-semibold text-orchid-800">{{ $product->name }}</span>
+                    <span class="flex flex-1 flex-col gap-3 p-6">
+                        <span class="text-xs font-medium tracking-[0.15em] text-snow-400 uppercase">{{ $product->category->name }}</span>
 
-                    @if ($product->description)
-                        <span class="line-clamp-2 text-sm text-snow-500">{{ $product->description }}</span>
-                    @endif
+                        <span class="text-lg font-semibold text-orchid-800">{{ $product->name }}</span>
 
-                    <span class="mt-auto flex items-baseline gap-2 pt-2">
-                        @if ($available->isEmpty())
-                            <span class="rounded-full bg-snow-100 px-3 py-1 text-xs font-semibold text-snow-600">{{ __('Sold out') }}</span>
-                        @else
-                            <span class="text-sm text-snow-500">{{ __('from') }}</span>
-                            <span class="text-lg font-semibold">&#8369;{{ number_format((float) $available->min('price'), 2) }}</span>
+                        @if ($product->description)
+                            <span class="line-clamp-2 text-sm text-snow-500">{{ $product->description }}</span>
                         @endif
+
+                        <span class="mt-auto flex items-baseline gap-2 pt-2">
+                            @if ($available->isEmpty())
+                                <span class="rounded-full bg-snow-100 px-3 py-1 text-xs font-semibold text-snow-600">{{ __('Sold out') }}</span>
+                            @else
+                                <span class="text-sm text-snow-500">{{ __('from') }}</span>
+                                <span class="text-lg font-semibold">&#8369;{{ number_format((float) $available->min('price'), 2) }}</span>
+                            @endif
+                        </span>
                     </span>
                 </a>
             @endforeach

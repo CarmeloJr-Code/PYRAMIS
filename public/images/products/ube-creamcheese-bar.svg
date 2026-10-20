@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#f6ebf9"/>
+  <circle cx="58" cy="62" r="36" fill="#eed8f3"/>
+  <circle cx="348" cy="70" r="28" fill="#eed8f3"/>
+  <ellipse cx="200" cy="252" rx="160" ry="16" fill="#43184e" opacity=".1"/>
+  <ellipse cx="200" cy="240" rx="150" ry="24" fill="#ffffff"/>
+  <defs>
+    <g id="bar">
+      <path d="M0 0 L26 -18 L146 -18 L120 0 Z" fill="#fffdf9"/>
+      <path d="M28 -10 q12 -7 24 0 t24 0 t24 0 t24 0" stroke="#b963cf" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M18 -4 q12 -6 24 0 t24 0 t24 0" stroke="#dcb1e7" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <rect x="0" y="0" width="120" height="16" fill="#f7efe6"/>
+      <rect x="0" y="16" width="120" height="28" fill="#a83cc3"/>
+      <rect x="0" y="44" width="120" height="20" fill="#652475"/>
+      <path d="M120 0 L146 -18 L146 -2 L120 16 Z" fill="#e8dccf"/>
+      <path d="M120 16 L146 -2 L146 26 L120 44 Z" fill="#86309c"/>
+      <path d="M120 44 L146 26 L146 46 L120 64 Z" fill="#4f1b5c"/>
+    </g>
+  </defs>
+  <use href="#bar" transform="translate(86 142)"/>
+  <use href="#bar" transform="translate(170 170)"/>
+</svg>

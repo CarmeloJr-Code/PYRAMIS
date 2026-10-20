@@ -5,6 +5,7 @@ namespace Tests\Feature\Storefront;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use Database\Seeders\CatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -68,6 +69,51 @@ class ProductCatalogTest extends TestCase
             ->assertSeeText('990.00')
             ->assertSeeText('Medium')
             ->assertSeeText('660.00');
+    }
+
+    public function test_a_product_shows_its_own_illustration(): void
+    {
+        $product = $this->product('Ube Cake');
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSee(asset('images/products/ube-cake.svg'), false);
+
+        $this->get(route('products.show', $product))
+            ->assertOk()
+            ->assertSeeInOrder([asset('images/products/ube-cake.svg'), '<h1 class=', 'Ube Cake</h1>'], false);
+    }
+
+    public function test_a_product_without_its_own_illustration_borrows_its_categorys(): void
+    {
+        $bars = Category::factory()->create(['name' => 'Bars', 'slug' => 'bars']);
+
+        $this->product('Ube Langka Bar', $bars);
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSee(asset('images/categories/bars.svg'), false)
+            ->assertDontSee('images/products/ube-langka-bar.svg', false);
+    }
+
+    public function test_a_product_with_no_illustration_anywhere_falls_back_to_the_generic_one(): void
+    {
+        $shelf = Category::factory()->create(['name' => 'Seasonal', 'slug' => 'seasonal']);
+
+        $product = $this->product('Ube Langka Bar', $shelf);
+
+        $this->get(route('products.show', $product))
+            ->assertOk()
+            ->assertSee(asset('images/product.svg'), false);
+    }
+
+    public function test_every_product_on_the_menu_board_has_its_own_illustration(): void
+    {
+        $this->seed(CatalogSeeder::class);
+
+        Product::with('category')->get()->each(function (Product $product): void {
+            $this->assertSame(asset("images/products/{$product->slug}.svg"), $product->imageUrl(), $product->name);
+        });
     }
 
     public function test_the_first_available_size_is_chosen_without_a_round_trip(): void

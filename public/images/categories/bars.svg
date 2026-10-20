@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#fbf3e4"/>
+  <circle cx="58" cy="62" r="36" fill="#f6e3c0"/>
+  <circle cx="348" cy="70" r="28" fill="#f6e3c0"/>
+  <ellipse cx="200" cy="252" rx="160" ry="16" fill="#43184e" opacity=".1"/>
+  <ellipse cx="200" cy="240" rx="150" ry="24" fill="#ffffff"/>
+  <defs>
+    <g id="bar">
+      <path d="M0 0 L26 -18 L146 -18 L120 0 Z" fill="#f6e2b6"/>
+      <rect x="0" y="0" width="120" height="14" fill="#f0d9a8"/>
+      <rect x="0" y="14" width="120" height="28" fill="#a83cc3"/>
+      <rect x="0" y="42" width="120" height="22" fill="#b9854a"/>
+      <path d="M120 0 L146 -18 L146 -4 L120 14 Z" fill="#dcc18c"/>
+      <path d="M120 14 L146 -4 L146 24 L120 42 Z" fill="#86309c"/>
+      <path d="M120 42 L146 24 L146 46 L120 64 Z" fill="#9a6b38"/>
+    </g>
+  </defs>
+  <use href="#bar" transform="translate(86 142)"/>
+  <use href="#bar" transform="translate(170 170)"/>
+</svg>

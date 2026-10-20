@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#eef3e2"/>
+  <circle cx="58" cy="62" r="36" fill="#dfe9c9"/>
+  <circle cx="348" cy="70" r="28" fill="#dfe9c9"/>
+  <ellipse cx="200" cy="252" rx="160" ry="16" fill="#2f3d16" opacity=".1"/>
+  <ellipse cx="200" cy="240" rx="150" ry="24" fill="#ffffff"/>
+  <defs>
+    <g id="bar">
+      <path d="M0 0 L26 -18 L146 -18 L120 0 Z" fill="#9cc25a"/>
+      <g fill="#5f8a2e">
+        <path d="M30 -10 l6 -3 l3 4 z"/>
+        <path d="M58 -6 l7 -2 l1 5 z"/>
+        <path d="M84 -12 l6 -2 l2 4 z"/>
+        <path d="M108 -7 l7 -3 l2 5 z"/>
+        <path d="M128 -13 l5 -2 l2 4 z"/>
+      </g>
+      <g fill="#e8d7a9">
+        <path d="M44 -12 l5 -2 l2 4 z"/>
+        <path d="M96 -4 l5 -2 l1 4 z"/>
+        <path d="M70 -14 l5 -1 l1 3 z"/>
+      </g>
+      <rect x="0" y="0" width="120" height="14" fill="#8fb350"/>
+      <rect x="0" y="14" width="120" height="26" fill="#c7dc8e"/>
+      <rect x="0" y="40" width="120" height="24" fill="#e8c68a"/>
+      <path d="M120 0 L146 -18 L146 -4 L120 14 Z" fill="#76983e"/>
+      <path d="M120 14 L146 -4 L146 22 L120 40 Z" fill="#a9c26e"/>
+      <path d="M120 40 L146 22 L146 46 L120 64 Z" fill="#d4ad6c"/>
+    </g>
+    <g id="nut">
+      <ellipse cx="0" cy="0" rx="16" ry="11" fill="#e2cfa6"/>
+      <ellipse cx="3" cy="-1" rx="9" ry="6" fill="#8fb350"/>
+      <ellipse cx="5" cy="-3" rx="3" ry="2" fill="#c7dc8e"/>
+    </g>
+  </defs>
+  <use href="#bar" transform="translate(86 142)"/>
+  <use href="#bar" transform="translate(170 170)"/>
+  <use href="#nut" transform="translate(70 232) rotate(-20)"/>
+  <use href="#nut" transform="translate(96 244) rotate(15)"/>
+  <use href="#nut" transform="translate(334 228) rotate(10)"/>
+</svg>

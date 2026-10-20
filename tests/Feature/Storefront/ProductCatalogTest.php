@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class ProductCatalogTest extends TestCase
@@ -67,6 +68,46 @@ class ProductCatalogTest extends TestCase
             ->assertSeeText('990.00')
             ->assertSeeText('Medium')
             ->assertSeeText('660.00');
+    }
+
+    public function test_the_first_available_size_is_chosen_without_a_round_trip(): void
+    {
+        $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
+        ProductVariant::factory()->for($product)->unavailable()->create(['name' => 'Tincan']);
+        $round = ProductVariant::factory()->for($product)->create(['name' => 'Round']);
+
+        Livewire::test('pages::storefront.product', ['product' => $product])
+            ->assertSet('selectedVariantId', $round->id)
+            ->assertSeeHtmlInOrder(['value="'.$round->id.'"', 'checked', 'Round'])
+            ->assertDontSeeHtml('wire:model.live="selectedVariantId"');
+    }
+
+    public function test_the_chosen_size_is_what_goes_in_the_cart(): void
+    {
+        $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
+        ProductVariant::factory()->for($product)->create(['name' => 'Round']);
+        $large = ProductVariant::factory()->for($product)->create(['name' => 'Large']);
+
+        Livewire::test('pages::storefront.product', ['product' => $product])
+            ->set('selectedVariantId', $large->id)
+            ->call('addToOrder')
+            ->assertRedirect(route('order'));
+
+        $this->assertSame([$large->id => 1], session('cart'));
+    }
+
+    public function test_a_sold_out_size_cannot_be_put_in_the_cart(): void
+    {
+        $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
+        ProductVariant::factory()->for($product)->create(['name' => 'Round']);
+        $tincan = ProductVariant::factory()->for($product)->unavailable()->create(['name' => 'Tincan']);
+
+        Livewire::test('pages::storefront.product', ['product' => $product])
+            ->set('selectedVariantId', $tincan->id)
+            ->call('addToOrder')
+            ->assertNoRedirect();
+
+        $this->assertNull(session('cart'));
     }
 
     public function test_an_inactive_product_is_hidden_from_the_catalogue_and_not_reachable(): void

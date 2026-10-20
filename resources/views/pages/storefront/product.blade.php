@@ -106,13 +106,17 @@ new #[Layout('layouts::storefront')] class extends Component {
                 @foreach ($product->variants as $variant)
                     <li wire:key="variant-{{ $variant->id }}">
                         @if ($variant->is_available)
-                            <label class="flex cursor-pointer items-center justify-between gap-4 rounded-lg border p-4 transition {{ $selectedVariantId === $variant->id ? 'border-orchid-600 bg-orchid-50' : 'border-snow-200 hover:border-orchid-300' }}">
+                            {{-- The highlight follows the checked radio in CSS, so it
+                                 moves on the click instead of after a round trip; the
+                                 choice reaches the server with "Add to order". --}}
+                            <label class="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-snow-200 p-4 transition not-has-checked:hover:border-orchid-300 has-checked:border-orchid-600 has-checked:bg-orchid-50">
                                 <span class="flex items-center gap-3">
                                     <input
                                         type="radio"
-                                        wire:model.live="selectedVariantId"
+                                        wire:model="selectedVariantId"
                                         value="{{ $variant->id }}"
                                         name="variant"
+                                        @checked($selectedVariantId === $variant->id)
                                         class="size-4 accent-orchid-600"
                                     >
                                     <span class="font-medium">{{ $variant->name }}</span>

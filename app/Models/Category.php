@@ -31,4 +31,20 @@ class Category extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    /**
+     * The storefront illustration for this category.
+     *
+     * The artwork ships with the app under public/images/categories, named by
+     * slug. A category nobody has drawn yet falls back to the generic one, so
+     * the card never shows a broken image.
+     */
+    public function imageUrl(): string
+    {
+        if (is_file(public_path($path = "images/categories/{$this->slug}.svg"))) {
+            return asset($path);
+        }
+
+        return asset('images/product.svg');
+    }
 }

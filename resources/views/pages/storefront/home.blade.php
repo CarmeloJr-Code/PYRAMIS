@@ -53,12 +53,16 @@ new #[Layout('layouts::storefront')] #[Title('Purple Yam Malaybalay')] class ext
                 @foreach ($this->categories as $category)
                     <a
                         href="{{ route('products.index', ['category' => $category->slug]) }}"
-                        class="flex flex-col gap-2 rounded-xl border border-snow-200 bg-white p-6 transition hover:border-orchid-300"
+                        class="flex flex-col overflow-hidden rounded-xl border border-snow-200 bg-white transition hover:border-orchid-300"
                         wire:navigate
                     >
-                        <span class="font-semibold text-orchid-700">{{ $category->name }}</span>
-                        <span class="text-sm text-snow-500">
-                            {{ trans_choice('{1} :count product|[2,*] :count products', $category->products_count, ['count' => $category->products_count]) }}
+                        <img src="{{ $category->imageUrl() }}" alt="" width="400" height="300" loading="lazy" class="aspect-4/3 w-full border-b border-snow-200 object-cover">
+
+                        <span class="flex flex-col gap-2 p-6">
+                            <span class="font-semibold text-orchid-700">{{ $category->name }}</span>
+                            <span class="text-sm text-snow-500">
+                                {{ trans_choice('{1} :count product|[2,*] :count products', $category->products_count, ['count' => $category->products_count]) }}
+                            </span>
                         </span>
                     </a>
                 @endforeach

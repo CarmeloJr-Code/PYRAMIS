@@ -46,13 +46,21 @@
                     </span>
                 </a>
 
-                <nav class="flex items-center gap-6 text-sm font-medium">
+                <nav class="flex items-center gap-4 text-sm font-medium sm:gap-6">
                     <a
                         href="{{ route('products.index') }}"
                         class="{{ request()->routeIs('products.*') ? 'text-orchid-700' : 'text-snow-600 hover:text-orchid-700' }}"
                         wire:navigate
                     >
                         {{ __('Products') }}
+                    </a>
+
+                    <a
+                        href="{{ route('orders.track') }}"
+                        class="{{ request()->routeIs('orders.track', 'orders.show') ? 'text-orchid-700' : 'text-snow-600 hover:text-orchid-700' }}"
+                        wire:navigate
+                    >
+                        {{ __('Track order') }}
                     </a>
 
                     @php($cartCount = array_sum(session('cart', [])))

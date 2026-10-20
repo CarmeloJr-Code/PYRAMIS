@@ -15,7 +15,7 @@ class StorefrontAppearanceTest extends TestCase
      */
     public function test_storefront_pages_force_the_light_appearance(): void
     {
-        foreach (['home', 'products.index', 'order'] as $route) {
+        foreach (['home', 'products.index', 'order', 'orders.track'] as $route) {
             $this->get(route($route))
                 ->assertOk()
                 ->assertSee('data-storefront-appearance', false)

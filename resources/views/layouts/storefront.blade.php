@@ -4,7 +4,34 @@
         @include('partials.head')
     </head>
 
-    <body class="min-h-screen bg-snow-50 text-snow-900 antialiased">
+    <body class="min-h-screen bg-snow-50 text-snow-900 antialiased" data-storefront>
+        {{--
+            The storefront is drawn light only, but the shared head applies the
+            visitor's system appearance, and dark Flux fields on these white
+            cards turn to white text on white. Flux puts the class back when
+            Alpine starts, on every wire:navigate and when the system theme
+            changes, so watch the class and drop it while a storefront page is
+            showing, without touching the stored preference the workspace uses.
+        --}}
+        <script data-storefront-appearance>
+            (() => {
+                const root = document.documentElement
+                {{-- Only when present: remove() rewrites the attribute either way, which would wake the observer forever. --}}
+                const keepLight = () => {
+                    if (document.body?.hasAttribute('data-storefront') && root.classList.contains('dark')) {
+                        root.classList.remove('dark')
+                    }
+                }
+
+                keepLight()
+
+                if (! window.storefrontAppearance) {
+                    window.storefrontAppearance = new MutationObserver(keepLight)
+                    window.storefrontAppearance.observe(root, { attributes: true, attributeFilter: ['class'] })
+                }
+            })()
+        </script>
+
         <header class="sticky top-0 z-10 border-b border-snow-200 bg-snow-50/90 backdrop-blur">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
                 <a href="{{ route('home') }}" class="flex items-center gap-3" wire:navigate>

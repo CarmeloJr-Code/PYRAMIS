@@ -9,6 +9,7 @@ Route::livewire('/', 'pages::storefront.home')->name('home');
 Route::livewire('products', 'pages::storefront.products')->name('products.index');
 Route::livewire('products/{product:slug}', 'pages::storefront.product')->name('products.show');
 Route::livewire('order', 'pages::storefront.order')->name('order');
+Route::livewire('track', 'pages::storefront.track')->name('orders.track');
 Route::livewire('orders/{order:reference}', 'pages::storefront.order-status')->name('orders.show');
 
 Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->prefix('employee')->name('employee.')->group(function () {

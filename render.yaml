@@ -39,14 +39,23 @@ services:
         sync: false
       - key: DB_SSLMODE
         value: require
+      - key: DB_PERSISTENT
+        value: "true"
 
+      # The session rides in the (encrypted) cookie, so a page costs no database
+      # round trip to read and rewrite it — and the database is a region away.
+      # Revocation does not depend on it: EnsureEmployeeIsActive re-reads the
+      # account on every request. A file store would be wiped on every cold
+      # start, signing everyone out.
       - key: SESSION_DRIVER
-        value: database
+        value: cookie
       # config/session.php already derives this from APP_ENV. Set here as well
       # so the flag is visible where the deployment is described, rather than
       # only implied by the environment name.
       - key: SESSION_SECURE_COOKIE
         value: "true"
+      # Left on the database: no page view reads the cache, only the rate
+      # limiters and the day's AI reading, and those should outlive a restart.
       - key: CACHE_STORE
         value: database
       - key: QUEUE_CONNECTION

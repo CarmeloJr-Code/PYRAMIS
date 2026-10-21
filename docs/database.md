@@ -48,7 +48,7 @@ expense_categories ──▶ expenses ──▶ outlets
 
 **Outlets.** One row carries `is_main_branch`; it is where production lands and where restocks are drawn from. Others receive finished goods only.
 
-**Framework tables.** `cache`, `cache_locks`, `sessions`, `jobs`, `job_batches`, `failed_jobs`, `password_reset_tokens`, `passkeys`, `migrations`. Sessions, cache and queue all use the database in production (`render.yaml`).
+**Framework tables.** `cache`, `cache_locks`, `sessions`, `jobs`, `job_batches`, `failed_jobs`, `password_reset_tokens`, `passkeys`, `migrations`. Cache and queue use the database in production; sessions ride in the encrypted cookie, so the `sessions` table stays empty there (`render.yaml`).
 
 **Not tables.** Roles are an enum column on `users`, not a table. Reports and the forecast read the ledgers; they store nothing. The AI reading is not persisted (`docs/ai-forecasting.md`).
 

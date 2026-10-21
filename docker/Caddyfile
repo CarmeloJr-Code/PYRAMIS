@@ -1,5 +1,10 @@
 {
-	frankenphp
+	# Each thread keeps a persistent database connection (DB_PERSISTENT), and
+	# the Supavisor session pooler gives the project about fifteen. The default,
+	# twice the CPUs the host reports, could take all of them.
+	frankenphp {
+		num_threads 4
+	}
 	auto_https off
 	admin off
 	log {

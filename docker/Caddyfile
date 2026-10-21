@@ -1,7 +1,9 @@
 {
-	# Each thread keeps a persistent database connection (DB_PERSISTENT), and
-	# the Supavisor session pooler gives the project about fifteen. The default,
-	# twice the CPUs the host reports, could take all of them.
+	# The default is twice the CPUs the host reports, which on this instance is
+	# 2 threads; a slow request (an AI reading, a hover prefetch) then left one
+	# thread for everyone else. Four doubles that. Each thread keeps a persistent
+	# database connection (DB_PERSISTENT), so four stays well inside the roughly
+	# fifteen the Supavisor session pooler gives the project.
 	frankenphp {
 		num_threads 4
 	}

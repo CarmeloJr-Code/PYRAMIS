@@ -18,7 +18,7 @@ services:
       - key: APP_KEY
         sync: false          # php artisan key:generate --show
       - key: APP_URL
-        sync: false          # https://www.purpleyam.store
+        sync: false          # https://pyramis.onrender.com
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL

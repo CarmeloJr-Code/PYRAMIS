@@ -67,7 +67,7 @@ Employee journey: Sign In → Authentication → Role Identification → Role-Ba
 
 ## Deployment
 
-Live at https://www.purpleyam.store. Render web service `pyramis` (Singapore, free instance) builds `Dockerfile` from `main` on every push and swaps it in once `/up` answers. The database is the Supabase project's Postgres, reached through the Supavisor session pooler (IPv4, `sslmode=require`) as the single user Laravel connects as — no RLS, no Supabase Auth; authorization stays in Laravel policies.
+Live at https://www.purpleyam.store. Render web service `pyramis` (Singapore, free instance) builds `Dockerfile` from `main` on every push and swaps it in once `/up` answers. The database is the Supabase project's Postgres, in the same region (`ap-southeast-1`, project `vleellmksnocmmyrzsoi`), reached through the Supavisor session pooler (IPv4, `sslmode=require`) as the single user Laravel connects as — no RLS, no Supabase Auth; authorization stays in Laravel policies.
 
 **What happens on every boot** (`docker/entrypoint.sh`): `optimize` (cache config, events, routes and views); `migrate --force` (skip with `RUN_MIGRATIONS=false`); `db:seed --class=ProductionSeeder --force` (skip with `RUN_SEEDERS=false`); then FrankenPHP serves on `$PORT`. `ProductionSeeder` fills only what is empty — the catalogue, the ingredient list, the expense headings, the main branch — and never overwrites a row the business has since edited. It creates no accounts.
 

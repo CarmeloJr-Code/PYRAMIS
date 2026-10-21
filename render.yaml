@@ -24,17 +24,18 @@ services:
       - key: LOG_LEVEL
         value: warning
 
-      # Supabase Postgres (Supavisor session pooler — IPv4 reachable from Render)
+      # Supabase Postgres (Supavisor session pooler — IPv4 reachable from Render).
+      # Singapore, the same region as this service: every query is a round trip.
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
-        value: aws-0-ap-southeast-2.pooler.supabase.com
+        value: aws-0-ap-southeast-1.pooler.supabase.com
       - key: DB_PORT
         value: "5432"
       - key: DB_DATABASE
         value: postgres
       - key: DB_USERNAME
-        value: postgres.vefaoqomrrqstnylhtbj
+        value: postgres.vleellmksnocmmyrzsoi
       - key: DB_PASSWORD
         sync: false
       - key: DB_SSLMODE

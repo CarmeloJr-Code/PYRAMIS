@@ -34,7 +34,7 @@
 
         <header class="sticky top-0 z-10 border-b border-snow-200 bg-snow-50/90 backdrop-blur">
             <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-                <a href="{{ route('home') }}" class="flex items-center gap-3" wire:navigate>
+                <a href="{{ route('home') }}" class="flex items-center gap-3" wire:navigate.hover>
                     <img
                         src="{{ Vite::asset('resources/images/purple-yam-logo.png') }}"
                         alt=""
@@ -50,7 +50,7 @@
                     <a
                         href="{{ route('products.index') }}"
                         class="{{ request()->routeIs('products.*') ? 'text-orchid-700' : 'text-snow-600 hover:text-orchid-700' }}"
-                        wire:navigate
+                        wire:navigate.hover
                     >
                         {{ __('Products') }}
                     </a>
@@ -58,7 +58,7 @@
                     <a
                         href="{{ route('orders.track') }}"
                         class="{{ request()->routeIs('orders.track', 'orders.show') ? 'text-orchid-700' : 'text-snow-600 hover:text-orchid-700' }}"
-                        wire:navigate
+                        wire:navigate.hover
                     >
                         {{ __('Track order') }}
                     </a>
@@ -68,7 +68,7 @@
                     <a
                         href="{{ route('order') }}"
                         class="flex items-center gap-2 {{ request()->routeIs('order') ? 'text-orchid-700' : 'text-snow-600 hover:text-orchid-700' }}"
-                        wire:navigate
+                        wire:navigate.hover
                     >
                         {{ __('Your order') }}
                         @if ($cartCount > 0)

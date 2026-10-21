@@ -97,6 +97,12 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Each server thread keeps its connection between requests instead
+            // of paying the TCP, TLS and auth handshake on every one. Every
+            // thread holds a pooler slot, so docker/Caddyfile caps the threads.
+            'options' => [
+                PDO::ATTR_PERSISTENT => (bool) env('DB_PERSISTENT', false),
+            ],
         ],
 
         'sqlsrv' => [

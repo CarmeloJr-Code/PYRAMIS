@@ -4,9 +4,8 @@ set -e
 # Render injects $PORT; Caddy binds whatever SERVER_NAME points at.
 export SERVER_NAME=":${PORT:-8080}"
 
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+# Config, events, routes and views — so no request rediscovers any of them.
+php artisan optimize
 
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
     php artisan migrate --force

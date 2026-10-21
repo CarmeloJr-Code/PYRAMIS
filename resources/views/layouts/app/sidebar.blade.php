@@ -6,90 +6,90 @@
     <body class="min-h-screen bg-white dark:bg-zinc-800">
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('employee.dashboard') }}" wire:navigate />
+                <x-app-logo :sidebar="true" href="{{ route('employee.dashboard') }}" wire:navigate.hover />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
             {{-- Nav visibility is cosmetic; the `can:` middleware on each route is the boundary. --}}
             <flux:sidebar.nav>
                 <flux:sidebar.group :heading="__('Workspace')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('employee.dashboard')" :current="request()->routeIs('employee.dashboard')" wire:navigate>
+                    <flux:sidebar.item icon="home" :href="route('employee.dashboard')" :current="request()->routeIs('employee.dashboard')" wire:navigate.hover>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
 
                     @can('manage-products')
-                        <flux:sidebar.item icon="squares-2x2" :href="route('employee.products.index')" :current="request()->routeIs('employee.products.*')" wire:navigate>
+                        <flux:sidebar.item icon="squares-2x2" :href="route('employee.products.index')" :current="request()->routeIs('employee.products.*')" wire:navigate.hover>
                             {{ __('Products') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('manage-orders')
-                        <flux:sidebar.item icon="clipboard-document-list" :href="route('employee.orders.index')" :current="request()->routeIs('employee.orders.*')" wire:navigate>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('employee.orders.index')" :current="request()->routeIs('employee.orders.*')" wire:navigate.hover>
                             {{ __('Orders') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('manage-outlets')
-                        <flux:sidebar.item icon="building-storefront" :href="route('employee.outlets.index')" :current="request()->routeIs('employee.outlets.*')" wire:navigate>
+                        <flux:sidebar.item icon="building-storefront" :href="route('employee.outlets.index')" :current="request()->routeIs('employee.outlets.*')" wire:navigate.hover>
                             {{ __('Outlets') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-sales')
-                        <flux:sidebar.item icon="banknotes" :href="route('employee.sales.index')" :current="request()->routeIs('employee.sales.*')" wire:navigate>
+                        <flux:sidebar.item icon="banknotes" :href="route('employee.sales.index')" :current="request()->routeIs('employee.sales.*')" wire:navigate.hover>
                             {{ __('Sales') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-expenses')
-                        <flux:sidebar.item icon="receipt-percent" :href="route('employee.expenses.index')" :current="request()->routeIs('employee.expenses.*')" wire:navigate>
+                        <flux:sidebar.item icon="receipt-percent" :href="route('employee.expenses.index')" :current="request()->routeIs('employee.expenses.*')" wire:navigate.hover>
                             {{ __('Expenses') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-inventory')
-                        <flux:sidebar.item icon="beaker" :href="route('employee.inventory.index')" :current="request()->routeIs('employee.inventory.*')" wire:navigate>
+                        <flux:sidebar.item icon="beaker" :href="route('employee.inventory.index')" :current="request()->routeIs('employee.inventory.*')" wire:navigate.hover>
                             {{ __('Inventory') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-restocking')
-                        <flux:sidebar.item icon="truck" :href="route('employee.restocks.index')" :current="request()->routeIs('employee.restocks.*')" wire:navigate>
+                        <flux:sidebar.item icon="truck" :href="route('employee.restocks.index')" :current="request()->routeIs('employee.restocks.*')" wire:navigate.hover>
                             {{ __('Restocking') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-production')
-                        <flux:sidebar.item icon="fire" :href="route('employee.production')" :current="request()->routeIs('employee.production*')" wire:navigate>
+                        <flux:sidebar.item icon="fire" :href="route('employee.production')" :current="request()->routeIs('employee.production*')" wire:navigate.hover>
                             {{ __('Production') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-workforce')
-                        <flux:sidebar.item icon="users" :href="route('employee.workforce')" :current="request()->routeIs('employee.workforce*')" wire:navigate>
+                        <flux:sidebar.item icon="users" :href="route('employee.workforce')" :current="request()->routeIs('employee.workforce*')" wire:navigate.hover>
                             {{ __('Workforce') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-forecasting')
-                        <flux:sidebar.item icon="sparkles" :href="route('employee.forecast')" :current="request()->routeIs('employee.forecast')" wire:navigate>
+                        <flux:sidebar.item icon="sparkles" :href="route('employee.forecast')" :current="request()->routeIs('employee.forecast')" wire:navigate.hover>
                             {{ __('Forecast') }}
                         </flux:sidebar.item>
                     @endcan
 
                     {{-- Reports, open to every role: each one lists only what
                          that role's abilities already let it see. --}}
-                    <flux:sidebar.item icon="chart-bar" :href="route('employee.reports.index')" :current="request()->routeIs('employee.reports.*')" wire:navigate>
+                    <flux:sidebar.item icon="chart-bar" :href="route('employee.reports.index')" :current="request()->routeIs('employee.reports.*')" wire:navigate.hover>
                         {{ __('Reports') }}
                     </flux:sidebar.item>
 
                     {{-- Internal chat, open to every role. --}}
-                    <flux:sidebar.item icon="chat-bubble-left-right" :href="route('employee.messages.index')" :current="request()->routeIs('employee.messages.*')" wire:navigate>
+                    <flux:sidebar.item icon="chat-bubble-left-right" :href="route('employee.messages.index')" :current="request()->routeIs('employee.messages.*')" wire:navigate.hover>
                         {{ __('Messages') }}
                     </flux:sidebar.item>
 
                     {{-- Every employee's own roster, whatever their role. --}}
-                    <flux:sidebar.item icon="calendar" :href="route('employee.schedule')" :current="request()->routeIs('employee.schedule')" wire:navigate>
+                    <flux:sidebar.item icon="calendar" :href="route('employee.schedule')" :current="request()->routeIs('employee.schedule')" wire:navigate.hover>
                         {{ __('My schedule') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
@@ -132,7 +132,7 @@
                     <flux:menu.separator />
 
                     <flux:menu.radio.group>
-                        <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
+                        <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate.hover>
                             {{ __('Settings') }}
                         </flux:menu.item>
                     </flux:menu.radio.group>

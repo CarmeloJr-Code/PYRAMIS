@@ -4,6 +4,7 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\ProductVariant;
+use App\Rules\PhilippineMobile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,58 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     public string $pickup_time = '';
 
     public string $notes = '';
+
+    /**
+     * The fields a stray space can spoil — trimmed before they are checked,
+     * so a name of nothing but spaces reads as no name at all.
+     */
+    private const TRIMMED = ['customer_name', 'customer_phone', 'customer_email'];
+
+    /**
+     * The checkout rules, shared by the check as each field is left and the
+     * one on submit.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    protected function rules(): array
+    {
+        return [
+            'outlet_id' => [
+                'required', 'integer',
+                Rule::exists('outlets', 'id')->where('is_active', true),
+            ],
+            'customer_name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\\pL\\s.'\\-]+$/u"],
+            'customer_phone' => ['required', 'string', 'max:20', new PhilippineMobile],
+            'customer_email' => ['nullable', 'email', 'max:255'],
+            'pickup_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'pickup_time' => ['required', 'date_format:H:i'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function messages(): array
+    {
+        return [
+            'customer_name.regex' => __('Please use letters only in your name.'),
+        ];
+    }
+
+    /**
+     * Check a field as soon as the customer leaves it, not only on submit.
+     */
+    public function updated(string $property): void
+    {
+        if (in_array($property, self::TRIMMED, true)) {
+            $this->{$property} = trim($this->{$property});
+        }
+
+        if (array_key_exists($property, $this->rules())) {
+            $this->validateOnly($property);
+        }
+    }
 
     /**
      * The cart, as variant id => quantity. Session-backed because customers
@@ -112,9 +165,22 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
 
     /**
      * Change the quantity of a line, or drop it at zero.
+     *
+     * The box hands over whatever was typed in it, so anything that is not
+     * a whole number leaves the line as it was rather than guessing at one.
      */
-    public function updateQuantity(int $variantId, int $quantity): void
+    public function updateQuantity(int $variantId, int|string $quantity): void
     {
+        if (is_string($quantity)) {
+            if (! ctype_digit($quantity)) {
+                unset($this->variants, $this->total);
+
+                return;
+            }
+
+            $quantity = (int) $quantity;
+        }
+
         $cart = $this->cart();
 
         if ($quantity < 1) {
@@ -147,18 +213,11 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
         // accepted anyway.
         $this->throttle();
 
-        $validated = $this->validate([
-            'outlet_id' => [
-                'required', 'integer',
-                Rule::exists('outlets', 'id')->where('is_active', true),
-            ],
-            'customer_name' => ['required', 'string', 'max:255'],
-            'customer_phone' => ['required', 'string', 'max:50'],
-            'customer_email' => ['nullable', 'email', 'max:255'],
-            'pickup_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'pickup_time' => ['required', 'date_format:H:i'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        foreach (self::TRIMMED as $property) {
+            $this->{$property} = trim($this->{$property});
+        }
+
+        $validated = $this->validate();
 
         // Each half can be fine on its own and the pair still be in the past:
         // a time earlier than now on today's date. The time is the half the
@@ -197,7 +256,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             $order = Order::create([
                 'outlet_id' => $validated['outlet_id'],
                 'customer_name' => $validated['customer_name'],
-                'customer_phone' => $validated['customer_phone'],
+                'customer_phone' => PhilippineMobile::normalize($validated['customer_phone']),
                 'customer_email' => $validated['customer_email'] ?: null,
                 'pickup_at' => $pickupAt,
                 'notes' => $validated['notes'] ?: null,
@@ -331,9 +390,19 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             <form wire:submit="submit" class="flex flex-col gap-5 rounded-2xl border border-snow-200 bg-white p-6">
                 <h2 class="text-lg font-semibold">{{ __('Your details') }}</h2>
 
-                <flux:input wire:model="customer_name" :label="__('Name')" required />
-                <flux:input wire:model="customer_phone" :label="__('Phone')" required />
-                <flux:input wire:model="customer_email" :label="__('Email')" type="email" :description="__('Optional.')" />
+                <flux:input wire:model.blur="customer_name" :label="__('Name')" maxlength="255" autocomplete="name" required />
+                <flux:input
+                    wire:model.blur="customer_phone"
+                    :label="__('Phone')"
+                    type="tel"
+                    inputmode="tel"
+                    maxlength="20"
+                    autocomplete="tel"
+                    placeholder="0917 123 4567"
+                    :description="__('Philippine mobile number.')"
+                    required
+                />
+                <flux:input wire:model.blur="customer_email" :label="__('Email')" type="email" maxlength="255" autocomplete="email" :description="__('Optional.')" />
 
                 <flux:select wire:model="outlet_id" :label="__('Pickup outlet')" required>
                     <flux:select.option value="">{{ __('Choose where to collect') }}</flux:select.option>
@@ -343,11 +412,11 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                 </flux:select>
 
                 <div class="grid gap-5 sm:grid-cols-2">
-                    <flux:input wire:model="pickup_date" :label="__('Pickup date')" type="date" :min="today()->toDateString()" required />
-                    <flux:input wire:model="pickup_time" :label="__('Pickup time')" type="time" required />
+                    <flux:input wire:model.blur="pickup_date" :label="__('Pickup date')" type="date" :min="today()->toDateString()" required />
+                    <flux:input wire:model.blur="pickup_time" :label="__('Pickup time')" type="time" required />
                 </div>
 
-                <flux:textarea wire:model="notes" :label="__('Notes')" rows="2" :description="__('Anything we should know — a message on the cake, for example.')" />
+                <flux:textarea wire:model.blur="notes" :label="__('Notes')" rows="2" maxlength="1000" :description="__('Anything we should know — a message on the cake, for example.')" />
 
                 <flux:button variant="primary" type="submit">{{ __('Place pre-order') }}</flux:button>
             </form>

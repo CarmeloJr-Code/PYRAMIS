@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class PlaceOrderTest extends TestCase
@@ -155,6 +157,140 @@ class PlaceOrderTest extends TestCase
             ->assertHasErrors(['customer_name', 'customer_phone', 'outlet_id', 'pickup_date', 'pickup_time']);
 
         $this->assertDatabaseEmpty('orders');
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function mobileProvider(): array
+    {
+        return [
+            'spaced' => ['0917 123 4567'],
+            'dashed' => ['0917-123-4567'],
+            'international' => ['+63 917 123 4567'],
+        ];
+    }
+
+    #[DataProvider('mobileProvider')]
+    public function test_a_mobile_number_is_stored_one_way_however_it_was_typed(string $typed): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_phone', $typed)
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('orders', ['customer_phone' => '09171234567']);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function notAMobileProvider(): array
+    {
+        return [
+            'too short' => ['12345'],
+            'not a mobile prefix' => ['0817 123 4567'],
+            'letters' => ['abcdefghijk'],
+            'one digit too many' => ['091712345678'],
+        ];
+    }
+
+    #[DataProvider('notAMobileProvider')]
+    public function test_it_rejects_a_number_that_is_not_a_philippine_mobile(string $typed): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_phone', $typed)
+            ->call('submit')
+            ->assertHasErrors('customer_phone');
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    #[TestWith(['Juan dela Cruz'])]
+    #[TestWith(["Ma. O'Neil-Reyes"])]
+    #[TestWith(['Niño'])]
+    public function test_a_real_name_is_accepted(string $name): void
+    {
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_name', $name)
+            ->assertHasNoErrors('customer_name');
+    }
+
+    #[TestWith(['R2D2', 'regex'])]
+    #[TestWith(['A', 'min'])]
+    #[TestWith(['   ', 'required'])]
+    public function test_a_name_that_is_not_one_is_refused(string $name, string $rule): void
+    {
+        Livewire::test('pages::storefront.order')
+            ->set('customer_name', $name)
+            ->assertHasErrors(['customer_name' => $rule]);
+    }
+
+    public function test_a_name_over_the_limit_is_refused(): void
+    {
+        Livewire::test('pages::storefront.order')
+            ->set('customer_name', str_repeat('a', 256))
+            ->assertHasErrors(['customer_name' => 'max']);
+    }
+
+    public function test_a_phone_of_only_spaces_counts_as_missing(): void
+    {
+        Livewire::test('pages::storefront.order')
+            ->set('customer_phone', '   ')
+            ->assertHasErrors(['customer_phone' => 'required']);
+    }
+
+    public function test_a_field_is_checked_as_soon_as_it_is_left(): void
+    {
+        $component = Livewire::test('pages::storefront.order')
+            ->set('customer_phone', 'abc')
+            ->assertHasErrors('customer_phone');
+
+        $component->set('customer_phone', '09171234567')
+            ->assertHasNoErrors('customer_phone');
+    }
+
+    public function test_it_rejects_a_bad_email_and_overlong_notes(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_email', 'not-an-email')
+            ->set('notes', str_repeat('a', 1001))
+            ->call('submit')
+            ->assertHasErrors(['customer_email', 'notes']);
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    #[TestWith([''])]
+    #[TestWith(['abc'])]
+    #[TestWith(['2.5'])]
+    public function test_a_quantity_that_is_not_a_whole_number_leaves_the_line_alone(string $typed): void
+    {
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 3]);
+
+        Livewire::test('pages::storefront.order')
+            ->call('updateQuantity', $variant->id, $typed)
+            ->assertOk();
+
+        $this->assertSame([$variant->id => 3], session('cart'));
+    }
+
+    public function test_a_typed_quantity_still_updates_the_line(): void
+    {
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->call('updateQuantity', $variant->id, '4');
+
+        $this->assertSame([$variant->id => 4], session('cart'));
     }
 
     public function test_the_pickup_date_and_time_are_stored_as_one_moment(): void

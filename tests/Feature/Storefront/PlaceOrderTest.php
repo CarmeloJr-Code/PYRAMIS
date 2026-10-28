@@ -324,6 +324,17 @@ class PlaceOrderTest extends TestCase
         $this->assertDatabaseEmpty('orders');
     }
 
+    public function test_the_fields_restrict_what_can_be_typed_into_them(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSeeHtml("keep(\$el, /[^\\p{L}\\s.'-]/gu)")
+            ->assertSeeHtml('keep($el, /[^\d+\s.()-]/g); keep($el, /(?!^)\+/g)')
+            ->assertSeeHtml('keep($el, /\s/g)')
+            ->assertSeeHtml('inputmode="numeric"');
+    }
+
     public function test_the_time_field_offers_only_opening_hours(): void
     {
         Session::put('cart', [$this->variant()->id => 1]);

@@ -17,6 +17,10 @@ new #[Layout('layouts::storefront')] class extends Component {
 
     /**
      * Resolve the product by slug, refusing anything withdrawn from the catalogue.
+     *
+     * A menu card links here with ?size= for the size it showed, which starts
+     * out chosen when it can still be sold; anything else falls back to the
+     * first size that can.
      */
     public function mount(Product $product): void
     {
@@ -26,7 +30,8 @@ new #[Layout('layouts::storefront')] class extends Component {
 
         $this->product = $product;
 
-        $this->selectedVariantId = $this->availableVariants->first()?->id;
+        $this->selectedVariantId = $this->availableVariants->firstWhere('id', request()->integer('size'))?->id
+            ?? $this->availableVariants->first()?->id;
     }
 
     /**

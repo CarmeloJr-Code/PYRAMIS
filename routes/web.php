@@ -1,18 +1,39 @@
 <?php
 
 use App\Http\Middleware\EnsureEmployeeIsActive;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+// Each half answers only on its own host once both are configured; unset, the
+// domain is null and the routes answer anywhere (config/app.php).
+$storefront = config('app.storefront_domain');
+$workspace = config('app.workspace_domain');
 
 // Purple Yam Malaybalay storefront. No authentication — customers never hold
 // an account (BR-001).
-Route::livewire('/', 'pages::storefront.home')->name('home');
-Route::livewire('products', 'pages::storefront.products')->name('products.index');
-Route::livewire('products/{product:slug}', 'pages::storefront.product')->name('products.show');
-Route::livewire('order', 'pages::storefront.order')->name('order');
-Route::livewire('track', 'pages::storefront.track')->name('orders.track');
-Route::livewire('orders/{order:reference}', 'pages::storefront.order-status')->name('orders.show');
+Route::domain($storefront)->group(function () {
+    Route::livewire('/', 'pages::storefront.home')->name('home');
+    Route::livewire('products', 'pages::storefront.products')->name('products.index');
+    Route::livewire('products/{product:slug}', 'pages::storefront.product')->name('products.show');
+    Route::livewire('order', 'pages::storefront.order')->name('order');
+    Route::livewire('track', 'pages::storefront.track')->name('orders.track');
+    Route::livewire('orders/{order:reference}', 'pages::storefront.order-status')->name('orders.show');
+});
 
-Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->prefix('employee')->name('employee.')->group(function () {
+// The workspace host served the storefront too until the two were split, so
+// its root opens the workspace and the old storefront addresses — a customer's
+// bookmarked order status among them — move to the storefront host for good.
+if ($storefront && $workspace) {
+    Route::domain($workspace)->group(function () use ($storefront) {
+        Route::redirect('/', '/employee/dashboard');
+
+        Route::get('{path}', fn (Request $request) => redirect()->away(
+            $request->getScheme().'://'.$storefront.$request->getRequestUri(), 301,
+        ))->where('path', 'products(/.*)?|order|track|orders/.+');
+    });
+}
+
+Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($workspace)->prefix('employee')->name('employee.')->group(function () {
     Route::livewire('dashboard', 'pages::employee.dashboard')->name('dashboard');
 
     Route::middleware('can:manage-orders')->group(function () {

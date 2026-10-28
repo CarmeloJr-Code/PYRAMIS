@@ -88,7 +88,7 @@ return [
 
     'prefix' => 'employee',
 
-    'domain' => null,
+    'domain' => env('WORKSPACE_DOMAIN'),
 
     /*
     |--------------------------------------------------------------------------

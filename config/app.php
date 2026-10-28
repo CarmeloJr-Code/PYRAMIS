@@ -56,6 +56,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Storefront and Workspace Hosts
+    |--------------------------------------------------------------------------
+    |
+    | The Purple Yam Malaybalay storefront and the PYRAMIS employee workspace
+    | are deployed as two services, each on a hostname of its own. With both
+    | set, every route answers only on its own host and route() links across
+    | to the other one. Left unset — locally, and under test — neither route
+    | group is tied to a host and the whole app answers on one.
+    |
+    */
+
+    'storefront_domain' => env('STOREFRONT_DOMAIN'),
+
+    'workspace_domain' => env('WORKSPACE_DOMAIN'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

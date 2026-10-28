@@ -19,6 +19,12 @@ services:
         sync: false          # php artisan key:generate --show
       - key: APP_URL
         sync: false          # https://pyramis.onrender.com
+      # The workspace and the storefront each answer only on their own host
+      # (config/app.php); set identically on both services.
+      - key: WORKSPACE_DOMAIN
+        value: pyramis.onrender.com
+      - key: STOREFRONT_DOMAIN
+        sync: false          # the purpleyam-malaybalay service's onrender.com host
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL
@@ -66,3 +72,65 @@ services:
       # renders every deterministic figure and simply offers no reading.
       - key: GROQ_API_KEY
         sync: false          # https://console.groq.com/keys
+
+  # Purple Yam Malaybalay storefront. The same image as the workspace, on a host
+  # of its own; it never migrates or seeds, so the two boots cannot race on the
+  # schema — the workspace service owns both.
+  - type: web
+    name: purpleyam-malaybalay
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: Purple Yam Malaybalay
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false          # the workspace's: the cache and encrypted values are shared
+      - key: APP_URL
+        sync: false          # https://<this service's onrender.com host>
+      - key: WORKSPACE_DOMAIN
+        value: pyramis.onrender.com
+      - key: STOREFRONT_DOMAIN
+        sync: false          # this service's onrender.com host
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: RUN_MIGRATIONS
+        value: "false"
+      - key: RUN_SEEDERS
+        value: "false"
+
+      # The database, session, cache and queue exactly as on the workspace.
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        value: aws-0-ap-southeast-1.pooler.supabase.com
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: postgres
+      - key: DB_USERNAME
+        value: postgres.vleellmksnocmmyrzsoi
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      - key: DB_PERSISTENT
+        value: "true"
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database

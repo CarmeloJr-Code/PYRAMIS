@@ -152,7 +152,7 @@ new #[Layout('layouts::storefront')] class extends Component {
                         wire:click="addToOrder"
                         class="rounded-lg bg-orchid-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orchid-700"
                     >
-                        {{ __('Add to order') }}
+                        {{ __('Add to cart') }}
                     </button>
                 @else
                     <p class="flex items-center gap-3 rounded-lg bg-snow-100 p-4 text-sm text-snow-600">

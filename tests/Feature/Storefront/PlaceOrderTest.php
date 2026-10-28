@@ -111,6 +111,24 @@ class PlaceOrderTest extends TestCase
         $this->assertSame('460.00', Order::first()->items->first()->unit_price);
     }
 
+    public function test_a_filled_cart_links_back_to_the_menu_for_more(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSeeText('Add more products')
+            ->assertSeeHtml('href="'.route('products.index').'"');
+    }
+
+    public function test_an_empty_cart_offers_the_menu_not_more_products(): void
+    {
+        Session::put('cart', []);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSeeText('Browse the menu')
+            ->assertDontSeeText('Add more products');
+    }
+
     public function test_it_rejects_an_empty_order(): void
     {
         Session::put('cart', []);

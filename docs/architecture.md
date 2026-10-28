@@ -41,6 +41,8 @@ Customer journey: Landing → Browse Products → Select Product → Order/Pre-O
 
 Employee journey: Sign In → Authentication → Role Identification → Role-Based Dashboard → Authorized Modules.
 
+The workspace is reached only by its own address (`/employee/login` on the workspace host; see Deployment). The storefront carries no Employee Sign In link. This is a deliberate departure from the unified portal design (`docs/reference/unified-portal-design.md`), which places that entry point in the storefront's navigation or footer.
+
 ## Verified tech stack
 
 | Component | Value | Verified from |

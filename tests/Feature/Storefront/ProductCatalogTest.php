@@ -225,14 +225,6 @@ class ProductCatalogTest extends TestCase
             ->assertDontSeeText('Ube Cake');
     }
 
-    public function test_the_storefront_offers_the_employee_sign_in_entry_point(): void
-    {
-        $this->get(route('home'))
-            ->assertOk()
-            ->assertSee(route('login'))
-            ->assertSeeText('Employee sign in');
-    }
-
     public function test_the_storefront_never_exposes_the_employee_workspace(): void
     {
         // BR-012 — customer-facing pages must not leak employee-only surfaces.

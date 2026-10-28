@@ -14,6 +14,8 @@ class HostSeparationTest extends TestCase
 
     private const WORKSPACE = 'staff.test';
 
+    private const STOREFRONT_ALIAS = 'shop.onrender.test';
+
     /**
      * The hosts are read when the routes are registered, so they have to be in
      * the environment before the application boots.
@@ -22,6 +24,7 @@ class HostSeparationTest extends TestCase
     {
         $_SERVER['STOREFRONT_DOMAIN'] = self::STOREFRONT;
         $_SERVER['WORKSPACE_DOMAIN'] = self::WORKSPACE;
+        $_SERVER['STOREFRONT_ALIASES'] = ' '.self::STOREFRONT_ALIAS.', ';
 
         parent::setUp();
     }
@@ -30,7 +33,38 @@ class HostSeparationTest extends TestCase
     {
         parent::tearDown();
 
-        unset($_SERVER['STOREFRONT_DOMAIN'], $_SERVER['WORKSPACE_DOMAIN']);
+        unset($_SERVER['STOREFRONT_DOMAIN'], $_SERVER['WORKSPACE_DOMAIN'], $_SERVER['STOREFRONT_ALIASES']);
+    }
+
+    public function test_the_storefront_alias_moves_every_address_to_the_storefront_host(): void
+    {
+        $this->get('http://'.self::STOREFRONT_ALIAS.'/')
+            ->assertStatus(301)
+            ->assertRedirect('http://'.self::STOREFRONT.'/');
+
+        $this->get('http://'.self::STOREFRONT_ALIAS.'/products/ube-cake?size=large')
+            ->assertStatus(301)
+            ->assertRedirect('http://'.self::STOREFRONT.'/products/ube-cake?size=large');
+
+        $this->get('http://'.self::STOREFRONT_ALIAS.'/orders/PY-ABC123')
+            ->assertStatus(301)
+            ->assertRedirect('http://'.self::STOREFRONT.'/orders/PY-ABC123');
+    }
+
+    public function test_the_storefront_alias_still_answers_the_health_check(): void
+    {
+        $this->get('http://'.self::STOREFRONT_ALIAS.'/up')->assertOk();
+    }
+
+    public function test_the_storefront_alias_never_serves_the_workspace(): void
+    {
+        $this->get('http://'.self::STOREFRONT_ALIAS.'/employee/login')
+            ->assertRedirect('http://'.self::STOREFRONT.'/employee/login');
+    }
+
+    public function test_an_unlisted_host_is_neither_served_nor_redirected(): void
+    {
+        $this->get('http://elsewhere.test/products')->assertNotFound();
     }
 
     public function test_the_storefront_host_serves_the_storefront(): void

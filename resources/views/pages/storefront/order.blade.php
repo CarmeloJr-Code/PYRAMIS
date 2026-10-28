@@ -375,6 +375,10 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                                     type="number"
                                     min="1"
                                     max="99"
+                                    step="1"
+                                    inputmode="numeric"
+                                    x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
+                                    x-on:input="if ($el.value > 99) $el.value = 99"
                                     value="{{ session('cart')[$variant->id] ?? 1 }}"
                                     wire:change="updateQuantity({{ $variant->id }}, $event.target.value)"
                                     class="w-20 rounded-lg border border-snow-200 px-3 py-1.5 text-sm"
@@ -399,12 +403,27 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                 </a>
             </section>
 
-            <form wire:submit="submit" class="flex flex-col gap-5 rounded-2xl border border-snow-200 bg-white p-6">
+            {{-- keep() drops what the server rules would refuse as it is typed
+                 or pasted, so the customer never builds up an entry that will
+                 only bounce on submit. The rules in rules() stay the authority. --}}
+            <form
+                wire:submit="submit"
+                x-data="{ keep(el, refused) { const kept = el.value.replace(refused, ''); if (kept !== el.value) { el.value = kept } } }"
+                class="flex flex-col gap-5 rounded-2xl border border-snow-200 bg-white p-6"
+            >
                 <h2 class="text-lg font-semibold">{{ __('Your details') }}</h2>
 
-                <flux:input wire:model.blur="customer_name" :label="__('Name')" maxlength="255" autocomplete="name" required />
+                <flux:input
+                    wire:model.blur="customer_name"
+                    :label="__('Name')"
+                    maxlength="255"
+                    autocomplete="name"
+                    x-on:input="keep($el, /[^\p{L}\s.'-]/gu)"
+                    required
+                />
                 <flux:input
                     wire:model.blur="customer_phone"
+                    x-on:input="keep($el, /[^\d+\s.()-]/g); keep($el, /(?!^)\+/g)"
                     :label="__('Phone')"
                     type="tel"
                     inputmode="tel"
@@ -414,7 +433,15 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     :description="__('Philippine mobile number.')"
                     required
                 />
-                <flux:input wire:model.blur="customer_email" :label="__('Email')" type="email" maxlength="255" autocomplete="email" :description="__('Optional.')" />
+                <flux:input
+                    wire:model.blur="customer_email"
+                    :label="__('Email')"
+                    type="email"
+                    maxlength="255"
+                    autocomplete="email"
+                    x-on:input="keep($el, /\s/g)"
+                    :description="__('Optional.')"
+                />
 
                 <flux:select wire:model="outlet_id" :label="__('Pickup outlet')" required>
                     <flux:select.option value="">{{ __('Choose where to collect') }}</flux:select.option>

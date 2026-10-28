@@ -293,6 +293,47 @@ class PlaceOrderTest extends TestCase
         $this->assertSame([$variant->id => 4], session('cart'));
     }
 
+    #[TestWith(['08:00'])]
+    #[TestWith(['19:00'])]
+    public function test_a_pickup_at_either_edge_of_opening_hours_is_booked(string $time): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_time', $time)
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('orders', 1);
+    }
+
+    #[TestWith(['07:59'])]
+    #[TestWith(['19:01'])]
+    #[TestWith(['00:00'])]
+    #[TestWith(['22:30'])]
+    public function test_a_pickup_outside_8am_to_7pm_is_refused(string $time): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_time', $time)
+            ->call('submit')
+            ->assertHasErrors('pickup_time')
+            ->assertSee('Pickup is from 8:00 AM to 7:00 PM.');
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_the_time_field_offers_only_opening_hours(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSeeHtml('min="08:00"')
+            ->assertSeeHtml('max="19:00"')
+            ->assertSeeText('Between 8:00 AM and 7:00 PM.');
+    }
+
     public function test_the_pickup_date_and_time_are_stored_as_one_moment(): void
     {
         $this->placeOrder()->assertHasNoErrors();

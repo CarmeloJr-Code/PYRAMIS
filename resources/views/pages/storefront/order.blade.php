@@ -37,6 +37,13 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
      */
     private const HOURLY_ADDRESS_LIMIT = 20;
 
+    /**
+     * The earliest and latest pickup times a customer may book, 8 AM to 7 PM.
+     */
+    private const PICKUP_OPENS = '08:00';
+
+    private const PICKUP_CLOSES = '19:00';
+
     public ?int $outlet_id = null;
 
     public string $customer_name = '';
@@ -74,7 +81,10 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             'customer_phone' => ['required', 'string', 'max:20', new PhilippineMobile],
             'customer_email' => ['nullable', 'email', 'max:255'],
             'pickup_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'pickup_time' => ['required', 'date_format:H:i'],
+            'pickup_time' => [
+                'required', 'date_format:H:i',
+                'after_or_equal:'.self::PICKUP_OPENS, 'before_or_equal:'.self::PICKUP_CLOSES,
+            ],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -86,6 +96,8 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     {
         return [
             'customer_name.regex' => __('Please use letters only in your name.'),
+            'pickup_time.after_or_equal' => __('Pickup is from 8:00 AM to 7:00 PM. Please choose a time in that window.'),
+            'pickup_time.before_or_equal' => __('Pickup is from 8:00 AM to 7:00 PM. Please choose a time in that window.'),
         ];
     }
 
@@ -413,7 +425,15 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
 
                 <div class="grid gap-5 sm:grid-cols-2">
                     <flux:input wire:model.blur="pickup_date" :label="__('Pickup date')" type="date" :min="today()->toDateString()" required />
-                    <flux:input wire:model.blur="pickup_time" :label="__('Pickup time')" type="time" required />
+                    <flux:input
+                        wire:model.blur="pickup_time"
+                        :label="__('Pickup time')"
+                        type="time"
+                        min="08:00"
+                        max="19:00"
+                        :description="__('Between 8:00 AM and 7:00 PM.')"
+                        required
+                    />
                 </div>
 
                 <flux:textarea wire:model.blur="notes" :label="__('Notes')" rows="2" maxlength="1000" :description="__('Anything we should know — a message on the cake, for example.')" />

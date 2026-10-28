@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use Database\Seeders\CatalogSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -60,38 +61,82 @@ class ProductCatalogTest extends TestCase
             ->assertDontSeeText('from');
     }
 
-    public function test_a_size_card_opens_the_product_with_that_size_chosen(): void
+    public function test_a_size_card_opens_a_page_about_that_size_alone(): void
     {
         $product = Product::factory()->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
-        $small = ProductVariant::factory()->for($product)->create(['name' => 'Small']);
-        $large = ProductVariant::factory()->for($product)->create(['name' => 'Large']);
+        $small = ProductVariant::factory()->for($product)->create(['name' => 'Small', 'price' => '350.00']);
+        $large = ProductVariant::factory()->for($product)->create(['name' => 'Large', 'price' => '900.00']);
 
         // Asked for both ways round, so neither can pass by being the default.
-        foreach ([$small, $large] as $size) {
-            Livewire::withQueryParams(['size' => $size->id])
-                ->test('pages::storefront.product', ['product' => $product])
-                ->assertSet('selectedVariantId', $size->id);
+        foreach ([[$small, $large], [$large, $small]] as [$shown, $other]) {
+            $this->get(route('products.show', ['product' => $product, 'size' => $shown->id]))
+                ->assertOk()
+                ->assertSeeText('Chocolate Cake - '.config('app.name'))
+                ->assertSeeText($shown->name)
+                ->assertSeeText(number_format((float) $shown->price, 2))
+                ->assertDontSeeText($other->name)
+                ->assertDontSeeText(number_format((float) $other->price, 2))
+                ->assertDontSeeHtml('type="radio"')
+                ->assertSee(route('products.index', ['q' => 'Chocolate Cake']), false)
+                ->assertSeeText('See the other sizes');
         }
+    }
+
+    public function test_adding_to_the_order_puts_the_size_on_the_page_in_the_cart(): void
+    {
+        $product = Product::factory()->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
+        ProductVariant::factory()->for($product)->create(['name' => 'Small']);
+        $large = ProductVariant::factory()->for($product)->create(['name' => 'Large']);
 
         Livewire::withQueryParams(['size' => $large->id])
             ->test('pages::storefront.product', ['product' => $product])
-            ->call('addToOrder');
+            ->assertSet('variantId', $large->id)
+            ->call('addToOrder')
+            ->assertRedirect(route('order'));
 
         $this->assertSame([$large->id => 1], session('cart'));
     }
 
-    public function test_a_size_that_cannot_be_sold_or_belongs_elsewhere_falls_back_to_the_first_available(): void
+    public function test_the_size_on_the_page_cannot_be_swapped_from_the_browser(): void
     {
         $product = Product::factory()->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
         $round = ProductVariant::factory()->for($product)->create(['name' => 'Round']);
-        $tincan = ProductVariant::factory()->for($product)->unavailable()->create(['name' => 'Tincan']);
         $elsewhere = ProductVariant::factory()->create();
 
-        foreach ([$tincan->id, $elsewhere->id, 'abc'] as $size) {
-            Livewire::withQueryParams(['size' => $size])
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+
+        Livewire::withQueryParams(['size' => $round->id])
+            ->test('pages::storefront.product', ['product' => $product])
+            ->set('variantId', $elsewhere->id);
+    }
+
+    public function test_without_a_size_of_its_own_the_page_shows_the_first_that_can_be_sold(): void
+    {
+        $product = Product::factory()->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
+        ProductVariant::factory()->for($product)->unavailable()->create(['name' => 'Tincan']);
+        $round = ProductVariant::factory()->for($product)->create(['name' => 'Round']);
+        $elsewhere = ProductVariant::factory()->create();
+
+        foreach ([null, $elsewhere->id, 'abc'] as $size) {
+            Livewire::withQueryParams(array_filter(['size' => $size]))
                 ->test('pages::storefront.product', ['product' => $product])
-                ->assertSet('selectedVariantId', $round->id);
+                ->assertSet('variantId', $round->id)
+                ->assertSeeText('Add to order');
         }
+    }
+
+    public function test_a_product_with_no_sizes_offers_nothing_to_order(): void
+    {
+        $product = Product::factory()->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
+
+        Livewire::test('pages::storefront.product', ['product' => $product])
+            ->assertSet('variantId', null)
+            ->assertSeeText('There is nothing to order here yet.')
+            ->assertDontSeeText('Add to order')
+            ->call('addToOrder')
+            ->assertNoRedirect();
+
+        $this->assertNull(session('cart'));
     }
 
     public function test_the_home_page_lists_categories_that_have_products(): void
@@ -126,21 +171,6 @@ class ProductCatalogTest extends TestCase
         Category::all()->each(function (Category $category): void {
             $this->assertSame(asset("images/categories/{$category->slug}.svg"), $category->imageUrl(), $category->name);
         });
-    }
-
-    public function test_a_guest_can_open_a_product_and_see_every_size(): void
-    {
-        $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
-        ProductVariant::factory()->for($product)->create(['name' => 'Large', 'price' => '990.00']);
-        ProductVariant::factory()->for($product)->create(['name' => 'Medium', 'price' => '660.00']);
-
-        $this->get(route('products.show', $product))
-            ->assertOk()
-            ->assertSeeText('Ube Cake - '.config('app.name'))
-            ->assertSeeText('Large')
-            ->assertSeeText('990.00')
-            ->assertSeeText('Medium')
-            ->assertSeeText('660.00');
     }
 
     public function test_a_product_shows_its_own_illustration(): void
@@ -188,40 +218,18 @@ class ProductCatalogTest extends TestCase
         });
     }
 
-    public function test_the_first_available_size_is_chosen_without_a_round_trip(): void
-    {
-        $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
-        ProductVariant::factory()->for($product)->unavailable()->create(['name' => 'Tincan']);
-        $round = ProductVariant::factory()->for($product)->create(['name' => 'Round']);
-
-        Livewire::test('pages::storefront.product', ['product' => $product])
-            ->assertSet('selectedVariantId', $round->id)
-            ->assertSeeHtmlInOrder(['value="'.$round->id.'"', 'checked', 'Round'])
-            ->assertDontSeeHtml('wire:model.live="selectedVariantId"');
-    }
-
-    public function test_the_chosen_size_is_what_goes_in_the_cart(): void
-    {
-        $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
-        ProductVariant::factory()->for($product)->create(['name' => 'Round']);
-        $large = ProductVariant::factory()->for($product)->create(['name' => 'Large']);
-
-        Livewire::test('pages::storefront.product', ['product' => $product])
-            ->set('selectedVariantId', $large->id)
-            ->call('addToOrder')
-            ->assertRedirect(route('order'));
-
-        $this->assertSame([$large->id => 1], session('cart'));
-    }
-
     public function test_a_sold_out_size_cannot_be_put_in_the_cart(): void
     {
         $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
         ProductVariant::factory()->for($product)->create(['name' => 'Round']);
         $tincan = ProductVariant::factory()->for($product)->unavailable()->create(['name' => 'Tincan']);
 
-        Livewire::test('pages::storefront.product', ['product' => $product])
-            ->set('selectedVariantId', $tincan->id)
+        // The card for a sold-out size opens on that size, not on another one.
+        Livewire::withQueryParams(['size' => $tincan->id])
+            ->test('pages::storefront.product', ['product' => $product])
+            ->assertSet('variantId', $tincan->id)
+            ->assertSeeText('This size is sold out right now.')
+            ->assertDontSeeText('Add to order')
             ->call('addToOrder')
             ->assertNoRedirect();
 

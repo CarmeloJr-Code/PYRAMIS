@@ -37,7 +37,7 @@ class CustomerJourneyTest extends DuskTestCase
                 ->assertSee('Ube Cake')
                 ->clickLink('Ube Cake')
 
-                ->waitForText('Sizes and prices')
+                ->waitForText('Add to order')
                 ->assertSee('Large (10x14)')
                 ->press('Add to order')
 

@@ -131,6 +131,24 @@ class MenuStockTest extends TestCase
             ->assertSeeText('Sold out')
             ->assertDontSeeText('9 available')
             ->assertDontSeeText('Main Branch');
+
+        $this->get(route('products.show', ['product' => $tincan->product, 'size' => $tincan->id]))
+            ->assertOk()
+            ->assertSeeText('Sold out')
+            ->assertDontSeeText('9 available')
+            ->assertDontSeeText('Main Branch');
+    }
+
+    public function test_the_product_page_shows_the_same_counts_as_its_card(): void
+    {
+        $round = $this->cake();
+        $this->shelve($round, $this->main, 12);
+        $this->shelve($round, $this->plaza, 5);
+        $this->order($round, $this->plaza, 5);
+
+        $this->get(route('products.show', ['product' => $round->product, 'size' => $round->id]))
+            ->assertOk()
+            ->assertSeeInOrder(['Round', 'Main Branch', '12 available', 'Plaza Outlet', '0 available — pre-order', 'Add to order']);
     }
 
     public function test_an_outlet_that_is_closed_is_not_listed(): void

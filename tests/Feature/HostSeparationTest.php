@@ -77,11 +77,15 @@ class HostSeparationTest extends TestCase
             ->assertRedirect('http://'.self::STOREFRONT.'/products/ube-cake?size=large');
     }
 
-    public function test_links_between_the_two_halves_cross_hosts(): void
+    public function test_the_storefront_does_not_link_to_the_workspace_sign_in(): void
     {
         $this->get('http://'.self::STOREFRONT.'/')
-            ->assertSee('http://'.self::WORKSPACE.'/employee/login', false);
+            ->assertOk()
+            ->assertDontSee('http://'.self::WORKSPACE.'/employee/login', false);
+    }
 
+    public function test_the_sign_in_page_links_back_to_the_storefront_host(): void
+    {
         $this->get('http://'.self::WORKSPACE.'/employee/login')
             ->assertSee('http://'.self::STOREFRONT, false);
     }

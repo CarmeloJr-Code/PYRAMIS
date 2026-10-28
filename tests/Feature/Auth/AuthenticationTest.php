@@ -83,11 +83,13 @@ class AuthenticationTest extends TestCase
         $this->get('/employee/register')->assertNotFound();
     }
 
-    public function test_the_public_landing_page_offers_sign_in_but_not_sign_up(): void
+    public function test_the_public_landing_page_offers_neither_sign_in_nor_sign_up(): void
     {
+        // The workspace is reached only by its own address.
         $this->get(route('home'))
             ->assertOk()
-            ->assertSee(route('login'))
+            ->assertDontSee(route('login'))
+            ->assertDontSee('Employee sign in')
             ->assertDontSee('Register');
     }
 

@@ -86,11 +86,6 @@
         <footer class="mt-16 border-t border-snow-200 bg-white">
             <div class="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 text-sm text-snow-500 sm:flex-row sm:items-center sm:justify-between">
                 <p>&copy; {{ now()->year }} {{ __('Purple Yam Malaybalay. Home made cakes and pastries since 2013.') }}</p>
-
-                {{-- The employee workspace entry point, per the unified portal design. --}}
-                <a href="{{ route('login') }}" class="font-medium text-snow-600 hover:text-orchid-700">
-                    {{ __('Employee sign in') }}
-                </a>
             </div>
         </footer>
 

@@ -24,7 +24,7 @@ services:
       - key: WORKSPACE_DOMAIN
         value: pyramis.onrender.com
       - key: STOREFRONT_DOMAIN
-        sync: false          # the purpleyam-malaybalay service's onrender.com host
+        sync: false          # www.purpleyam.store, the storefront's custom domain
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL
@@ -95,11 +95,11 @@ services:
       - key: APP_KEY
         sync: false          # the workspace's: the cache and encrypted values are shared
       - key: APP_URL
-        sync: false          # https://<this service's onrender.com host>
+        sync: false          # https://www.purpleyam.store
       - key: WORKSPACE_DOMAIN
         value: pyramis.onrender.com
       - key: STOREFRONT_DOMAIN
-        sync: false          # this service's onrender.com host
+        sync: false          # www.purpleyam.store
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL

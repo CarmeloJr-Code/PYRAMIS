@@ -33,6 +33,17 @@ if ($storefront && $workspace) {
     });
 }
 
+// The storefront's other addresses send every path on to the storefront host,
+// so links and the cart's session stay on one host. /up still answers on each,
+// for the platform's health check.
+foreach ($storefront ? config('app.storefront_aliases') : [] as $alias) {
+    Route::domain($alias)->group(function () use ($storefront) {
+        Route::get('{path?}', fn (Request $request) => redirect()->away(
+            $request->getScheme().'://'.$storefront.$request->getRequestUri(), 301,
+        ))->where('path', '(?!up$).*');
+    });
+}
+
 Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($workspace)->prefix('employee')->name('employee.')->group(function () {
     Route::livewire('dashboard', 'pages::employee.dashboard')->name('dashboard');
 

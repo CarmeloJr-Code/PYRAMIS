@@ -108,8 +108,13 @@ class AdministratorJourneyTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($manager): void {
             $browser->loginAs($manager);
 
+            // Told apart by the error page's title rather than by "403" in the
+            // body: faker addresses and prices carry those digits often enough
+            // ("64038 Parisian Via") to fail a screen that rendered fine.
             foreach (['/employee/workforce', '/employee/forecast', '/employee/products', '/employee/outlets'] as $screen) {
-                $browser->visit($screen)->assertDontSee('403');
+                $browser->visit($screen);
+
+                $this->assertNotSame('Forbidden', trim($browser->driver->getTitle()), $screen);
             }
         });
     }

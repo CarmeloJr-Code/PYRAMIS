@@ -198,18 +198,7 @@ new #[Layout('layouts::storefront')] #[Title('Products')] class extends Componen
                             @if ($variant->is_available)
                                 <span class="text-lg font-semibold">&#8369;{{ number_format((float) $variant->price, 2) }}</span>
 
-                                <span class="flex flex-col gap-1 border-t border-snow-200 pt-3 text-sm">
-                                    @foreach ($this->outlets as $outlet)
-                                        @php($units = $this->stock[$variant->id][$outlet->id] ?? 0)
-
-                                        <span class="flex items-baseline justify-between gap-3" wire:key="stock-{{ $variant->id }}-{{ $outlet->id }}">
-                                            <span class="text-snow-500">{{ $outlet->name }}</span>
-                                            <span class="{{ $units > 0 ? 'font-medium text-orchid-700' : 'text-snow-400' }}">
-                                                {{ $units > 0 ? __(':count available', ['count' => $units]) : __('0 available — pre-order') }}
-                                            </span>
-                                        </span>
-                                    @endforeach
-                                </span>
+                                <x-stock-by-outlet :outlets="$this->outlets" :units="$this->stock[$variant->id] ?? []" class="border-t border-snow-200 pt-3" />
                             @else
                                 <span class="flex items-baseline gap-2">
                                     <span class="text-lg font-semibold text-snow-400 line-through">&#8369;{{ number_format((float) $variant->price, 2) }}</span>

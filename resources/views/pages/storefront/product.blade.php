@@ -1,6 +1,9 @@
 <?php
 
+use App\Actions\CountAvailableStock;
+use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Session;
@@ -13,14 +16,16 @@ new #[Layout('layouts::storefront')] class extends Component {
     #[Locked]
     public Product $product;
 
-    public ?int $selectedVariantId = null;
+    #[Locked]
+    public ?int $variantId = null;
 
     /**
      * Resolve the product by slug, refusing anything withdrawn from the catalogue.
      *
-     * A menu card links here with ?size= for the size it showed, which starts
-     * out chosen when it can still be sold; anything else falls back to the
-     * first size that can.
+     * Each size has its own card on the menu, so this page is about the one a
+     * card linked to with ?size= — sold out or not, so the customer sees what
+     * they clicked. Without a size of this product, it shows the first that
+     * can be sold, and failing that the first there is.
      */
     public function mount(Product $product): void
     {
@@ -30,8 +35,9 @@ new #[Layout('layouts::storefront')] class extends Component {
 
         $this->product = $product;
 
-        $this->selectedVariantId = $this->availableVariants->firstWhere('id', request()->integer('size'))?->id
-            ?? $this->availableVariants->first()?->id;
+        $this->variantId = $product->variants->firstWhere('id', request()->integer('size'))?->id
+            ?? $product->variants->firstWhere('is_available', true)?->id
+            ?? $product->variants->first()?->id;
     }
 
     /**
@@ -45,27 +51,54 @@ new #[Layout('layouts::storefront')] class extends Component {
     }
 
     /**
-     * The sizes the bakery can currently sell.
-     *
-     * @return Collection<int, \App\Models\ProductVariant>
+     * The size this page is about, if the product has any.
      */
     #[Computed]
-    public function availableVariants(): Collection
+    public function variant(): ?ProductVariant
     {
-        return $this->product->variants->where('is_available', true)->values();
+        return $this->product->variants->firstWhere('id', $this->variantId);
     }
 
     /**
-     * Put the chosen size in the session cart.
+     * The outlets a customer can collect from — the same list checkout offers.
+     *
+     * @return Collection<int, Outlet>
+     */
+    #[Computed]
+    public function outlets(): Collection
+    {
+        return Outlet::query()->active()->orderBy('name')->get();
+    }
+
+    /**
+     * Units still available of this size at each pickup outlet.
+     *
+     * @return array<int, int>
+     */
+    #[Computed]
+    public function stock(): array
+    {
+        if (! $this->variant?->is_available) {
+            return [];
+        }
+
+        return app(CountAvailableStock::class)->handle(
+            collect([$this->variant->id]),
+            $this->outlets->pluck('id'),
+        )[$this->variant->id] ?? [];
+    }
+
+    /**
+     * Put this size in the session cart.
      *
      * The cart is only a convenience — checkout re-resolves every variant from
      * the database, so nothing here is trusted at submit time.
      */
     public function addToOrder(): void
     {
-        $variant = $this->availableVariants->firstWhere('id', $this->selectedVariantId);
+        $variant = $this->variant;
 
-        if ($variant === null) {
+        if ($variant === null || ! $variant->is_available) {
             return;
         }
 
@@ -98,65 +131,45 @@ new #[Layout('layouts::storefront')] class extends Component {
             @if ($product->description)
                 <p class="text-lg text-snow-600">{{ $product->description }}</p>
             @endif
-
-            @if ($this->availableVariants->isEmpty())
-                <p class="rounded-xl border border-snow-200 bg-snow-100 p-5 text-snow-600">
-                    {{ __('This one is sold out right now. The sizes below are what we bake when it is back.') }}
-                </p>
-            @endif
         </div>
 
-        <div class="flex flex-col gap-4 rounded-2xl border border-snow-200 bg-white p-6">
-            <h2 class="text-lg font-semibold">{{ __('Sizes and prices') }}</h2>
-
-            <ul class="flex flex-col gap-2">
-                @foreach ($product->variants as $variant)
-                    <li wire:key="variant-{{ $variant->id }}">
-                        @if ($variant->is_available)
-                            {{-- The highlight follows the checked radio in CSS, so it
-                                 moves on the click instead of after a round trip; the
-                                 choice reaches the server with "Add to order". --}}
-                            <label class="flex cursor-pointer items-center justify-between gap-4 rounded-lg border border-snow-200 p-4 transition not-has-checked:hover:border-orchid-300 has-checked:border-orchid-600 has-checked:bg-orchid-50">
-                                <span class="flex items-center gap-3">
-                                    <input
-                                        type="radio"
-                                        wire:model="selectedVariantId"
-                                        value="{{ $variant->id }}"
-                                        name="variant"
-                                        @checked($selectedVariantId === $variant->id)
-                                        class="size-4 accent-orchid-600"
-                                    >
-                                    <span class="font-medium">{{ $variant->name }}</span>
-                                </span>
-
-                                <span class="font-semibold">&#8369;{{ number_format((float) $variant->price, 2) }}</span>
-                            </label>
-                        @else
-                            <div class="flex items-center justify-between gap-4 rounded-lg border border-dashed border-snow-200 p-4 text-snow-400">
-                                <span class="flex items-center gap-3">
-                                    <span class="font-medium line-through">{{ $variant->name }}</span>
-                                    <span class="rounded-full bg-snow-100 px-2 py-0.5 text-xs font-semibold text-snow-500">{{ __('Sold out') }}</span>
-                                </span>
-
-                                <span class="font-semibold line-through">&#8369;{{ number_format((float) $variant->price, 2) }}</span>
-                            </div>
-                        @endif
-                    </li>
-                @endforeach
-            </ul>
-
-            @if ($this->availableVariants->isNotEmpty())
-                <button
-                    type="button"
-                    wire:click="addToOrder"
-                    class="rounded-lg bg-orchid-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orchid-700"
-                >
-                    {{ __('Add to order') }}
-                </button>
-            @else
+        <div class="flex flex-col gap-5 self-start rounded-2xl border border-snow-200 bg-white p-6">
+            @if ($this->variant === null)
                 <p class="rounded-lg bg-snow-100 p-4 text-sm text-snow-600">
-                    {{ __('Every size is sold out right now. Please check back soon.') }}
+                    {{ __('There is nothing to order here yet. Please check back soon.') }}
                 </p>
+            @else
+                <div class="flex items-baseline justify-between gap-4">
+                    <h2 class="text-lg font-semibold">{{ $this->variant->name }}</h2>
+                    <span class="text-xl font-semibold {{ $this->variant->is_available ? '' : 'text-snow-400 line-through' }}">&#8369;{{ number_format((float) $this->variant->price, 2) }}</span>
+                </div>
+
+                @if ($this->variant->is_available)
+                    <x-stock-by-outlet :outlets="$this->outlets" :units="$this->stock" class="border-t border-snow-200 pt-4" />
+
+                    <button
+                        type="button"
+                        wire:click="addToOrder"
+                        class="rounded-lg bg-orchid-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orchid-700"
+                    >
+                        {{ __('Add to order') }}
+                    </button>
+                @else
+                    <p class="flex items-center gap-3 rounded-lg bg-snow-100 p-4 text-sm text-snow-600">
+                        <span class="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-snow-500">{{ __('Sold out') }}</span>
+                        {{ __('This size is sold out right now. Please check back soon.') }}
+                    </p>
+                @endif
+            @endif
+
+            @if ($product->variants->count() > 1)
+                <a
+                    href="{{ route('products.index', ['q' => $product->name]) }}"
+                    class="text-center text-sm font-medium text-orchid-700 hover:text-orchid-800"
+                    wire:navigate
+                >
+                    {{ __('See the other sizes') }}
+                </a>
             @endif
         </div>
     </div>

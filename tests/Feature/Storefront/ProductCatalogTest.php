@@ -43,6 +43,57 @@ class ProductCatalogTest extends TestCase
             ->assertSeeText('460.00');
     }
 
+    public function test_every_size_gets_its_own_card_on_the_menu(): void
+    {
+        $product = Product::factory()->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
+        $small = ProductVariant::factory()->for($product)->create(['name' => 'Small', 'price' => '350.00']);
+        $large = ProductVariant::factory()->for($product)->create(['name' => 'Large', 'price' => '900.00']);
+        $tincan = ProductVariant::factory()->for($product)->unavailable()->create(['name' => 'Tincan', 'price' => '120.00']);
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSeeHtmlInOrder([
+                'href="'.route('products.show', ['product' => $product, 'size' => $tincan->id]).'"', 'Chocolate Cake', 'Tincan', '120.00', 'Sold out',
+                'href="'.route('products.show', ['product' => $product, 'size' => $small->id]).'"', 'Chocolate Cake', 'Small', '350.00',
+                'href="'.route('products.show', ['product' => $product, 'size' => $large->id]).'"', 'Chocolate Cake', 'Large', '900.00',
+            ])
+            ->assertDontSeeText('from');
+    }
+
+    public function test_a_size_card_opens_the_product_with_that_size_chosen(): void
+    {
+        $product = Product::factory()->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
+        $small = ProductVariant::factory()->for($product)->create(['name' => 'Small']);
+        $large = ProductVariant::factory()->for($product)->create(['name' => 'Large']);
+
+        // Asked for both ways round, so neither can pass by being the default.
+        foreach ([$small, $large] as $size) {
+            Livewire::withQueryParams(['size' => $size->id])
+                ->test('pages::storefront.product', ['product' => $product])
+                ->assertSet('selectedVariantId', $size->id);
+        }
+
+        Livewire::withQueryParams(['size' => $large->id])
+            ->test('pages::storefront.product', ['product' => $product])
+            ->call('addToOrder');
+
+        $this->assertSame([$large->id => 1], session('cart'));
+    }
+
+    public function test_a_size_that_cannot_be_sold_or_belongs_elsewhere_falls_back_to_the_first_available(): void
+    {
+        $product = Product::factory()->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
+        $round = ProductVariant::factory()->for($product)->create(['name' => 'Round']);
+        $tincan = ProductVariant::factory()->for($product)->unavailable()->create(['name' => 'Tincan']);
+        $elsewhere = ProductVariant::factory()->create();
+
+        foreach ([$tincan->id, $elsewhere->id, 'abc'] as $size) {
+            Livewire::withQueryParams(['size' => $size])
+                ->test('pages::storefront.product', ['product' => $product])
+                ->assertSet('selectedVariantId', $round->id);
+        }
+    }
+
     public function test_the_home_page_lists_categories_that_have_products(): void
     {
         $stocked = Category::factory()->create(['name' => 'Ube Cakes']);

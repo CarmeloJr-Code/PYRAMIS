@@ -36,6 +36,21 @@ new #[Layout('layouts::storefront')] #[Title('Purple Yam Malaybalay')] class ext
             {{ __('Browse the menu, pre-order what you need, and pick it up at the outlet nearest you. No account required.') }}
         </p>
 
+        {{-- A plain GET form: the menu page reads ?q= and does the searching. --}}
+        <form action="{{ route('products.index') }}" method="get" role="search" class="flex w-full max-w-xl flex-col gap-3 sm:flex-row">
+            <label for="menu-search" class="sr-only">{{ __('Search the menu') }}</label>
+            <input
+                id="menu-search"
+                type="search"
+                name="q"
+                placeholder="{{ __('Search for a cake, a pastry, a size…') }}"
+                class="min-w-0 flex-1 rounded-lg border border-white/20 bg-white px-4 py-3 text-sm text-snow-800 placeholder:text-snow-400 focus:outline-2 focus:outline-orchid-300"
+            >
+            <button type="submit" class="rounded-lg bg-orchid-600 px-5 py-3 text-sm font-semibold text-white ring-1 ring-white/30 transition hover:bg-orchid-500">
+                {{ __('Search') }}
+            </button>
+        </form>
+
         <a
             href="{{ route('products.index') }}"
             class="rounded-lg bg-white px-5 py-3 text-sm font-semibold text-orchid-800 transition hover:bg-orchid-50"

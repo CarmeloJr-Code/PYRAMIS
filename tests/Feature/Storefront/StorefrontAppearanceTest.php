@@ -24,6 +24,20 @@ class StorefrontAppearanceTest extends TestCase
     }
 
     /**
+     * Short pages stretch their content so the footer sits at the bottom of
+     * the screen instead of floating halfway up it.
+     */
+    public function test_short_storefront_pages_keep_the_footer_at_the_bottom(): void
+    {
+        foreach (['order', 'orders.track'] as $route) {
+            $this->get(route($route))
+                ->assertOk()
+                ->assertSee('class="flex min-h-screen flex-col', false)
+                ->assertSee('<main class="mx-auto w-full max-w-6xl flex-1', false);
+        }
+    }
+
+    /**
      * The workspace keeps following the employee's chosen appearance.
      */
     public function test_the_workspace_is_left_to_its_own_appearance(): void

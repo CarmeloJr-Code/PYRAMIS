@@ -4,7 +4,7 @@
         @include('partials.head')
     </head>
 
-    <body class="min-h-screen bg-snow-50 text-snow-900 antialiased" data-storefront>
+    <body class="flex min-h-screen flex-col bg-snow-50 text-snow-900 antialiased" data-storefront>
         {{--
             The storefront is drawn light only, but the shared head applies the
             visitor's system appearance, and dark Flux fields on these white
@@ -79,7 +79,8 @@
             </div>
         </header>
 
-        <main class="mx-auto w-full max-w-6xl px-6 py-10">
+        {{-- flex-1 lets a short page, like the order form or the tracking lookup, push the footer to the bottom of the screen. --}}
+        <main class="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
             {{ $slot }}
         </main>
 

@@ -37,9 +37,9 @@ class CustomerJourneyTest extends DuskTestCase
                 ->assertSee('Ube Cake')
                 ->clickLink('Ube Cake')
 
-                ->waitForText('Add to order')
+                ->waitForText('Add to cart')
                 ->assertSee('Large (10x14)')
-                ->press('Add to order')
+                ->press('Add to cart')
 
                 // Waited for by heading rather than by "Your order", which is
                 // also the name of a link standing in the header of every page.

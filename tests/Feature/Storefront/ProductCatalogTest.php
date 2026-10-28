@@ -121,7 +121,7 @@ class ProductCatalogTest extends TestCase
             Livewire::withQueryParams(array_filter(['size' => $size]))
                 ->test('pages::storefront.product', ['product' => $product])
                 ->assertSet('variantId', $round->id)
-                ->assertSeeText('Add to order');
+                ->assertSeeText('Add to cart');
         }
     }
 
@@ -132,7 +132,7 @@ class ProductCatalogTest extends TestCase
         Livewire::test('pages::storefront.product', ['product' => $product])
             ->assertSet('variantId', null)
             ->assertSeeText('There is nothing to order here yet.')
-            ->assertDontSeeText('Add to order')
+            ->assertDontSeeText('Add to cart')
             ->call('addToOrder')
             ->assertNoRedirect();
 
@@ -229,7 +229,7 @@ class ProductCatalogTest extends TestCase
             ->test('pages::storefront.product', ['product' => $product])
             ->assertSet('variantId', $tincan->id)
             ->assertSeeText('This size is sold out right now.')
-            ->assertDontSeeText('Add to order')
+            ->assertDontSeeText('Add to cart')
             ->call('addToOrder')
             ->assertNoRedirect();
 

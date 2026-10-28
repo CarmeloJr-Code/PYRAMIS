@@ -322,6 +322,10 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     <span class="font-medium">{{ __('Total') }}</span>
                     <span class="font-semibold">&#8369;{{ $this->total }}</span>
                 </p>
+
+                <a href="{{ route('products.index') }}" class="self-start rounded-lg border border-orchid-600 px-4 py-2 text-sm font-semibold text-orchid-700 hover:bg-orchid-50" wire:navigate>
+                    {{ __('Add more products') }}
+                </a>
             </section>
 
             <form wire:submit="submit" class="flex flex-col gap-5 rounded-2xl border border-snow-200 bg-white p-6">

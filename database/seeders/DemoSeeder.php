@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Actions\AssignShift;
+use App\Actions\ConfirmOrderPayment;
 use App\Actions\DeliverRestock;
 use App\Actions\RecordInventoryMovement;
 use App\Actions\RecordProductionRun;
@@ -683,8 +684,21 @@ class DemoSeeder extends Seeder
             return;
         }
 
-        foreach (Order::query()->where('status', OrderStatus::Pending)->where('created_at', '<', $day)->get() as $order) {
-            $order->transitionTo($this->chance(0.08) ? OrderStatus::Cancelled : OrderStatus::Confirmed);
+        foreach (Order::query()->with('items')->where('status', OrderStatus::Pending)->where('created_at', '<', $day)->get() as $order) {
+            if ($this->chance(0.08)) {
+                $order->transitionTo(OrderStatus::Cancelled);
+
+                continue;
+            }
+
+            // Paid in full by GCash and checked at the counter — the only way
+            // a pre-order is confirmed.
+            app(ConfirmOrderPayment::class)->handle(
+                $order,
+                $this->pick($this->cashiers),
+                $order->total(),
+                sprintf('%06d%07d', $this->between(0, 999999), $this->between(0, 9999999)),
+            );
         }
 
         $dueToday = fn (OrderStatus $status) => Order::query()

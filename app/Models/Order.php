@@ -105,16 +105,32 @@ class Order extends Model
     }
 
     /**
-     * The order total, derived from its lines rather than stored, so there is
-     * one source of truth and no drift (docs/database.md).
+     * The GCash payment for this order, once the customer has sent proof of it.
+     *
+     * @return HasOne<OrderPayment, $this>
+     */
+    public function payment(): HasOne
+    {
+        return $this->hasOne(OrderPayment::class);
+    }
+
+    /**
+     * The order total in centavos, derived from its lines rather than stored,
+     * so there is one source of truth and no drift (docs/database.md).
+     */
+    public function totalInCentavos(): int
+    {
+        return $this->items->sum(
+            fn (OrderItem $item): int => $item->subtotalInCentavos(),
+        );
+    }
+
+    /**
+     * The order total in pesos, formatted for display.
      */
     public function total(): string
     {
-        $centavos = $this->items->sum(
-            fn (OrderItem $item): int => $item->subtotalInCentavos(),
-        );
-
-        return number_format($centavos / 100, 2, '.', '');
+        return number_format($this->totalInCentavos() / 100, 2, '.', '');
     }
 
     /**
@@ -122,8 +138,8 @@ class Order extends Model
      * allow.
      *
      * Enforced here rather than only in the component, so no code path — a
-     * crafted Livewire call included — can skip ahead, walk backwards, or
-     * reopen a finished order.
+     * crafted Livewire call included — can skip ahead, walk backwards, reopen a
+     * finished order, or confirm one nobody has checked was paid for.
      *
      * @throws RuntimeException when the move is not permitted
      */
@@ -133,6 +149,12 @@ class Order extends Model
             throw new RuntimeException(
                 "Cannot move order {$this->reference} from {$this->status->value} to {$status->value}.",
             );
+        }
+
+        // Pre-orders are paid by GCash up front, and confirming one is the
+        // cashier saying the money arrived — so not before they have checked.
+        if ($status === OrderStatus::Confirmed && ! $this->payment()->whereNotNull('verified_at')->exists()) {
+            throw new RuntimeException("Order {$this->reference} cannot be confirmed before its payment is verified.");
         }
 
         $this->update(['status' => $status]);

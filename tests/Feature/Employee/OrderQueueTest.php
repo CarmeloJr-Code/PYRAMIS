@@ -166,7 +166,16 @@ class OrderQueueTest extends TestCase
         $order = $this->order(OrderStatus::Pending);
         $cashier = User::factory()->cashier()->create();
 
-        foreach ([OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::Ready, OrderStatus::Completed] as $expected) {
+        Livewire::actingAs($cashier)
+            ->test('pages::employee.orders.show', ['order' => $order])
+            ->set('amount', '990.00')
+            ->set('gcash_reference', '1234567890123')
+            ->call('confirmPayment')
+            ->assertHasNoErrors();
+
+        $this->assertSame(OrderStatus::Confirmed, $order->fresh()->status);
+
+        foreach ([OrderStatus::Preparing, OrderStatus::Ready, OrderStatus::Completed] as $expected) {
             Livewire::actingAs($cashier)
                 ->test('pages::employee.orders.show', ['order' => $order->fresh()])
                 ->call('advance');

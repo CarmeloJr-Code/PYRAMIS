@@ -120,11 +120,29 @@ class BusinessWorkflowTest extends TestCase
     /**
      * Walk an order forward through the cashier's screen.
      *
+     * Confirming is checking the GCash payment, so that step goes through the
+     * payment form with the order's own total.
+     *
      * @param  list<OrderStatus>  $expected
      */
     private function advance(Order $order, array $expected): void
     {
         foreach ($expected as $status) {
+            if ($status === OrderStatus::Confirmed) {
+                $order = $order->fresh(['items']);
+
+                Livewire::actingAs($this->cashier)
+                    ->test('pages::employee.orders.show', ['order' => $order])
+                    ->set('amount', $order->total())
+                    ->set('gcash_reference', '1234567890123')
+                    ->call('confirmPayment')
+                    ->assertHasNoErrors();
+
+                $this->assertSame($status, $order->fresh()->status);
+
+                continue;
+            }
+
             Livewire::actingAs($this->cashier)
                 ->test('pages::employee.orders.show', ['order' => $order->fresh()])
                 ->call('advance');

@@ -398,6 +398,8 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     <span class="font-semibold">&#8369;{{ $this->total }}</span>
                 </p>
 
+                <p class="text-sm text-snow-500">{{ __('You will pay by GCash on the next screen. We confirm your order once the payment is checked.') }}</p>
+
                 <a href="{{ route('products.index') }}" class="self-start rounded-lg border border-orchid-600 px-4 py-2 text-sm font-semibold text-orchid-700 hover:bg-orchid-50" wire:navigate>
                     {{ __('Add more products') }}
                 </a>

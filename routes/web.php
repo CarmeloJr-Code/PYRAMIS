@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Employee\OrderReceiptController;
 use App\Http\Middleware\EnsureEmployeeIsActive;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +51,7 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($
     Route::middleware('can:manage-orders')->group(function () {
         Route::livewire('orders', 'pages::employee.orders.index')->name('orders.index');
         Route::livewire('orders/{order:reference}', 'pages::employee.orders.show')->name('orders.show');
+        Route::get('orders/{order:reference}/receipt', OrderReceiptController::class)->name('orders.receipt');
     });
 
     Route::middleware('can:manage-outlets')->group(function () {

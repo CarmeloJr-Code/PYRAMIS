@@ -25,6 +25,14 @@ class OrderStatusTest extends TestCase
         $this->assertNull(OrderStatus::Cancelled->next());
     }
 
+    public function test_the_journey_is_every_stage_up_to_completion(): void
+    {
+        $this->assertSame(
+            [OrderStatus::Pending, OrderStatus::Confirmed, OrderStatus::Preparing, OrderStatus::Ready, OrderStatus::Completed],
+            OrderStatus::journey(),
+        );
+    }
+
     public function test_only_the_next_step_or_a_cancellation_is_allowed(): void
     {
         $this->assertTrue(OrderStatus::Pending->canTransitionTo(OrderStatus::Confirmed));

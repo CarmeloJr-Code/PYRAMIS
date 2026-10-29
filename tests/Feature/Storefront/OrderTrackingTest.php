@@ -50,8 +50,10 @@ class OrderTrackingTest extends TestCase
             ->assertSeeText($order->reference)
             ->assertSeeText('Ube Cake')
             ->assertSeeText('Main Branch')
-            ->assertSeeText('Pending')
-            ->assertSeeText('1,980.00');
+            ->assertSeeText('1,980.00')
+            ->assertSeeTextInOrder(['Pending', 'Confirmed', 'Preparing', 'Ready for pickup', 'Completed'])
+            ->assertSeeText('Step 1 of 5')
+            ->assertSee('aria-current="step"', false);
     }
 
     public function test_an_unknown_reference_is_not_found(): void
@@ -65,7 +67,50 @@ class OrderTrackingTest extends TestCase
 
         $this->get(route('orders.show', $order))
             ->assertOk()
-            ->assertSeeText('Ready for pickup');
+            ->assertSeeText('Step 4 of 5');
+
+        $this->assertSame(
+            ['done', 'done', 'done', 'current', 'upcoming'],
+            $this->stagesOf($order),
+        );
+    }
+
+    public function test_a_completed_order_has_every_stage_done(): void
+    {
+        $order = $this->order(status: OrderStatus::Completed);
+
+        $this->get(route('orders.show', $order))->assertOk()->assertSeeText('Step 5 of 5');
+
+        $this->assertSame(['done', 'done', 'done', 'done', 'done'], $this->stagesOf($order));
+    }
+
+    public function test_a_cancelled_order_says_so_instead_of_showing_progress(): void
+    {
+        $order = $this->order(status: OrderStatus::Cancelled);
+
+        $this->get(route('orders.show', $order))
+            ->assertOk()
+            ->assertSeeText('This order was cancelled')
+            ->assertDontSeeText('Step ')
+            ->assertDontSee('aria-current="step"', false);
+
+        $this->assertSame([], $this->stagesOf($order));
+    }
+
+    /**
+     * Where the order stands on each stage of its journey, as the page sees it.
+     *
+     * @return list<'done'|'current'|'upcoming'>
+     */
+    protected function stagesOf(Order $order): array
+    {
+        $progress = Livewire::test('pages::storefront.order-status', ['order' => $order])->instance()->progress();
+
+        return array_map(fn (array $stage): string => match (true) {
+            $stage['done'] => 'done',
+            $stage['current'] => 'current',
+            default => 'upcoming',
+        }, $progress);
     }
 
     public function test_it_never_exposes_another_order_or_the_workspace(): void

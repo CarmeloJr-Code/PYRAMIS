@@ -37,9 +37,9 @@ class CustomerJourneyTest extends DuskTestCase
                 ->assertSee('Ube Cake')
                 ->clickLink('Ube Cake')
 
-                ->waitForText('Add to order')
+                ->waitForText('Add to cart')
                 ->assertSee('Large (10x14)')
-                ->press('Add to order')
+                ->press('Add to cart')
 
                 // Waited for by heading rather than by "Your order", which is
                 // also the name of a link standing in the header of every page.
@@ -76,6 +76,33 @@ class CustomerJourneyTest extends DuskTestCase
         $this->assertSame($this->kiosk->id, $order->outlet_id);
         $this->assertSame('1250.00', $order->total());
         $this->assertSame($variant->id, $order->items->first()->product_variant_id);
+    }
+
+    public function test_the_order_form_drops_what_it_would_refuse_as_it_is_typed(): void
+    {
+        $this->buildTheBakery();
+
+        $this->cake('Ube Cake', 'Large (10x14)', '1250.00');
+
+        $this->browse(function (Browser $browser): void {
+            $browser->visit('/')
+                ->clickLink('See the menu')
+                ->waitForText('The menu')
+                ->clickLink('Ube Cake')
+                ->waitForText('Add to cart')
+                ->press('Add to cart')
+                ->waitForLocation('/order')
+                ->waitForText('Your details')
+
+                ->type('customer_name', 'R2D2 Reyes!')
+                ->assertInputValue('customer_name', 'RD Reyes')
+
+                ->type('customer_phone', '0917abc 123+4567')
+                ->assertInputValue('customer_phone', '0917 1234567')
+
+                ->type('customer_email', 'ana @example.com')
+                ->assertInputValue('customer_email', 'ana@example.com');
+        });
     }
 
     public function test_a_reference_nobody_issued_is_not_a_page(): void

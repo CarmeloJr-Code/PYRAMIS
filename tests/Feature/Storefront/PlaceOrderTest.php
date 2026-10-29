@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class PlaceOrderTest extends TestCase
@@ -111,6 +113,24 @@ class PlaceOrderTest extends TestCase
         $this->assertSame('460.00', Order::first()->items->first()->unit_price);
     }
 
+    public function test_a_filled_cart_links_back_to_the_menu_for_more(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSeeText('Add more products')
+            ->assertSeeHtml('href="'.route('products.index').'"');
+    }
+
+    public function test_an_empty_cart_offers_the_menu_not_more_products(): void
+    {
+        Session::put('cart', []);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSeeText('Browse the menu')
+            ->assertDontSeeText('Add more products');
+    }
+
     public function test_it_rejects_an_empty_order(): void
     {
         Session::put('cart', []);
@@ -137,6 +157,192 @@ class PlaceOrderTest extends TestCase
             ->assertHasErrors(['customer_name', 'customer_phone', 'outlet_id', 'pickup_date', 'pickup_time']);
 
         $this->assertDatabaseEmpty('orders');
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function mobileProvider(): array
+    {
+        return [
+            'spaced' => ['0917 123 4567'],
+            'dashed' => ['0917-123-4567'],
+            'international' => ['+63 917 123 4567'],
+        ];
+    }
+
+    #[DataProvider('mobileProvider')]
+    public function test_a_mobile_number_is_stored_one_way_however_it_was_typed(string $typed): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_phone', $typed)
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('orders', ['customer_phone' => '09171234567']);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function notAMobileProvider(): array
+    {
+        return [
+            'too short' => ['12345'],
+            'not a mobile prefix' => ['0817 123 4567'],
+            'letters' => ['abcdefghijk'],
+            'one digit too many' => ['091712345678'],
+        ];
+    }
+
+    #[DataProvider('notAMobileProvider')]
+    public function test_it_rejects_a_number_that_is_not_a_philippine_mobile(string $typed): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_phone', $typed)
+            ->call('submit')
+            ->assertHasErrors('customer_phone');
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    #[TestWith(['Juan dela Cruz'])]
+    #[TestWith(["Ma. O'Neil-Reyes"])]
+    #[TestWith(['Niño'])]
+    public function test_a_real_name_is_accepted(string $name): void
+    {
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_name', $name)
+            ->assertHasNoErrors('customer_name');
+    }
+
+    #[TestWith(['R2D2', 'regex'])]
+    #[TestWith(['A', 'min'])]
+    #[TestWith(['   ', 'required'])]
+    public function test_a_name_that_is_not_one_is_refused(string $name, string $rule): void
+    {
+        Livewire::test('pages::storefront.order')
+            ->set('customer_name', $name)
+            ->assertHasErrors(['customer_name' => $rule]);
+    }
+
+    public function test_a_name_over_the_limit_is_refused(): void
+    {
+        Livewire::test('pages::storefront.order')
+            ->set('customer_name', str_repeat('a', 256))
+            ->assertHasErrors(['customer_name' => 'max']);
+    }
+
+    public function test_a_phone_of_only_spaces_counts_as_missing(): void
+    {
+        Livewire::test('pages::storefront.order')
+            ->set('customer_phone', '   ')
+            ->assertHasErrors(['customer_phone' => 'required']);
+    }
+
+    public function test_a_field_is_checked_as_soon_as_it_is_left(): void
+    {
+        $component = Livewire::test('pages::storefront.order')
+            ->set('customer_phone', 'abc')
+            ->assertHasErrors('customer_phone');
+
+        $component->set('customer_phone', '09171234567')
+            ->assertHasNoErrors('customer_phone');
+    }
+
+    public function test_it_rejects_a_bad_email_and_overlong_notes(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_email', 'not-an-email')
+            ->set('notes', str_repeat('a', 1001))
+            ->call('submit')
+            ->assertHasErrors(['customer_email', 'notes']);
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    #[TestWith([''])]
+    #[TestWith(['abc'])]
+    #[TestWith(['2.5'])]
+    public function test_a_quantity_that_is_not_a_whole_number_leaves_the_line_alone(string $typed): void
+    {
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 3]);
+
+        Livewire::test('pages::storefront.order')
+            ->call('updateQuantity', $variant->id, $typed)
+            ->assertOk();
+
+        $this->assertSame([$variant->id => 3], session('cart'));
+    }
+
+    public function test_a_typed_quantity_still_updates_the_line(): void
+    {
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->call('updateQuantity', $variant->id, '4');
+
+        $this->assertSame([$variant->id => 4], session('cart'));
+    }
+
+    #[TestWith(['08:00'])]
+    #[TestWith(['19:00'])]
+    public function test_a_pickup_at_either_edge_of_opening_hours_is_booked(string $time): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_time', $time)
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('orders', 1);
+    }
+
+    #[TestWith(['07:59'])]
+    #[TestWith(['19:01'])]
+    #[TestWith(['00:00'])]
+    #[TestWith(['22:30'])]
+    public function test_a_pickup_outside_8am_to_7pm_is_refused(string $time): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_time', $time)
+            ->call('submit')
+            ->assertHasErrors('pickup_time')
+            ->assertSee('Pickup is from 8:00 AM to 7:00 PM.');
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_the_fields_restrict_what_can_be_typed_into_them(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSeeHtml("keep(\$el, /[^\\p{L}\\s.'-]/gu)")
+            ->assertSeeHtml('keep($el, /[^\d+\s.()-]/g); keep($el, /(?!^)\+/g)')
+            ->assertSeeHtml('keep($el, /\s/g)')
+            ->assertSeeHtml('inputmode="numeric"');
+    }
+
+    public function test_the_time_field_offers_only_opening_hours(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSeeHtml('min="08:00"')
+            ->assertSeeHtml('max="19:00"')
+            ->assertSeeText('Between 8:00 AM and 7:00 PM.');
     }
 
     public function test_the_pickup_date_and_time_are_stored_as_one_moment(): void

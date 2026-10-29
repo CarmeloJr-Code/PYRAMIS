@@ -148,7 +148,7 @@ class MenuStockTest extends TestCase
 
         $this->get(route('products.show', ['product' => $round->product, 'size' => $round->id]))
             ->assertOk()
-            ->assertSeeInOrder(['Round', 'Main Branch', '12 available', 'Plaza Outlet', '0 available — pre-order', 'Add to order']);
+            ->assertSeeInOrder(['Round', 'Main Branch', '12 available', 'Plaza Outlet', '0 available — pre-order', 'Add to cart']);
     }
 
     public function test_an_outlet_that_is_closed_is_not_listed(): void

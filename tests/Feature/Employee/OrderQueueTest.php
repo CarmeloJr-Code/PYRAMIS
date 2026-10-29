@@ -221,7 +221,7 @@ class OrderQueueTest extends TestCase
 
         $this->get(route('orders.show', $order->fresh()))
             ->assertOk()
-            ->assertSeeText('Ready for pickup');
+            ->assertSeeText('Step 4 of 5');
     }
 
     public function test_the_item_table_does_not_cost_a_query_a_line(): void

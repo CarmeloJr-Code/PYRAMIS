@@ -40,6 +40,26 @@ enum OrderStatus: string
     }
 
     /**
+     * The stages an order passes through on its way to pickup, in order.
+     *
+     * Walked from next(), so the progress a customer sees cannot drift from
+     * the workflow staff actually run. Cancelled is not a stage: it is a way
+     * out of the line, not a place on it.
+     *
+     * @return list<self>
+     */
+    public static function journey(): array
+    {
+        $stages = [];
+
+        for ($stage = self::Pending; $stage !== null; $stage = $stage->next()) {
+            $stages[] = $stage;
+        }
+
+        return $stages;
+    }
+
+    /**
      * Whether this order has finished its life, one way or the other.
      */
     public function isTerminal(): bool

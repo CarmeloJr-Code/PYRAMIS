@@ -83,7 +83,7 @@ new #[Layout('layouts::storefront')] class extends Component {
                 </p>
             </div>
 
-            <ol class="flex">
+            <ol class="isolate flex">
                 @foreach ($stages as $stage)
                     <li
                         class="relative flex flex-1 flex-col items-center gap-2 text-center"
@@ -100,7 +100,7 @@ new #[Layout('layouts::storefront')] class extends Component {
                         @endunless
 
                         <span @class([
-                            'relative flex size-8 items-center justify-center rounded-full text-sm font-semibold',
+                            'relative z-10 flex size-8 items-center justify-center rounded-full text-sm font-semibold',
                             'bg-orchid-600 text-white' => $stage['done'],
                             'bg-white text-orchid-700 ring-4 ring-orchid-600' => $stage['current'] && ! $stage['done'],
                             'bg-snow-100 text-snow-400' => ! $stage['done'] && ! $stage['current'],

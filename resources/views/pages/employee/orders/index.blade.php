@@ -51,6 +51,11 @@ new #[Title('Orders')] class extends Component {
     {
         return Order::query()
             ->with(['outlet', 'items'])
+            // Proof sent and nobody has checked it yet: the orders the counter
+            // can move on right now.
+            ->withExists(['payment as payment_to_check' => fn ($query) => $query
+                ->whereNotNull('submitted_at')
+                ->whereNull('verified_at')])
             ->when(
                 $this->statusFilter !== '',
                 fn ($query) => $query->where('status', $this->statusFilter),
@@ -159,6 +164,9 @@ new #[Title('Orders')] class extends Component {
                             <flux:table.cell>&#8369;{{ $order->total() }}</flux:table.cell>
                             <flux:table.cell>
                                 <flux:badge size="sm">{{ $order->status->label() }}</flux:badge>
+                                @if ($order->status === OrderStatus::Pending && $order->payment_to_check)
+                                    <flux:badge size="sm" color="amber" class="ms-1">{{ __('Payment to check') }}</flux:badge>
+                                @endif
                             </flux:table.cell>
                             <flux:table.cell class="text-end">
                                 <flux:button size="sm" variant="ghost" :href="route('employee.orders.show', $order)" wire:navigate>

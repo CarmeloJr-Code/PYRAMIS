@@ -60,9 +60,14 @@ class CashierJourneyTest extends DuskTestCase
                 ->waitForText('Ube Cake')
                 ->assertSee('₱2,500.00')
 
+                // Confirming is checking the GCash payment arrived in full.
+                ->type('amount', '2500.00')
+                ->type('gcash_reference', '1234 567 890123')
+                ->waitForLivewire()->press('Confirm payment')
+                ->assertSee('Paid ₱2,500.00 by GCash')
+
                 // One step at a time, and never two: the button naming the next
                 // step is the workflow the order enforces server-side.
-                ->waitForLivewire()->press('Mark as Confirmed')
                 ->assertSee('Mark as Preparing')
                 ->waitForLivewire()->press('Mark as Preparing')
                 ->assertSee('Mark as Ready for pickup')

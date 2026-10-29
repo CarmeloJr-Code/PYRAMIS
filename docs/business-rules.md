@@ -14,6 +14,7 @@ Authoritative rules that affect more than one module. If an implementation detai
 - **BR-010** — Internal communication is text-only. No voice, video, photo messaging, or external messaging-platform integration.
 - **BR-011** — There is no door-to-door delivery.
 - **BR-012** — Customer-facing functionality must never expose employee-only operational information.
+- **BR-013** — Online pre-orders are paid by GCash up front. An order is Confirmed only after a cashier checks that the exact total was received; a short or over payment leaves it Pending. (Added at the owner's request, after the PRD.)
 
 ## Why these exist
 

@@ -1,18 +1,25 @@
 <?php
 
+use App\Actions\ConfirmOrderPayment;
 use App\Actions\RecordSaleForOrder;
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Models\OrderPayment;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new class extends Component {
     #[Locked]
     public Order $order;
+
+    public string $amount = '';
+
+    public string $gcash_reference = '';
 
     /**
      * Authorize every entry into the component, not just the route.
@@ -22,6 +29,54 @@ new class extends Component {
         Gate::authorize('manage-orders');
 
         $this->order = $order;
+        $this->gcash_reference = $this->payment?->gcash_reference ?? '';
+    }
+
+    /**
+     * The GCash payment behind this order, without the screenshot itself —
+     * that is fetched by the browser from the receipt route, only if looked at.
+     */
+    #[Computed]
+    public function payment(): ?OrderPayment
+    {
+        return $this->order->payment()->withoutReceipt()->with('verifier')->first();
+    }
+
+    /**
+     * Check the GCash payment and, if the full amount arrived, confirm the
+     * order.
+     */
+    public function confirmPayment(): void
+    {
+        Gate::authorize('manage-orders');
+
+        $this->gcash_reference = preg_replace('/\s+/', '', $this->gcash_reference) ?? '';
+
+        $validated = $this->validate([
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
+            'gcash_reference' => ['required', 'regex:/^\d{13}$/'],
+        ], [
+            'gcash_reference.regex' => __('A GCash reference number is 13 digits.'),
+        ]);
+
+        try {
+            app(ConfirmOrderPayment::class)->handle(
+                $this->order,
+                Auth::user(),
+                (string) $validated['amount'],
+                $validated['gcash_reference'],
+            );
+        } catch (\RuntimeException) {
+            Flux::toast(variant: 'danger', text: __('That change is no longer possible for this order.'));
+
+            return;
+        }
+
+        $this->order->refresh();
+        $this->reset('amount');
+        unset($this->payment);
+
+        Flux::toast(variant: 'success', text: __('Payment checked and order confirmed.'));
     }
 
     /**
@@ -188,13 +243,84 @@ new class extends Component {
 
     <flux:separator variant="subtle" />
 
+    @php($payment = $this->payment)
+
+    <div class="flex flex-col gap-4">
+        <flux:heading size="lg">{{ __('GCash payment') }}</flux:heading>
+
+        @if ($payment?->isVerified())
+            <flux:text>
+                {{ __('Paid ₱:amount by GCash · ref :reference · checked by :name on :date', [
+                    'amount' => number_format((float) $payment->amount, 2),
+                    'reference' => $payment->gcash_reference,
+                    'name' => $payment->verifier?->name ?? __('a former employee'),
+                    'date' => $payment->verified_at->format('j M Y, g:ia'),
+                ]) }}
+            </flux:text>
+        @elseif ($payment?->submitted_at)
+            <div class="flex flex-wrap items-start gap-6">
+                <div class="flex flex-col gap-1">
+                    <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Customer sent') }}</span>
+                    <span class="font-mono">{{ $payment->gcash_reference ?? __('No reference number') }}</span>
+                    <span class="text-sm text-zinc-500">{{ $payment->submitted_at->format('j M Y, g:ia') }}</span>
+                </div>
+
+                @if ($payment->hasReceipt())
+                    <a href="{{ route('employee.orders.receipt', $order) }}" target="_blank" rel="noopener" class="block">
+                        <img
+                            src="{{ route('employee.orders.receipt', $order) }}"
+                            alt="{{ __('Screenshot of the GCash receipt') }}"
+                            class="max-h-48 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                        >
+                        <span class="text-xs text-zinc-500">{{ __('Open full size') }}</span>
+                    </a>
+                @endif
+            </div>
+        @else
+            <flux:text>{{ __('The customer has not sent their payment details yet. Check your GCash app for a payment with this order reference.') }}</flux:text>
+        @endif
+
+        @if ($order->status === OrderStatus::Pending)
+            <form wire:submit="confirmPayment" class="flex flex-col gap-4">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <flux:input
+                        wire:model="amount"
+                        :label="__('Amount received')"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputmode="decimal"
+                        :description="__('Exactly as shown in your GCash app. Order total: ₱:total', ['total' => $order->total()])"
+                        required
+                    />
+                    <flux:input
+                        wire:model="gcash_reference"
+                        :label="__('GCash reference number')"
+                        inputmode="numeric"
+                        maxlength="20"
+                        :description="__('13 digits. Check it matches the one in your GCash app.')"
+                        required
+                    />
+                </div>
+
+                <flux:button variant="primary" type="submit" class="self-start">
+                    {{ __('Confirm payment') }}
+                </flux:button>
+            </form>
+        @endif
+    </div>
+
+    <flux:separator variant="subtle" />
+
     <div class="flex flex-wrap items-center gap-3">
         @if ($order->status->isTerminal())
             <flux:text>{{ __('This order is :status and can no longer be changed.', ['status' => $order->status->label()]) }}</flux:text>
         @else
-            <flux:button variant="primary" wire:click="advance">
-                {{ __('Mark as :status', ['status' => $order->status->next()->label()]) }}
-            </flux:button>
+            @unless ($order->status === OrderStatus::Pending)
+                <flux:button variant="primary" wire:click="advance">
+                    {{ __('Mark as :status', ['status' => $order->status->next()->label()]) }}
+                </flux:button>
+            @endunless
 
             <flux:button variant="ghost" wire:click="cancel" wire:confirm="{{ __('Cancel this order? This cannot be undone.') }}">
                 {{ __('Cancel order') }}

@@ -11,6 +11,9 @@
             </flux:sidebar.header>
 
             {{-- Nav visibility is cosmetic; the `can:` middleware on each route is the boundary. --}}
+            {{-- The figure on a section is the work waiting there for whoever opens it. --}}
+            @php($attention = app(\App\Actions\CountWorkNeedingAttention::class)->handle(auth()->user()))
+
             <flux:sidebar.nav>
                 <flux:sidebar.group :heading="__('Workspace')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('employee.dashboard')" :current="request()->routeIs('employee.dashboard')" wire:navigate.hover>
@@ -24,7 +27,7 @@
                     @endcan
 
                     @can('manage-orders')
-                        <flux:sidebar.item icon="clipboard-document-list" :href="route('employee.orders.index')" :current="request()->routeIs('employee.orders.*')" wire:navigate.hover>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('employee.orders.index')" :current="request()->routeIs('employee.orders.*')" :badge="$attention['orders'] ?? null" badge:color="red" wire:navigate.hover>
                             {{ __('Orders') }}
                         </flux:sidebar.item>
                     @endcan
@@ -48,13 +51,13 @@
                     @endcan
 
                     @can('access-inventory')
-                        <flux:sidebar.item icon="beaker" :href="route('employee.inventory.index')" :current="request()->routeIs('employee.inventory.*')" wire:navigate.hover>
+                        <flux:sidebar.item icon="beaker" :href="route('employee.inventory.index')" :current="request()->routeIs('employee.inventory.*')" :badge="$attention['inventory'] ?? null" badge:color="red" wire:navigate.hover>
                             {{ __('Inventory') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-restocking')
-                        <flux:sidebar.item icon="truck" :href="route('employee.restocks.index')" :current="request()->routeIs('employee.restocks.*')" wire:navigate.hover>
+                        <flux:sidebar.item icon="truck" :href="route('employee.restocks.index')" :current="request()->routeIs('employee.restocks.*')" :badge="$attention['restocks'] ?? null" badge:color="red" wire:navigate.hover>
                             {{ __('Restocking') }}
                         </flux:sidebar.item>
                     @endcan
@@ -84,7 +87,7 @@
                     </flux:sidebar.item>
 
                     {{-- Internal chat, open to every role. --}}
-                    <flux:sidebar.item icon="chat-bubble-left-right" :href="route('employee.messages.index')" :current="request()->routeIs('employee.messages.*')" wire:navigate.hover>
+                    <flux:sidebar.item icon="chat-bubble-left-right" :href="route('employee.messages.index')" :current="request()->routeIs('employee.messages.*')" :badge="$attention['messages'] ?? null" badge:color="red" wire:navigate.hover>
                         {{ __('Messages') }}
                     </flux:sidebar.item>
 
@@ -101,13 +104,15 @@
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
-        <!-- Mobile User Menu -->
-        <flux:header class="lg:hidden">
+        {{-- The bell on every screen; the menu toggle and profile only on small ones, where the sidebar folds away. --}}
+        <flux:header>
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
 
-            <flux:dropdown position="top" align="end">
+            <livewire:notification-bell />
+
+            <flux:dropdown position="top" align="end" class="lg:hidden">
                 <flux:profile
                     :initials="auth()->user()->initials()"
                     icon-trailing="chevron-down"

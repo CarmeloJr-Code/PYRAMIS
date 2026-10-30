@@ -156,9 +156,10 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($
             ->middleware('can:manage-outlets')->name('outlets');
     });
 
-    // Every employee's own roster. No gate beyond being signed in: this shows
-    // the signed-in employee their own work and nobody else's.
-    Route::livewire('schedule', 'pages::employee.schedule')->name('schedule');
+    // A Baker's or Cashier's own roster. It shows the signed-in employee their
+    // own work and nobody else's; the Administrator reads it through workforce.
+    Route::livewire('schedule', 'pages::employee.schedule')
+        ->middleware('can:view-own-schedule')->name('schedule');
 
     // Internal chat, which the capability matrix gives to all three roles. Each
     // screen still scopes to the conversations the signed-in employee is in.

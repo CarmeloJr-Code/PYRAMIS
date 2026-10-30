@@ -61,7 +61,6 @@ class HardeningTest extends DuskTestCase
             '/employee/reports/sales',
             '/employee/forecast',
             '/employee/messages',
-            '/employee/schedule',
         ];
 
         $this->browse(function (Browser $browser) use ($manager, $screens): void {

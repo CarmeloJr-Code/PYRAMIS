@@ -88,10 +88,11 @@
                         {{ __('Messages') }}
                     </flux:sidebar.item>
 
-                    {{-- Every employee's own roster, whatever their role. --}}
-                    <flux:sidebar.item icon="calendar" :href="route('employee.schedule')" :current="request()->routeIs('employee.schedule')" wire:navigate.hover>
-                        {{ __('My schedule') }}
-                    </flux:sidebar.item>
+                    @can('view-own-schedule')
+                        <flux:sidebar.item icon="calendar" :href="route('employee.schedule')" :current="request()->routeIs('employee.schedule')" wire:navigate.hover>
+                            {{ __('My schedule') }}
+                        </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

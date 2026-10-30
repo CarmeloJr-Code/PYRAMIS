@@ -104,15 +104,13 @@
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
 
-        {{-- The bell on every screen; the menu toggle and profile only on small ones, where the sidebar folds away. --}}
-        <flux:header>
+        <!-- Mobile User Menu -->
+        <flux:header class="lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
 
-            <livewire:notification-bell />
-
-            <flux:dropdown position="top" align="end" class="lg:hidden">
+            <flux:dropdown position="top" align="end">
                 <flux:profile
                     :initials="auth()->user()->initials()"
                     icon-trailing="chevron-down"

@@ -35,6 +35,8 @@ class DashboardTest extends TestCase
             ->get(route('employee.dashboard'))
             ->assertSee(route('employee.sales.index'))
             ->assertDontSee(route('employee.production'))
-            ->assertDontSee(route('employee.workforce'));
+            ->assertDontSee(route('employee.workforce'))
+            ->assertDontSee(route('employee.restocks.index'))
+            ->assertDontSee(route('employee.inventory.index'));
     }
 }

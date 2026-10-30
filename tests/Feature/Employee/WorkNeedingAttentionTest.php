@@ -14,6 +14,7 @@ use App\Models\Outlet;
 use App\Models\Restock;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -30,6 +31,20 @@ class WorkNeedingAttentionTest extends TestCase
     private function countFor(User $employee): array
     {
         return app(CountWorkNeedingAttention::class)->handle($employee);
+    }
+
+    public function test_the_sidebar_and_the_dashboard_share_one_count_per_request(): void
+    {
+        $baker = User::factory()->baker()->create();
+
+        $this->countFor($baker);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->countFor($baker);
+
+        $this->assertSame([], DB::getQueryLog());
     }
 
     public function test_orders_count_only_payments_waiting_to_be_checked(): void

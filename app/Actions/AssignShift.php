@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Models\Shift;
 use App\Models\ShiftAssignment;
 use App\Models\User;
+use App\Notifications\ShiftAssigned;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -54,10 +55,16 @@ class AssignShift
                 ));
             }
 
-            return $shift->assignments()->create([
+            $assignment = $shift->assignments()->create([
                 'user_id' => $employee->id,
                 'assigned_by' => $administrator->id,
             ]);
+
+            if ($employee->isNot($administrator)) {
+                $employee->notify(new ShiftAssigned($shift));
+            }
+
+            return $assignment;
         });
     }
 }

@@ -1,9 +1,11 @@
 <?php
 
+use App\Actions\NotifyEmployees;
 use App\Enums\RestockStatus;
 use App\Models\Outlet;
 use App\Models\ProductVariant;
 use App\Models\Restock;
+use App\Notifications\RestockRequested;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -151,6 +153,8 @@ new #[Title('Schedule restock')] class extends Component {
 
             return $restock;
         });
+
+        app(NotifyEmployees::class)->handle(new RestockRequested($restock->load('outlet')), 'access-restocking', Auth::user());
 
         Flux::toast(variant: 'success', text: __('Restock :reference scheduled.', ['reference' => $restock->reference]));
 

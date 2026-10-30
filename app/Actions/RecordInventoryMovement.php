@@ -8,6 +8,7 @@ use App\Models\Ingredient;
 use App\Models\InventoryMovement;
 use App\Models\ProductionRun;
 use App\Models\User;
+use App\Notifications\IngredientRunningLow;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -62,7 +63,10 @@ class RecordInventoryMovement
             // the old balance and between them take more than exists.
             $ingredient = Ingredient::query()->lockForUpdate()->findOrFail($ingredient->id);
 
-            if ($ingredient->stockInThousandths() + $quantityInThousandths < 0) {
+            $before = $ingredient->stockInThousandths();
+            $after = $before + $quantityInThousandths;
+
+            if ($after < 0) {
                 // Named, because a batch of usage lines is recorded in one go
                 // and the employee has to know which one is short.
                 throw new RuntimeException(
@@ -70,7 +74,7 @@ class RecordInventoryMovement
                 );
             }
 
-            return $ingredient->movements()->create([
+            $movement = $ingredient->movements()->create([
                 'type' => $type,
                 'quantity' => static::quantityFromThousandths($quantityInThousandths),
                 'recorded_by' => $employee->id,
@@ -78,6 +82,20 @@ class RecordInventoryMovement
                 'note' => $note ?: null,
                 'occurred_at' => now(),
             ]);
+
+            // Only on the movement that crosses the line, so an ingredient that
+            // stays low is announced once rather than on every draw after it.
+            $reorderLevel = $ingredient->reorderLevelInThousandths();
+
+            if ($reorderLevel > 0 && $before > $reorderLevel && $after <= $reorderLevel) {
+                app(NotifyEmployees::class)->handle(
+                    new IngredientRunningLow($ingredient, $after),
+                    'access-inventory',
+                    $employee,
+                );
+            }
+
+            return $movement;
         });
     }
 }

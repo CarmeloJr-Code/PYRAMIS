@@ -8,6 +8,7 @@ use App\Models\Outlet;
 use App\Models\Restock;
 use App\Models\RestockItem;
 use App\Models\User;
+use App\Notifications\RestockDelivered;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -96,6 +97,10 @@ class DeliverRestock
             // part of the record, not something a form may claim.
             $restock->delivered_by = $employee->id;
             $restock->save();
+
+            // Inside the transaction, so a delivery that rolls back never
+            // announces itself.
+            app(NotifyEmployees::class)->handle(new RestockDelivered($restock, $employee), 'schedule-restocks', $employee);
 
             return $restock;
         });

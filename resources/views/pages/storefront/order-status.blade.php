@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\NotifyEmployees;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderPayment;
+use App\Notifications\PaymentProofSubmitted;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -151,6 +153,8 @@ new #[Layout('layouts::storefront')] class extends Component {
 
             $order->payment()->updateOrCreate([], $attributes);
         });
+
+        app(NotifyEmployees::class)->handle(new PaymentProofSubmitted($this->order), 'manage-orders');
 
         foreach (array_keys($this->throttles()) as $key) {
             RateLimiter::hit($key, 3600);

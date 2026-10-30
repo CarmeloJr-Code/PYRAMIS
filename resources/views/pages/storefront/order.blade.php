@@ -1,9 +1,11 @@
 <?php
 
+use App\Actions\NotifyEmployees;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\ProductVariant;
+use App\Notifications\OrderPlaced;
 use App\Rules\PhilippineMobile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -285,6 +287,8 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
 
             return $order;
         });
+
+        app(NotifyEmployees::class)->handle(new OrderPlaced($order), 'manage-orders');
 
         // Counted here, on an order actually written, and never on an attempt:
         // a customer fumbling the form should not spend what a real order

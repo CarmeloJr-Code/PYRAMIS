@@ -71,6 +71,11 @@
     ::file-selector-button {
         border-color: var(--color-gray-200, currentColor);
     }
+
+    /* Instrument Sans draws its space at 0.2em, so "1 product" read as "1product"; widen it to 0.3em. */
+    body {
+        word-spacing: 0.1em;
+    }
 }
 
 [data-flux-field]:not(ui-radio, ui-checkbox) {

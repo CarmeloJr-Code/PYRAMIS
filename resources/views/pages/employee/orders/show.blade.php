@@ -163,7 +163,7 @@ new class extends Component {
     }
 }; ?>
 
-<section class="flex w-full max-w-4xl flex-col gap-6">
+<section class="w-full max-w-4xl space-y-6">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-col gap-2">
             <flux:heading size="xl" level="1" class="font-mono">{{ $order->reference }}</flux:heading>

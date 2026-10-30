@@ -21,6 +21,10 @@ use App\Models\User;
  *
  * One query a section whatever the size of the business, because it runs on
  * every page of the workspace. Nothing here writes.
+ *
+ * Counted once a request: the sidebar and the dashboard both ask, and the
+ * answer is kept on the request rather than the container, which a long-running
+ * server would carry from one request into the next.
  */
 final class CountWorkNeedingAttention
 {
@@ -31,6 +35,21 @@ final class CountWorkNeedingAttention
      * @return array{orders?: int, inventory?: int, restocks?: int, messages?: int}
      */
     public function handle(User $employee): array
+    {
+        $attributes = request()->attributes;
+        $key = self::class.':'.$employee->id;
+
+        if (! $attributes->has($key)) {
+            $attributes->set($key, $this->count($employee));
+        }
+
+        return $attributes->get($key);
+    }
+
+    /**
+     * @return array{orders?: int, inventory?: int, restocks?: int, messages?: int}
+     */
+    private function count(User $employee): array
     {
         $counts = [
             'orders' => $employee->can('manage-orders') ? $this->paymentsToCheck() : 0,

@@ -38,7 +38,6 @@ class RoleAuthorizationTest extends TestCase
         return [
             'any signed-in employee' => [null, [UserRole::Administrator, UserRole::Baker, UserRole::Cashier], [
                 'employee.dashboard',
-                'employee.schedule',
                 'employee.reports.index',
                 'employee.messages.index',
                 'employee.messages.create',
@@ -94,6 +93,9 @@ class RoleAuthorizationTest extends TestCase
                 'employee.workforce.employees.create',
                 'employee.workforce.employees.edit',
                 'employee.reports.workforce',
+            ]],
+            'view-own-schedule' => ['view-own-schedule', [UserRole::Baker, UserRole::Cashier], [
+                'employee.schedule',
             ]],
             'manage-products' => ['manage-products', [UserRole::Administrator], [
                 'employee.products.index',

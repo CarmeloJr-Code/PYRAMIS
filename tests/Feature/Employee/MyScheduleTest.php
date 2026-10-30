@@ -43,15 +43,27 @@ class MyScheduleTest extends TestCase
         return $shift;
     }
 
-    public function test_every_role_can_see_their_own_schedule(): void
+    public function test_bakers_and_cashiers_can_see_their_own_schedule(): void
     {
-        // The capability matrix gates management screens, not an employee's own
-        // roster: a Baker and a Cashier both need to know when they work.
-        foreach (UserRole::cases() as $role) {
+        foreach ([UserRole::Baker, UserRole::Cashier] as $role) {
             $this->actingAs(User::factory()->create(['role' => $role]))
-                ->get(route('employee.schedule'))
-                ->assertOk();
+                ->get(route('employee.dashboard'))
+                ->assertSee(route('employee.schedule'));
+
+            $this->get(route('employee.schedule'))->assertOk();
         }
+    }
+
+    public function test_an_administrator_has_no_schedule_screen_of_their_own(): void
+    {
+        // The Administrator sets the roster and reads every shift through
+        // workforce; a personal view would only repeat it.
+        $this->actingAs(User::factory()->administrator()->create())
+            ->get(route('employee.dashboard'))
+            ->assertOk()
+            ->assertDontSee(route('employee.schedule'));
+
+        $this->get(route('employee.schedule'))->assertForbidden();
     }
 
     public function test_guests_are_redirected_to_the_login_page(): void

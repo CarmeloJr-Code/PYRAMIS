@@ -92,6 +92,14 @@ class AppServiceProvider extends ServiceProvider
             UserRole::Administrator,
         ));
 
+        // An employee's own roster, for the staff the roster is set for. The
+        // Administrator sets it and reads every shift through workforce, so a
+        // personal view would only repeat it.
+        Gate::define('view-own-schedule', fn (User $user): bool => $user->hasRole(
+            UserRole::Baker,
+            UserRole::Cashier,
+        ));
+
         // "AI Forecasting" in the capability matrix — Administrator alone, the
         // only row besides workforce with no second role against it. BR-007
         // puts forecasting with whoever decides what to do about it.

@@ -259,9 +259,11 @@ new #[Title('Dashboard')] class extends Component {
             @else
                 <p class="mt-1 text-xl font-semibold text-zinc-400">{{ __('Nothing scheduled') }}</p>
             @endif
-            <flux:button :href="route('employee.schedule')" variant="ghost" size="sm" class="mt-3" wire:navigate>
-                {{ __('My schedule') }}
-            </flux:button>
+            @can('view-own-schedule')
+                <flux:button :href="route('employee.schedule')" variant="ghost" size="sm" class="mt-3" wire:navigate>
+                    {{ __('My schedule') }}
+                </flux:button>
+            @endcan
         </flux:card>
 
         <flux:card>

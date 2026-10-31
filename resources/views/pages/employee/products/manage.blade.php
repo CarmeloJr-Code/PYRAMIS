@@ -109,6 +109,15 @@ new #[Title('Manage product')] class extends Component {
     {
         Gate::authorize('manage-products');
 
+        // Livewire skips the TrimStrings middleware, so a stray space would
+        // otherwise be stored, and slip a duplicate name past unique or distinct.
+        $this->name = trim($this->name);
+        $this->description = trim($this->description);
+        $this->variants = array_map(
+            fn (array $variant): array => ['name' => trim((string) ($variant['name'] ?? ''))] + $variant,
+            $this->variants,
+        );
+
         $validated = $this->validate([
             'name' => [
                 'required', 'string', 'max:255',
@@ -120,7 +129,7 @@ new #[Title('Manage product')] class extends Component {
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.id' => ['nullable', 'integer'],
             'variants.*.name' => ['required', 'string', 'max:255', 'distinct'],
-            'variants.*.price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
+            'variants.*.price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999.99'],
             'variants.*.is_available' => ['boolean'],
         ]);
 
@@ -192,7 +201,7 @@ new #[Title('Manage product')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <form wire:submit="save" class="flex max-w-3xl flex-col gap-6">
-        <flux:input wire:model="name" :label="__('Name')" required autofocus />
+        <flux:input wire:model="name" :label="__('Name')" maxlength="255" required autofocus />
 
         <flux:select wire:model="category_id" :label="__('Category')" required>
             <flux:select.option value="">{{ __('Choose a category') }}</flux:select.option>
@@ -201,7 +210,7 @@ new #[Title('Manage product')] class extends Component {
             @endforeach
         </flux:select>
 
-        <flux:textarea wire:model="description" :label="__('Description')" rows="3" />
+        <flux:textarea wire:model="description" :label="__('Description')" rows="3" maxlength="1000" />
 
         <flux:switch wire:model="is_active" :label="__('Active')" :description="__('Inactive products stay out of the customer catalogue.')" />
 
@@ -224,6 +233,7 @@ new #[Title('Manage product')] class extends Component {
                     <flux:input
                         wire:model="variants.{{ $index }}.name"
                         :label="__('Size')"
+                        maxlength="255"
                         placeholder="Large (10x14)"
                         class="flex-1"
                     />
@@ -234,6 +244,10 @@ new #[Title('Manage product')] class extends Component {
                         type="number"
                         step="0.01"
                         min="0"
+                        max="9999999.99"
+                        inputmode="decimal"
+                        x-on:keydown="['e', 'E', '+', '-', ','].includes($event.key) && $event.preventDefault()"
+                        x-on:input="if ($el.value > 9999999.99) { $el.value = 9999999.99; $el.dispatchEvent(new Event('input')) }"
                         class="md:w-40"
                     />
 

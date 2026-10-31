@@ -98,9 +98,12 @@ new class extends Component {
     {
         Gate::authorize('access-inventory');
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->note = trim($this->note);
+
         $validated = $this->validate([
             'type' => ['required', Rule::enum(InventoryMovementType::class)],
-            'quantity' => ['required', 'numeric', 'min:0.001', 'max:999999999'],
+            'quantity' => ['required', 'numeric', 'decimal:0,3', 'min:0.001', 'max:999999999'],
             'direction' => ['required', Rule::in(['in', 'out'])],
             'note' => [
                 Rule::requiredIf(fn (): bool => $this->chosenType->requiresNote()),
@@ -211,6 +214,10 @@ new class extends Component {
                         type="number"
                         step="0.001"
                         min="0.001"
+                        max="999999999"
+                        inputmode="decimal"
+                        x-on:keydown="['e', 'E', '+', '-', ','].includes($event.key) && $event.preventDefault()"
+                        x-on:input="if ($el.value > 999999999) { $el.value = 999999999; $el.dispatchEvent(new Event('input')) }"
                         required
                     />
 
@@ -218,6 +225,7 @@ new class extends Component {
                         wire:model="note"
                         :label="$this->chosenType->requiresNote() ? __('Reason') : __('Note (optional)')"
                         :required="$this->chosenType->requiresNote()"
+                        maxlength="255"
                     />
 
                     <flux:button variant="primary" type="submit">{{ __('Record') }}</flux:button>

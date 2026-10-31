@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class OutletManagementTest extends TestCase
@@ -109,5 +110,89 @@ class OutletManagementTest extends TestCase
         $component->call('toggleActive', $outlet->id);
 
         $this->assertTrue($outlet->fresh()->is_active);
+    }
+
+    #[TestWith(['0917 123 4567'])]
+    #[TestWith(['(088) 221 1234'])]
+    #[TestWith(['+63 917 123 4567'])]
+    public function test_it_accepts_a_mobile_or_a_landline(string $phone): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.outlets.manage')
+            ->set('name', 'Valencia Outlet')
+            ->set('address', 'Valencia City, Bukidnon')
+            ->set('phone', $phone)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('outlets', ['name' => 'Valencia Outlet', 'phone' => $phone]);
+    }
+
+    #[TestWith(['call the manager', 'regex'])]
+    #[TestWith(['0917 123 4567 ext 2', 'regex'])]
+    #[TestWith(['123', 'min'])]
+    public function test_it_refuses_a_phone_that_is_not_a_number(string $phone, string $rule): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.outlets.manage')
+            ->set('name', 'Valencia Outlet')
+            ->set('address', 'Valencia City, Bukidnon')
+            ->set('phone', $phone)
+            ->call('save')
+            ->assertHasErrors(['phone' => $rule]);
+
+        $this->assertDatabaseEmpty('outlets');
+    }
+
+    public function test_a_phone_with_letters_says_what_it_wants(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.outlets.manage')
+            ->set('name', 'Valencia Outlet')
+            ->set('address', 'Valencia City, Bukidnon')
+            ->set('phone', 'call the manager')
+            ->call('save')
+            ->assertSee('Please use digits only, like 0917 123 4567 or (088) 221 1234.');
+    }
+
+    public function test_what_is_typed_is_stored_without_surrounding_spaces(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.outlets.manage')
+            ->set('name', '  Valencia Outlet ')
+            ->set('address', ' Valencia City, Bukidnon  ')
+            ->set('phone', ' 0917 123 4567 ')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('outlets', [
+            'name' => 'Valencia Outlet',
+            'address' => 'Valencia City, Bukidnon',
+            'phone' => '0917 123 4567',
+        ]);
+    }
+
+    public function test_a_name_padded_with_spaces_is_still_a_duplicate(): void
+    {
+        Outlet::factory()->create(['name' => 'Main Branch']);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.outlets.manage')
+            ->set('name', 'Main Branch ')
+            ->set('address', 'Somewhere else')
+            ->call('save')
+            ->assertHasErrors(['name' => 'unique']);
+
+        $this->assertSame(1, Outlet::count());
+    }
+
+    public function test_the_fields_restrict_what_can_be_typed_into_them(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.outlets.manage')
+            ->assertSeeHtml('keep($el, /[^\d+\s.()-]/g); keep($el, /(?!^)\+/g)')
+            ->assertSeeHtml('maxlength="255"')
+            ->assertSeeHtml('maxlength="500"')
+            ->assertSeeHtml('maxlength="20"');
     }
 }

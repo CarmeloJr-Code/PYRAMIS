@@ -56,6 +56,18 @@ final class ReportRange
     }
 
     /**
+     * A single day bound to the query string, as Y-m-d, or the fallback when
+     * what arrived is not a date.
+     *
+     * The day screens share the report screens' exposure: the URL is
+     * editable, and a cleared date field sends an empty string.
+     */
+    public static function day(string $value, CarbonImmutable $fallback): string
+    {
+        return self::parse($value, $fallback)->toDateString();
+    }
+
+    /**
      * The dates a report opens on, before anyone has chosen any.
      *
      * @return array{0: string, 1: string}

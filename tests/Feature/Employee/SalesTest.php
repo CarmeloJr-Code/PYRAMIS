@@ -208,4 +208,15 @@ class SalesTest extends TestCase
 
         $this->assertEquals($voidedAt, $sale->fresh()->voided_at);
     }
+
+    public function test_an_unreadable_or_cleared_day_shows_today(): void
+    {
+        Livewire::withQueryParams(['date' => 'nope'])
+            ->actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.index')
+            ->assertOk()
+            ->assertSet('date', now()->toDateString())
+            ->set('date', '')
+            ->assertSet('date', now()->toDateString());
+    }
 }

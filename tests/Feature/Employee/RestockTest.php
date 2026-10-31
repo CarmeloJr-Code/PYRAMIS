@@ -363,4 +363,19 @@ class RestockTest extends TestCase
             ->assertSee($restocks->last()->reference)
             ->assertDontSee($restocks->first()->reference);
     }
+
+    public function test_a_day_that_is_not_a_calendar_date_is_refused(): void
+    {
+        $variant = $this->stocked('Ube Cake', 'Round (7x3)', 20);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.restocks.create')
+            ->set('outlet_id', $this->kiosk->id)
+            ->set('scheduled_for', 'tomorrow')
+            ->set('lines', [['product_variant_id' => $variant->id, 'quantity' => '8']])
+            ->call('save')
+            ->assertHasErrors(['scheduled_for' => 'date_format']);
+
+        $this->assertDatabaseEmpty('restocks');
+    }
 }

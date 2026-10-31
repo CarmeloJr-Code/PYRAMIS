@@ -142,6 +142,9 @@ new #[Title('Finished goods')] class extends Component {
     {
         Gate::authorize('access-inventory');
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->note = trim($this->note);
+
         $validated = $this->validate([
             'product_variant_id' => ['required', 'integer'],
             'quantity' => ['required', 'integer', 'min:1', 'max:100000'],
@@ -332,9 +335,20 @@ new #[Title('Finished goods')] class extends Component {
                             <flux:radio value="out" :label="__('Remove')" />
                         </flux:radio.group>
 
-                        <flux:input wire:model="quantity" :label="__('Units')" type="number" min="1" required />
+                        <flux:input
+                            wire:model="quantity"
+                            :label="__('Units')"
+                            type="number"
+                            min="1"
+                            step="1"
+                            max="100000"
+                            inputmode="numeric"
+                            x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
+                            x-on:input="if ($el.value > 100000) { $el.value = 100000; $el.dispatchEvent(new Event('input')) }"
+                            required
+                        />
 
-                        <flux:input wire:model="note" :label="__('Reason')" required />
+                        <flux:input wire:model="note" :label="__('Reason')" maxlength="255" required />
 
                         <flux:button variant="primary" type="submit">{{ __('Record correction') }}</flux:button>
                     </form>

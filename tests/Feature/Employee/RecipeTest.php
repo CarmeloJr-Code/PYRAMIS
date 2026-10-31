@@ -250,4 +250,32 @@ class RecipeTest extends TestCase
             ->assertSee('Tincan Round')
             ->assertDontSee('Large (10x14)');
     }
+
+    public function test_a_quantity_finer_than_the_ledger_holds_is_refused(): void
+    {
+        $variant = ProductVariant::factory()->create();
+        $ingredient = Ingredient::factory()->create();
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.recipes.manage', ['productVariant' => $variant])
+            ->set('yield_quantity', 1)
+            ->set('items', [['id' => null, 'ingredient_id' => $ingredient->id, 'quantity' => '1.0005']])
+            ->call('save')
+            ->assertHasErrors(['items.0.quantity' => 'decimal']);
+
+        $this->assertNull($variant->fresh()->recipe);
+    }
+
+    public function test_the_planner_plans_nothing_past_what_one_run_may_log(): void
+    {
+        $recipe = Recipe::factory()->yielding(2)->create();
+
+        RecipeItem::factory()->for($recipe)->quantity('4.000')->create();
+
+        $component = Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.recipes.manage', ['productVariant' => $recipe->productVariant]);
+
+        $this->assertCount(1, $component->set('plannedUnits', 100000)->instance()->plan());
+        $this->assertCount(0, $component->set('plannedUnits', 100001)->instance()->plan());
+    }
 }

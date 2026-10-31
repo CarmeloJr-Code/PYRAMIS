@@ -73,13 +73,17 @@ new #[Title('Manage shift')] class extends Component {
     {
         Gate::authorize('access-workforce');
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->name = trim($this->name);
+        $this->notes = trim($this->notes);
+
         $validated = $this->validate([
             'outlet_id' => [
                 'required', 'integer',
                 Rule::exists('outlets', 'id')->where('is_active', true),
             ],
             'name' => ['required', 'string', 'max:255'],
-            'date' => ['required', 'date'],
+            'date' => ['required', 'date_format:Y-m-d'],
             'starts_at' => ['required', 'date_format:H:i'],
             // A shift that ends when it starts is not a shift, and one that ends
             // before it starts is a typo.
@@ -114,7 +118,7 @@ new #[Title('Manage shift')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <form wire:submit="save" class="flex flex-col gap-6">
-        <flux:input wire:model="name" :label="__('What it is')" placeholder="{{ __('Morning bake') }}" required autofocus />
+        <flux:input wire:model="name" :label="__('What it is')" placeholder="{{ __('Morning bake') }}" maxlength="255" required autofocus />
 
         <flux:select wire:model="outlet_id" :label="__('Where')" required>
             <flux:select.option value="">{{ __('Choose a location') }}</flux:select.option>
@@ -132,7 +136,7 @@ new #[Title('Manage shift')] class extends Component {
             <flux:input wire:model="ends_at" :label="__('To')" type="time" class="md:flex-1" required />
         </div>
 
-        <flux:input wire:model="notes" :label="__('Note (optional)')" />
+        <flux:input wire:model="notes" :label="__('Note (optional)')" maxlength="255" />
 
         <div class="flex items-center gap-3">
             <flux:button variant="primary" type="submit">{{ __('Save shift') }}</flux:button>

@@ -61,14 +61,22 @@ new #[Title('Manage employee')] class extends Component {
     {
         Gate::authorize('access-workforce');
 
+        // Livewire skips the TrimStrings middleware, so a stray space would
+        // otherwise be stored, and slip a duplicate email past unique.
+        $this->name = trim($this->name);
+        $this->email = trim($this->email);
+
         $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
+            // The same letters a customer's name is held to on the storefront.
+            'name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\\pL\\s.'\\-]+$/u"],
             'email' => [
                 'required', 'string', 'email', 'max:255',
                 Rule::unique('users', 'email')->ignore($this->employeeId),
             ],
             'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['boolean'],
+        ], [
+            'name.regex' => __('Please use letters only in the name.'),
         ]);
 
         if ($this->employeeId === null) {
@@ -125,10 +133,34 @@ new #[Title('Manage employee')] class extends Component {
             {{ __('Done') }}
         </flux:button>
     @else
-        <form wire:submit="save" class="flex flex-col gap-6">
-            <flux:input wire:model="name" :label="__('Full name')" required autofocus />
+        {{-- keep() drops what the rules in save() would refuse as it is typed
+             or pasted, then repeats the input event: wire:model reads the field
+             before keep() runs, and would otherwise hold the refused text. The
+             rules in save() stay the authority. --}}
+        <form
+            wire:submit="save"
+            x-data="{ keep(el, refused) { const kept = el.value.replace(refused, ''); if (kept !== el.value) { el.value = kept; el.dispatchEvent(new Event('input')) } } }"
+            class="flex flex-col gap-6"
+        >
+            <flux:input
+                wire:model="name"
+                :label="__('Full name')"
+                maxlength="255"
+                autocomplete="off"
+                x-on:input="keep($el, /[^\p{L}\s.'-]/gu)"
+                required
+                autofocus
+            />
 
-            <flux:input wire:model="email" :label="__('Email address')" type="email" required />
+            <flux:input
+                wire:model="email"
+                :label="__('Email address')"
+                type="email"
+                maxlength="255"
+                autocomplete="off"
+                x-on:input="keep($el, /\s/g)"
+                required
+            />
 
             <flux:select wire:model="role" :label="__('Role')" required>
                 <flux:select.option value="">{{ __('Choose a role') }}</flux:select.option>

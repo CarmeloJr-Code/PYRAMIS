@@ -118,4 +118,35 @@ class AdministratorJourneyTest extends DuskTestCase
             }
         });
     }
+
+    public function test_the_forms_drop_what_they_would_refuse_as_it_is_typed(): void
+    {
+        $this->buildTheBakery();
+
+        $manager = $this->employee('administrator', 'Lita Santos', 'lita@purpleyam.test');
+
+        $this->browse(function (Browser $browser) use ($manager): void {
+            $browser->loginAs($manager)
+                ->visit('/employee/workforce/employees/create')
+                ->waitForText('New employee')
+                ->type('name', 'R2D2 Reyes!')
+                ->assertInputValue('name', 'RD Reyes')
+                ->type('email', 'ana @purpleyam.test')
+                ->assertInputValue('email', 'ana@purpleyam.test')
+
+                // Ends on a refused key, the one Livewire would otherwise have
+                // read before it was dropped.
+                ->visit('/employee/outlets/create')
+                ->waitForText('New outlet')
+                ->type('name', 'Valencia Outlet')
+                ->type('address', 'Valencia City, Bukidnon')
+                ->type('phone', '0917abc 123x')
+                ->assertInputValue('phone', '0917 123')
+                ->press('Save outlet')
+                ->waitForLocation('/employee/outlets');
+        });
+
+        // What reached the server is what was left in the field.
+        $this->assertDatabaseHas('outlets', ['name' => 'Valencia Outlet', 'phone' => '0917 123']);
+    }
 }

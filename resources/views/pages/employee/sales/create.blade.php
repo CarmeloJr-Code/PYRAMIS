@@ -242,7 +242,11 @@ new #[Title('Record counter sale')] class extends Component {
                             :label="__('Qty')"
                             type="number"
                             min="1"
+                            step="1"
                             max="999"
+                            inputmode="numeric"
+                            x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
+                            x-on:input="if ($el.value > 999) { $el.value = 999; $el.dispatchEvent(new Event('input')) }"
                             class="md:w-28"
                         />
 

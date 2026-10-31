@@ -115,6 +115,9 @@ new #[Title('Schedule restock')] class extends Component {
     {
         Gate::authorize('schedule-restocks');
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->notes = trim($this->notes);
+
         $validated = $this->validate([
             'outlet_id' => [
                 'required', 'integer',
@@ -125,7 +128,7 @@ new #[Title('Schedule restock')] class extends Component {
                     fn ($query) => $query->where('is_active', true)->where('is_main_branch', false),
                 ),
             ],
-            'scheduled_for' => ['required', 'date'],
+            'scheduled_for' => ['required', 'date_format:Y-m-d'],
             'notes' => ['nullable', 'string', 'max:255'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.product_variant_id' => [
@@ -215,6 +218,11 @@ new #[Title('Schedule restock')] class extends Component {
                             :label="__('Units')"
                             type="number"
                             min="1"
+                            step="1"
+                            max="100000"
+                            inputmode="numeric"
+                            x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
+                            x-on:input="if ($el.value > 100000) { $el.value = 100000; $el.dispatchEvent(new Event('input')) }"
                             class="md:w-32"
                         />
 
@@ -232,7 +240,7 @@ new #[Title('Schedule restock')] class extends Component {
                 @endforeach
             </div>
 
-            <flux:input wire:model="notes" :label="__('Note (optional)')" />
+            <flux:input wire:model="notes" :label="__('Note (optional)')" maxlength="255" />
 
             <div class="flex items-center gap-3">
                 <flux:button variant="primary" type="submit">{{ __('Schedule restock') }}</flux:button>

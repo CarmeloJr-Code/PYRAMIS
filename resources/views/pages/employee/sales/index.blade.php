@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ReportRange;
 use App\Actions\VoidSale;
 use App\Models\Sale;
 use Illuminate\Support\Collection;
@@ -21,9 +22,15 @@ new #[Title('Sales')] class extends Component {
     {
         Gate::authorize('access-sales');
 
-        if ($this->date === '') {
-            $this->date = now()->toDateString();
-        }
+        $this->date = ReportRange::day($this->date, now()->toImmutable());
+    }
+
+    /**
+     * Read a cleared or mistyped day as today rather than querying with it.
+     */
+    public function updatedDate(): void
+    {
+        $this->date = ReportRange::day($this->date, now()->toImmutable());
     }
 
     /**

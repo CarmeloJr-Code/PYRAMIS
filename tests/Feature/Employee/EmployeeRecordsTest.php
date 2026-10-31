@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class EmployeeRecordsTest extends TestCase
@@ -204,5 +205,82 @@ class EmployeeRecordsTest extends TestCase
         $this->actingAs(User::factory()->baker()->create())
             ->get(route('employee.dashboard'))
             ->assertOk();
+    }
+
+    #[TestWith(['R2D2 Reyes', 'regex'])]
+    #[TestWith(['Rosa!', 'regex'])]
+    #[TestWith(['R', 'min'])]
+    public function test_a_name_with_anything_but_letters_is_refused(string $name, string $rule): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', $name)
+            ->set('email', 'rosa@purpleyam.test')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasErrors(['name' => $rule]);
+
+        $this->assertDatabaseMissing('users', ['email' => 'rosa@purpleyam.test']);
+    }
+
+    public function test_a_digit_in_the_name_says_what_it_wants(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'R2D2 Reyes')
+            ->set('email', 'rosa@purpleyam.test')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertSee('Please use letters only in the name.');
+    }
+
+    public function test_periods_apostrophes_hyphens_and_accents_are_part_of_a_name(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', "Ma. Rosa O'Brien-Peñaflor")
+            ->set('email', 'rosa@purpleyam.test')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('users', ['name' => "Ma. Rosa O'Brien-Peñaflor"]);
+    }
+
+    public function test_the_name_and_email_are_stored_without_surrounding_spaces(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', '  Rosa Baker ')
+            ->set('email', ' rosa@purpleyam.test ')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('users', ['name' => 'Rosa Baker', 'email' => 'rosa@purpleyam.test']);
+    }
+
+    public function test_an_email_padded_with_spaces_is_still_a_duplicate(): void
+    {
+        User::factory()->create(['email' => 'taken@purpleyam.test']);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'Someone Else')
+            ->set('email', 'taken@purpleyam.test ')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasErrors(['email' => 'unique']);
+
+        $this->assertSame(1, User::where('email', 'taken@purpleyam.test')->count());
+    }
+
+    public function test_the_fields_restrict_what_can_be_typed_into_them(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->assertSeeHtml("keep(\$el, /[^\\p{L}\\s.'-]/gu)")
+            ->assertSeeHtml('keep($el, /\s/g)')
+            ->assertSeeHtml('maxlength="255"');
     }
 }

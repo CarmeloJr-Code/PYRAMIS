@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ReportRange;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Outlet;
@@ -31,14 +32,28 @@ new #[Title('Expenses')] class extends Component {
     {
         Gate::authorize('access-expenses');
 
-        // The month so far is what an expense screen is usually opened to see.
-        if ($this->from === '') {
-            $this->from = now()->startOfMonth()->toDateString();
-        }
+        $this->keepDates();
+    }
 
-        if ($this->to === '') {
-            $this->to = now()->toDateString();
+    /**
+     * Read a cleared or mistyped bound as its default rather than querying
+     * with it.
+     */
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['from', 'to'], true)) {
+            $this->keepDates();
         }
+    }
+
+    /**
+     * The month so far is what an expense screen is usually opened to see,
+     * so that is what an empty or unreadable bound falls back to.
+     */
+    private function keepDates(): void
+    {
+        $this->from = ReportRange::day($this->from, now()->startOfMonth()->toImmutable());
+        $this->to = ReportRange::day($this->to, now()->toImmutable());
     }
 
     /**

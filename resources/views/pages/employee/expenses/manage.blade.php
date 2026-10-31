@@ -91,6 +91,9 @@ new #[Title('Record expense')] class extends Component {
     {
         Gate::authorize($this->expenseId === null ? 'access-expenses' : 'manage-expenses');
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->description = trim($this->description);
+
         $validated = $this->validate([
             'expense_category_id' => [
                 'required', 'integer',
@@ -106,9 +109,9 @@ new #[Title('Record expense')] class extends Component {
                 'required', 'integer',
                 Rule::exists('outlets', 'id')->where(fn ($query) => $query->where('is_active', true)),
             ],
-            'amount' => ['required', 'numeric', 'min:0.01', 'max:99999999.99'],
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:99999999.99'],
             // Money cannot have been spent in the future.
-            'spent_on' => ['required', 'date', 'before_or_equal:today'],
+            'spent_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'description' => ['required', 'string', 'max:255'],
         ]);
 
@@ -147,9 +150,20 @@ new #[Title('Record expense')] class extends Component {
         </flux:callout>
     @else
         <form wire:submit="save" class="flex flex-col gap-6">
-            <flux:input wire:model="description" :label="__('What it was')" placeholder="{{ __('Flour delivery') }}" required autofocus />
+            <flux:input wire:model="description" :label="__('What it was')" placeholder="{{ __('Flour delivery') }}" maxlength="255" required autofocus />
 
-            <flux:input wire:model="amount" :label="__('Amount')" type="number" step="0.01" min="0.01" required />
+            <flux:input
+                wire:model="amount"
+                :label="__('Amount')"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="99999999.99"
+                inputmode="decimal"
+                x-on:keydown="['e', 'E', '+', '-', ','].includes($event.key) && $event.preventDefault()"
+                x-on:input="if ($el.value > 99999999.99) { $el.value = 99999999.99; $el.dispatchEvent(new Event('input')) }"
+                required
+            />
 
             <flux:select wire:model="expense_category_id" :label="__('Category')" required>
                 <flux:select.option value="">{{ __('Choose a category') }}</flux:select.option>
@@ -169,7 +183,7 @@ new #[Title('Record expense')] class extends Component {
                 @endforeach
             </flux:select>
 
-            <flux:input wire:model="spent_on" :label="__('Date spent')" type="date" required />
+            <flux:input wire:model="spent_on" :label="__('Date spent')" type="date" :max="now()->toDateString()" required />
 
             <div class="flex items-center gap-3">
                 <flux:button variant="primary" type="submit">{{ __('Save expense') }}</flux:button>

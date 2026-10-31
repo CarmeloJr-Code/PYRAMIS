@@ -241,6 +241,11 @@ new class extends Component {
                                     :label="__('Prepared')"
                                     type="number"
                                     min="0"
+                                    step="1"
+                                    max="100000"
+                                    inputmode="numeric"
+                                    x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
+                                    x-on:input="if ($el.value > 100000) { $el.value = 100000; $el.dispatchEvent(new Event('input')) }"
                                 />
                             </div>
                         </div>

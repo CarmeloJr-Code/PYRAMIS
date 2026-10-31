@@ -251,4 +251,32 @@ class InternalMessagingTest extends TestCase
         $this->assertSame('First thing', $messages->first()->body);
         $this->assertSame('Second thing', $messages->last()->body);
     }
+
+    public function test_the_subject_and_message_are_stored_without_surrounding_spaces(): void
+    {
+        $baker = User::factory()->baker()->create();
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.messages.create')
+            ->set('subject', '  Ube cakes for Saturday ')
+            ->set('participantIds', [$baker->id])
+            ->set('body', "Twelve by nine?\n\n")
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $conversation = Conversation::firstWhere('subject', 'Ube cakes for Saturday');
+
+        $this->assertNotNull($conversation);
+        $this->assertSame('Twelve by nine?', $conversation->messages()->first()->body);
+    }
+
+    public function test_the_fields_stop_at_what_they_can_hold(): void
+    {
+        User::factory()->baker()->create();
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.messages.create')
+            ->assertSeeHtml('maxlength="255"')
+            ->assertSeeHtml('maxlength="2000"');
+    }
 }

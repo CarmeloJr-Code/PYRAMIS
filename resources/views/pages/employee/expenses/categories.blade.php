@@ -41,6 +41,10 @@ new #[Title('Expense categories')] class extends Component {
     {
         Gate::authorize('manage-expenses');
 
+        // Livewire skips the TrimStrings middleware, so a stray space would
+        // otherwise be stored, and slip a duplicate name past unique.
+        $this->name = trim($this->name);
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('expense_categories', 'name')],
         ]);
@@ -122,7 +126,7 @@ new #[Title('Expense categories')] class extends Component {
                 <flux:heading size="lg">{{ __('Add a category') }}</flux:heading>
 
                 <form wire:submit="add" class="mt-4 flex flex-col gap-4">
-                    <flux:input wire:model="name" :label="__('Name')" required />
+                    <flux:input wire:model="name" :label="__('Name')" maxlength="255" required />
                     <flux:button variant="primary" type="submit">{{ __('Add') }}</flux:button>
                 </form>
             </flux:card>

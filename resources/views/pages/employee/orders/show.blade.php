@@ -281,7 +281,14 @@ new class extends Component {
         @endif
 
         @if ($order->status === OrderStatus::Pending)
-            <form wire:submit="confirmPayment" class="flex flex-col gap-4">
+            {{-- keep() drops what confirmPayment() would refuse as it is typed or
+                 pasted, then repeats the input event so wire:model holds the
+                 kept text. The server rules stay the authority. --}}
+            <form
+                wire:submit="confirmPayment"
+                x-data="{ keep(el, refused) { const kept = el.value.replace(refused, ''); if (kept !== el.value) { el.value = kept; el.dispatchEvent(new Event('input')) } } }"
+                class="flex flex-col gap-4"
+            >
                 <div class="grid gap-4 sm:grid-cols-2">
                     <flux:input
                         wire:model="amount"
@@ -289,7 +296,10 @@ new class extends Component {
                         type="number"
                         step="0.01"
                         min="0"
+                        max="99999999.99"
                         inputmode="decimal"
+                        x-on:keydown="['e', 'E', '+', '-', ','].includes($event.key) && $event.preventDefault()"
+                        x-on:input="if ($el.value > 99999999.99) { $el.value = 99999999.99; $el.dispatchEvent(new Event('input')) }"
                         :description="__('Exactly as shown in your GCash app. Order total: ₱:total', ['total' => $order->total()])"
                         required
                     />
@@ -298,6 +308,7 @@ new class extends Component {
                         :label="__('GCash reference number')"
                         inputmode="numeric"
                         maxlength="20"
+                        x-on:input="keep($el, /[^\d\s]/g)"
                         :description="__('13 digits. Check it matches the one in your GCash app.')"
                         required
                     />

@@ -214,4 +214,12 @@ class ConfirmOrderPaymentTest extends TestCase
 
         $this->get(route('employee.orders.receipt', $order))->assertNotFound();
     }
+
+    public function test_the_fields_restrict_what_can_be_typed_into_them(): void
+    {
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.show', ['order' => $this->order()])
+            ->assertSeeHtml('keep($el, /[^\d\s]/g)')
+            ->assertSeeHtml('max="99999999.99"');
+    }
 }

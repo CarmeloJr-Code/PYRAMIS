@@ -256,4 +256,14 @@ class CounterSaleTest extends TestCase
         $this->assertSame(SaleStatus::Voided, $sale->fresh()->status);
         $this->assertDatabaseCount('sales', 1);
     }
+
+    public function test_the_quantity_field_takes_whole_numbers_only(): void
+    {
+        $this->variant();
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.create')
+            ->assertSeeHtml('inputmode="numeric"')
+            ->assertSeeHtml('max="999"');
+    }
 }

@@ -1,7 +1,9 @@
 <?php
 
+use App\Concerns\ReportRange;
 use App\Models\Shift;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -20,9 +22,9 @@ new #[Title('Workforce')] class extends Component {
     {
         Gate::authorize('access-workforce');
 
-        if ($this->weekStart === '') {
-            $this->weekStart = now()->startOfWeek()->toDateString();
-        }
+        // The week is in the URL, so anything can arrive there; what is not a
+        // date opens on this week instead of failing.
+        $this->weekStart = ReportRange::day($this->weekStart, now()->startOfWeek()->toImmutable());
     }
 
     /**
@@ -33,7 +35,7 @@ new #[Title('Workforce')] class extends Component {
     #[Computed]
     public function days(): Collection
     {
-        $start = now()->parse($this->weekStart)->startOfDay();
+        $start = CarbonImmutable::parse($this->weekStart)->startOfDay();
 
         return collect(range(0, 6))->map(fn (int $offset) => $start->addDays($offset));
     }
@@ -95,7 +97,9 @@ new #[Title('Workforce')] class extends Component {
      */
     public function shiftWeek(int $weeks): void
     {
-        $this->weekStart = now()->parse($this->weekStart)->addWeeks($weeks)->toDateString();
+        $this->weekStart = CarbonImmutable::parse(
+            ReportRange::day($this->weekStart, now()->startOfWeek()->toImmutable()),
+        )->addWeeks($weeks)->toDateString();
 
         unset($this->days, $this->shiftsByDay, $this->unstaffedCount, $this->unscheduled);
     }

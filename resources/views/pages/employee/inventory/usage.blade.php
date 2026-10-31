@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ReportRange;
 use App\Actions\RecordInventoryMovement;
 use App\Enums\InventoryMovementType;
 use App\Models\Ingredient;
@@ -38,11 +39,17 @@ new #[Title('Ingredient usage')] class extends Component {
     {
         Gate::authorize('access-inventory');
 
-        if ($this->date === '') {
-            $this->date = now()->toDateString();
-        }
+        $this->date = ReportRange::day($this->date, now()->toImmutable());
 
         $this->addLine();
+    }
+
+    /**
+     * Read a cleared or mistyped day as today rather than querying with it.
+     */
+    public function updatedDate(): void
+    {
+        $this->date = ReportRange::day($this->date, now()->toImmutable());
     }
 
     /**
@@ -128,10 +135,13 @@ new #[Title('Ingredient usage')] class extends Component {
     {
         Gate::authorize('access-inventory');
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->note = trim($this->note);
+
         $validated = $this->validate([
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.ingredient_id' => ['required', 'integer', 'distinct'],
-            'lines.*.quantity' => ['required', 'numeric', 'min:0.001', 'max:999999999'],
+            'lines.*.quantity' => ['required', 'numeric', 'decimal:0,3', 'min:0.001', 'max:999999999'],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -231,6 +241,10 @@ new #[Title('Ingredient usage')] class extends Component {
                                 type="number"
                                 step="0.001"
                                 min="0.001"
+                                max="999999999"
+                                inputmode="decimal"
+                                x-on:keydown="['e', 'E', '+', '-', ','].includes($event.key) && $event.preventDefault()"
+                                x-on:input="if ($el.value > 999999999) { $el.value = 999999999; $el.dispatchEvent(new Event('input')) }"
                                 class="md:w-32"
                             />
 
@@ -254,6 +268,7 @@ new #[Title('Ingredient usage')] class extends Component {
                     <flux:input
                         wire:model="note"
                         :label="__('What it was for (optional)')"
+                        maxlength="255"
                         placeholder="{{ __('Ube custard cake, 7 pans') }}"
                     />
 

@@ -44,6 +44,10 @@ new #[Title('New conversation')] class extends Component {
      */
     public function save(): void
     {
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->subject = trim($this->subject);
+        $this->body = trim($this->body);
+
         $validated = $this->validate([
             'subject' => ['required', 'string', 'max:255'],
             'participantIds' => ['required', 'array', 'min:1'],
@@ -84,7 +88,7 @@ new #[Title('New conversation')] class extends Component {
         </flux:callout>
     @else
         <form wire:submit="save" class="flex flex-col gap-6">
-            <flux:input wire:model="subject" :label="__('What it is about')" required autofocus />
+            <flux:input wire:model="subject" :label="__('What it is about')" maxlength="255" required autofocus />
 
             <div class="flex flex-col gap-2">
                 <flux:heading size="sm">{{ __('Who is in it') }}</flux:heading>
@@ -105,7 +109,7 @@ new #[Title('New conversation')] class extends Component {
                 </div>
             </div>
 
-            <flux:textarea wire:model="body" :label="__('First message')" rows="4" required />
+            <flux:textarea wire:model="body" :label="__('First message')" rows="4" maxlength="2000" required />
 
             <div class="flex items-center gap-3">
                 <flux:button variant="primary" type="submit">{{ __('Start conversation') }}</flux:button>

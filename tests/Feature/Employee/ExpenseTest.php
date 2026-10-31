@@ -269,4 +269,72 @@ class ExpenseTest extends TestCase
 
         $this->assertSame(1, ExpenseCategory::where('name', 'Utilities')->count());
     }
+
+    public function test_it_refuses_an_amount_finer_than_a_centavo(): void
+    {
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.expenses.manage')
+            ->set('description', 'Flour delivery')
+            ->set('amount', '2450.505')
+            ->set('expense_category_id', $this->category->id)
+            ->set('outlet_id', $this->mainBranch->id)
+            ->set('spent_on', now()->toDateString())
+            ->call('save')
+            ->assertHasErrors(['amount' => 'decimal']);
+
+        $this->assertSame(0, Expense::count());
+    }
+
+    public function test_it_refuses_a_date_that_is_not_a_calendar_day(): void
+    {
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.expenses.manage')
+            ->set('description', 'Flour delivery')
+            ->set('amount', '2450.50')
+            ->set('expense_category_id', $this->category->id)
+            ->set('outlet_id', $this->mainBranch->id)
+            ->set('spent_on', 'yesterday')
+            ->call('save')
+            ->assertHasErrors(['spent_on' => 'date_format']);
+
+        $this->assertSame(0, Expense::count());
+    }
+
+    public function test_the_description_is_stored_without_surrounding_spaces(): void
+    {
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.expenses.manage')
+            ->set('description', '  Flour delivery ')
+            ->set('amount', '2450.50')
+            ->set('expense_category_id', $this->category->id)
+            ->set('outlet_id', $this->mainBranch->id)
+            ->set('spent_on', now()->toDateString())
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('expenses', ['description' => 'Flour delivery']);
+    }
+
+    public function test_an_unreadable_or_cleared_range_falls_back_to_the_month_so_far(): void
+    {
+        Livewire::withQueryParams(['from' => 'nope', 'to' => '2026-13-45'])
+            ->actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.expenses.index')
+            ->assertOk()
+            ->assertSet('from', now()->startOfMonth()->toDateString())
+            ->assertSet('to', now()->toDateString())
+            ->set('from', '')
+            ->assertSet('from', now()->startOfMonth()->toDateString());
+    }
+
+    public function test_a_padded_category_name_is_still_a_duplicate(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.expenses.categories')
+            ->set('name', ' Utilities ')
+            ->call('add')
+            ->assertHasErrors(['name' => 'unique']);
+
+        $this->assertSame(1, ExpenseCategory::count());
+    }
 }

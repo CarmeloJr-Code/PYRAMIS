@@ -43,14 +43,24 @@ new #[Title('Manage outlet')] class extends Component {
     {
         Gate::authorize('manage-outlets');
 
+        // Livewire skips the TrimStrings middleware, so a stray space would
+        // otherwise be stored, and slip a duplicate name past unique.
+        foreach (['name', 'address', 'phone'] as $property) {
+            $this->{$property} = trim($this->{$property});
+        }
+
         $validated = $this->validate([
             'name' => [
                 'required', 'string', 'max:255',
                 Rule::unique('outlets', 'name')->ignore($this->outletId),
             ],
             'address' => ['required', 'string', 'max:500'],
-            'phone' => ['nullable', 'string', 'max:50'],
+            // A landline as readily as a mobile: digits and the separators
+            // people write between their groups, with an optional leading +.
+            'phone' => ['nullable', 'string', 'min:7', 'max:20', 'regex:/^\+?[\d\s.()\-]+$/'],
             'is_active' => ['boolean'],
+        ], [
+            'phone.regex' => __('Please use digits only, like 0917 123 4567 or (088) 221 1234.'),
         ]);
 
         $outlet = $this->outletId === null
@@ -77,12 +87,29 @@ new #[Title('Manage outlet')] class extends Component {
 
     <flux:separator variant="subtle" class="my-6" />
 
-    <form wire:submit="save" class="flex max-w-2xl flex-col gap-6">
-        <flux:input wire:model="name" :label="__('Name')" required autofocus />
+    {{-- keep() drops what the rules in save() would refuse as it is typed
+         or pasted, then repeats the input event: wire:model reads the field
+         before keep() runs, and would otherwise hold the refused text. The
+         rules in save() stay the authority. --}}
+    <form
+        wire:submit="save"
+        x-data="{ keep(el, refused) { const kept = el.value.replace(refused, ''); if (kept !== el.value) { el.value = kept; el.dispatchEvent(new Event('input')) } } }"
+        class="flex max-w-2xl flex-col gap-6"
+    >
+        <flux:input wire:model="name" :label="__('Name')" maxlength="255" required autofocus />
 
-        <flux:textarea wire:model="address" :label="__('Address')" rows="3" required />
+        <flux:textarea wire:model="address" :label="__('Address')" rows="3" maxlength="500" required />
 
-        <flux:input wire:model="phone" :label="__('Phone')" :description="__('Optional.')" />
+        <flux:input
+            wire:model="phone"
+            x-on:input="keep($el, /[^\d+\s.()-]/g); keep($el, /(?!^)\+/g)"
+            :label="__('Phone')"
+            type="tel"
+            inputmode="tel"
+            maxlength="20"
+            placeholder="(088) 221 1234"
+            :description="__('Optional. Mobile or landline.')"
+        />
 
         <flux:switch
             wire:model="is_active"

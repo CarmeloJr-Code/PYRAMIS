@@ -20,7 +20,9 @@ class OutletFactory extends Factory
         return [
             'name' => fake()->unique()->word().' Outlet',
             'address' => fake()->address(),
-            'phone' => fake()->phoneNumber(),
+            // Shaped as the outlet form accepts it; fake()->phoneNumber() can
+            // carry an extension like "x123", which an edit would then refuse.
+            'phone' => fake()->numerify('0917 ### ####'),
             'is_active' => true,
         ];
     }

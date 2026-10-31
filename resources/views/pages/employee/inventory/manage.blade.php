@@ -66,13 +66,17 @@ new #[Title('Manage ingredient')] class extends Component {
     {
         Gate::authorize('access-inventory');
 
+        // Livewire skips the TrimStrings middleware, so a stray space would
+        // otherwise be stored, and slip a duplicate name past unique.
+        $this->name = trim($this->name);
+
         $validated = $this->validate([
             'name' => [
                 'required', 'string', 'max:255',
                 Rule::unique('ingredients', 'name')->ignore($this->ingredientId),
             ],
             'unit' => ['required', Rule::enum(IngredientUnit::class)],
-            'reorder_level' => ['required', 'numeric', 'min:0', 'max:999999999'],
+            'reorder_level' => ['required', 'numeric', 'decimal:0,3', 'min:0', 'max:999999999'],
             'is_active' => ['boolean'],
         ]);
 
@@ -107,7 +111,7 @@ new #[Title('Manage ingredient')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <form wire:submit="save" class="flex flex-col gap-6">
-        <flux:input wire:model="name" :label="__('Name')" required autofocus />
+        <flux:input wire:model="name" :label="__('Name')" maxlength="255" required autofocus />
 
         <flux:select wire:model="unit" :label="__('Stocked in')" required :disabled="$unitIsLocked">
             <flux:select.option value="">{{ __('Choose a unit') }}</flux:select.option>
@@ -129,6 +133,10 @@ new #[Title('Manage ingredient')] class extends Component {
             type="number"
             step="0.001"
             min="0"
+            max="999999999"
+            inputmode="decimal"
+            x-on:keydown="['e', 'E', '+', '-', ','].includes($event.key) && $event.preventDefault()"
+            x-on:input="if ($el.value > 999999999) { $el.value = 999999999; $el.dispatchEvent(new Event('input')) }"
         />
 
         <flux:switch

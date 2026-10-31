@@ -294,4 +294,26 @@ class ProductionRunTest extends TestCase
         $this->assertSame(7, $output->first()['units']);
         $this->assertCount(2, $component->instance()->runs());
     }
+
+    public function test_an_unreadable_or_cleared_day_shows_today(): void
+    {
+        Livewire::withQueryParams(['date' => 'nope'])
+            ->actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.runs.index')
+            ->assertOk()
+            ->assertSet('date', now()->toDateString())
+            ->set('date', '')
+            ->assertSet('date', now()->toDateString());
+    }
+
+    public function test_the_units_field_takes_whole_numbers_only(): void
+    {
+        $flour = $this->stocked('All-Purpose Flour', '25.000');
+        $this->producible('Ube Cake', 'Round', 1, [$flour->id => '1.000']);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.runs.index')
+            ->assertSeeHtml('inputmode="numeric"')
+            ->assertSeeHtml('max="100000"');
+    }
 }

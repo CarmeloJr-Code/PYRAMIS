@@ -204,4 +204,28 @@ class IngredientUsageTest extends TestCase
             'quantity' => '-4.000',
         ]);
     }
+
+    public function test_a_quantity_finer_than_the_ledger_holds_is_refused(): void
+    {
+        $flour = $this->stocked('All-Purpose Flour', '25.000');
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.usage')
+            ->set('lines', [['ingredient_id' => $flour->id, 'quantity' => '1.0005']])
+            ->call('record')
+            ->assertHasErrors(['lines.0.quantity' => 'decimal']);
+
+        $this->assertSame(25000, $flour->fresh()->stockInThousandths());
+    }
+
+    public function test_an_unreadable_or_cleared_day_shows_today(): void
+    {
+        Livewire::withQueryParams(['date' => 'nope'])
+            ->actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.usage')
+            ->assertOk()
+            ->assertSet('date', now()->toDateString())
+            ->set('date', '')
+            ->assertSet('date', now()->toDateString());
+    }
 }

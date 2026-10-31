@@ -306,4 +306,45 @@ class InventoryTest extends TestCase
             ->assertSee('Received')
             ->assertSee('Adjustment');
     }
+
+    public function test_a_quantity_finer_than_the_ledger_holds_is_refused(): void
+    {
+        $ingredient = Ingredient::factory()->create();
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.show', ['ingredient' => $ingredient])
+            ->set('quantity', '1.0005')
+            ->call('record')
+            ->assertHasErrors(['quantity' => 'decimal']);
+
+        $this->assertSame(0, $ingredient->movements()->count());
+    }
+
+    public function test_a_reorder_level_finer_than_the_ledger_holds_is_refused(): void
+    {
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'Ube Powder')
+            ->set('unit', IngredientUnit::Gram->value)
+            ->set('reorder_level', '2.0005')
+            ->call('save')
+            ->assertHasErrors(['reorder_level' => 'decimal']);
+
+        $this->assertDatabaseEmpty('ingredients');
+    }
+
+    public function test_a_padded_ingredient_name_is_still_a_duplicate(): void
+    {
+        Ingredient::factory()->create(['name' => 'Ube Powder']);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'Ube Powder ')
+            ->set('unit', IngredientUnit::Gram->value)
+            ->set('reorder_level', '0')
+            ->call('save')
+            ->assertHasErrors(['name' => 'unique']);
+
+        $this->assertSame(1, Ingredient::count());
+    }
 }

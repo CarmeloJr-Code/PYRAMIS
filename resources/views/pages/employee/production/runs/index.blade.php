@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ReportRange;
 use App\Actions\RecordProductionRun;
 use App\Models\Ingredient;
 use App\Models\ProductionRun;
@@ -30,9 +31,15 @@ new #[Title('Production runs')] class extends Component {
     {
         Gate::authorize('access-production');
 
-        if ($this->date === '') {
-            $this->date = now()->toDateString();
-        }
+        $this->date = ReportRange::day($this->date, now()->toImmutable());
+    }
+
+    /**
+     * Read a cleared or mistyped day as today rather than querying with it.
+     */
+    public function updatedDate(): void
+    {
+        $this->date = ReportRange::day($this->date, now()->toImmutable());
     }
 
     /**
@@ -156,6 +163,9 @@ new #[Title('Production runs')] class extends Component {
     {
         Gate::authorize('access-production');
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->notes = trim($this->notes);
+
         $validated = $this->validate([
             'product_variant_id' => ['required', 'integer'],
             'quantity' => ['required', 'integer', 'min:1', 'max:100000'],
@@ -237,10 +247,15 @@ new #[Title('Production runs')] class extends Component {
                         :label="__('Units produced')"
                         type="number"
                         min="1"
+                        step="1"
+                        max="100000"
+                        inputmode="numeric"
+                        x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
+                        x-on:input="if ($el.value > 100000) { $el.value = 100000; $el.dispatchEvent(new Event('input')) }"
                         required
                     />
 
-                    <flux:input wire:model="notes" :label="__('Note (optional)')" />
+                    <flux:input wire:model="notes" :label="__('Note (optional)')" maxlength="255" />
 
                     <flux:button variant="primary" type="submit">{{ __('Log run') }}</flux:button>
                 </form>

@@ -109,7 +109,9 @@ new class extends Component {
             ? null
             : Recipe::with('items')->find($this->recipeId);
 
-        if ($recipe === null || $this->plannedUnits < 1) {
+        // Past what one run may log, the plan would describe nothing the
+        // bakery could record, and the thousandths arithmetic could overflow.
+        if ($recipe === null || $this->plannedUnits < 1 || $this->plannedUnits > 100000) {
             return collect();
         }
 
@@ -163,13 +165,16 @@ new class extends Component {
     {
         Gate::authorize('access-production');
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->notes = trim($this->notes);
+
         $validated = $this->validate([
             'yield_quantity' => ['required', 'integer', 'min:1', 'max:100000'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.id' => ['nullable', 'integer'],
             'items.*.ingredient_id' => ['required', 'integer', 'distinct'],
-            'items.*.quantity' => ['required', 'numeric', 'min:0.001', 'max:999999999'],
+            'items.*.quantity' => ['required', 'numeric', 'decimal:0,3', 'min:0.001', 'max:999999999'],
         ]);
 
         // The form is client state, so every ingredient is re-resolved and
@@ -260,6 +265,11 @@ new class extends Component {
                         :description="__('How many of this size come out of a single batch. What a run of any other number takes is scaled from here.')"
                         type="number"
                         min="1"
+                        step="1"
+                        max="100000"
+                        inputmode="numeric"
+                        x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
+                        x-on:input="if ($el.value > 100000) { $el.value = 100000; $el.dispatchEvent(new Event('input')) }"
                         required
                     />
 
@@ -294,6 +304,10 @@ new class extends Component {
                                     type="number"
                                     step="0.001"
                                     min="0.001"
+                                    max="999999999"
+                                    inputmode="decimal"
+                                    x-on:keydown="['e', 'E', '+', '-', ','].includes($event.key) && $event.preventDefault()"
+                                    x-on:input="if ($el.value > 999999999) { $el.value = 999999999; $el.dispatchEvent(new Event('input')) }"
                                     class="md:w-32"
                                 />
 
@@ -315,6 +329,7 @@ new class extends Component {
                         wire:model="notes"
                         :label="__('Method notes (optional)')"
                         rows="4"
+                        maxlength="2000"
                         :placeholder="__('Anything the baker needs alongside the quantities.')"
                     />
 
@@ -334,6 +349,11 @@ new class extends Component {
                     :label="__('To make')"
                     type="number"
                     min="1"
+                    step="1"
+                    max="100000"
+                    inputmode="numeric"
+                    x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
+                    x-on:input="if ($el.value > 100000) { $el.value = 100000; $el.dispatchEvent(new Event('input')) }"
                     class="mt-4 max-w-40"
                 />
 

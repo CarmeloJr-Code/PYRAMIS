@@ -61,6 +61,9 @@ new class extends Component {
     {
         abort_unless($this->conversation->includes(Auth::user()), 403);
 
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->body = trim($this->body);
+
         $validated = $this->validate([
             'body' => ['required', 'string', 'max:2000'],
         ]);
@@ -130,7 +133,7 @@ new class extends Component {
     </div>
 
     <form wire:submit="send" class="mt-6 flex flex-col gap-3">
-        <flux:textarea wire:model="body" :label="__('Message')" rows="3" required />
+        <flux:textarea wire:model="body" :label="__('Message')" rows="3" maxlength="2000" required />
 
         <flux:button variant="primary" type="submit" class="self-start">{{ __('Send') }}</flux:button>
     </form>

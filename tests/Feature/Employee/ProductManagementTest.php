@@ -215,4 +215,62 @@ class ProductManagementTest extends TestCase
             ->test('pages::employee.products.index')
             ->assertForbidden();
     }
+
+    public function test_it_rejects_a_price_finer_than_a_centavo(): void
+    {
+        $category = Category::factory()->create();
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.manage')
+            ->set('name', 'Ube Cake')
+            ->set('category_id', $category->id)
+            ->set('variants', [['id' => null, 'name' => 'Round', 'price' => '460.005', 'is_available' => true]])
+            ->call('save')
+            ->assertHasErrors(['variants.0.price' => 'decimal']);
+
+        $this->assertDatabaseEmpty('products');
+    }
+
+    public function test_names_are_stored_without_surrounding_spaces(): void
+    {
+        $category = Category::factory()->create();
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.manage')
+            ->set('name', ' Ube Cake  ')
+            ->set('category_id', $category->id)
+            ->set('variants', [['id' => null, 'name' => ' Round ', 'price' => '460.00', 'is_available' => true]])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('products', ['name' => 'Ube Cake']);
+        $this->assertDatabaseHas('product_variants', ['name' => 'Round']);
+    }
+
+    public function test_two_sizes_differing_only_by_a_space_are_the_same_size(): void
+    {
+        $category = Category::factory()->create();
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.manage')
+            ->set('name', 'Ube Cake')
+            ->set('category_id', $category->id)
+            ->set('variants', [
+                ['id' => null, 'name' => 'Round', 'price' => '460.00', 'is_available' => true],
+                ['id' => null, 'name' => 'Round ', 'price' => '480.00', 'is_available' => true],
+            ])
+            ->call('save')
+            ->assertHasErrors(['variants.0.name' => 'distinct']);
+
+        $this->assertDatabaseEmpty('products');
+    }
+
+    public function test_the_price_field_refuses_what_is_not_a_price(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.manage')
+            ->assertSeeHtml('max="9999999.99"')
+            ->assertSeeHtml('inputmode="decimal"')
+            ->assertSeeHtml('maxlength="1000"');
+    }
 }

@@ -308,4 +308,51 @@ class ShiftSchedulingTest extends TestCase
             ->assertSee('Show the previous week')
             ->assertSee('Show the next week');
     }
+
+    public function test_a_day_that_is_not_a_calendar_date_is_refused(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.manage')
+            ->set('name', 'Morning bake')
+            ->set('outlet_id', $this->outlet->id)
+            ->set('date', 'next tuesday')
+            ->set('starts_at', '05:00')
+            ->set('ends_at', '13:00')
+            ->call('save')
+            ->assertHasErrors(['date' => 'date_format']);
+
+        $this->assertSame(0, Shift::count());
+    }
+
+    public function test_the_name_and_note_are_stored_without_surrounding_spaces(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.manage')
+            ->set('name', ' Morning bake ')
+            ->set('outlet_id', $this->outlet->id)
+            ->set('date', '2026-09-10')
+            ->set('starts_at', '05:00')
+            ->set('ends_at', '13:00')
+            ->set('notes', '  Ube cakes ')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('shifts', ['name' => 'Morning bake', 'notes' => 'Ube cakes']);
+    }
+
+    public function test_an_unreadable_week_opens_on_this_one(): void
+    {
+        Shift::factory()->for($this->outlet)
+            ->on(now()->startOfWeek()->toDateString())
+            ->create(['name' => 'Standing bake']);
+
+        Livewire::withQueryParams(['from' => 'nope'])
+            ->actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.index')
+            ->assertOk()
+            ->assertSet('weekStart', now()->startOfWeek()->toDateString())
+            ->assertSee('Standing bake')
+            ->call('shiftWeek', 1)
+            ->assertSet('weekStart', now()->startOfWeek()->addWeek()->toDateString());
+    }
 }

@@ -41,6 +41,18 @@ class ExpenseFactory extends Factory
     }
 
     /**
+     * An expense filed with a photo of its receipt: a one-pixel PNG, enough to
+     * be served and shown.
+     */
+    public function withReceipt(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'receipt' => 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+            'receipt_mime' => 'image/png',
+        ]);
+    }
+
+    /**
      * An expense filed against a given day.
      */
     public function spentOn(string $date): static

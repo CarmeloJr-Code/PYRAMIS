@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Database\Factories\ExpenseFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,10 +25,13 @@ use Illuminate\Support\Facades\DB;
  * @property CarbonImmutable $spent_on
  * @property string $description
  * @property int $recorded_by
+ * @property string|null $receipt
+ * @property string|null $receipt_mime
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['expense_category_id', 'outlet_id', 'amount', 'spent_on', 'description', 'recorded_by'])]
+#[Fillable(['expense_category_id', 'outlet_id', 'amount', 'spent_on', 'description', 'recorded_by', 'receipt', 'receipt_mime'])]
+#[Hidden(['receipt'])]
 class Expense extends Model
 {
     /** @use HasFactory<ExpenseFactory> */
@@ -74,6 +78,29 @@ class Expense extends Model
     public function recordedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recorded_by');
+    }
+
+    /**
+     * Everything but the receipt photo itself, which is a megabyte of base64
+     * that only the receipt route ever needs.
+     *
+     * @param  Builder<Expense>  $query
+     */
+    #[Scope]
+    protected function withoutReceipt(Builder $query): void
+    {
+        $query->select([
+            'id', 'expense_category_id', 'outlet_id', 'amount', 'spent_on', 'description',
+            'recorded_by', 'receipt_mime', 'created_at', 'updated_at',
+        ]);
+    }
+
+    /**
+     * Whether a photo of the receipt was filed with it.
+     */
+    public function hasReceipt(): bool
+    {
+        return $this->receipt_mime !== null;
     }
 
     /**

@@ -12,10 +12,24 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 new #[Title('Record expense')] class extends Component {
+    use WithFileUploads;
+
     #[Locked]
     public ?int $expenseId = null;
+
+    /**
+     * Whether the expense being corrected already has a receipt on file. The
+     * photo itself stays in the database; only the receipt route reads it.
+     */
+    #[Locked]
+    public bool $hasReceipt = false;
+
+    /** @var TemporaryUploadedFile|null */
+    public $receipt = null;
 
     public ?int $expense_category_id = null;
 
@@ -44,6 +58,7 @@ new #[Title('Record expense')] class extends Component {
             $this->amount = (string) $expense->amount;
             $this->spent_on = $expense->spent_on->toDateString();
             $this->description = $expense->description;
+            $this->hasReceipt = $expense->hasReceipt();
 
             return;
         }
@@ -113,6 +128,16 @@ new #[Title('Record expense')] class extends Component {
             // Money cannot have been spent in the future.
             'spent_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'description' => ['required', 'string', 'max:255'],
+            // Proof for whoever checks the figures. Asked of every new expense;
+            // a correction keeps the one on file unless another is attached,
+            // and one filed before receipts were asked can be corrected without.
+            'receipt' => [
+                Rule::requiredIf($this->expenseId === null),
+                'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096',
+            ],
+        ], [
+            'receipt.required' => __('Attach a photo or screenshot of the receipt.'),
+            'receipt.max' => __('The receipt must be 4 MB or smaller.'),
         ]);
 
         $expense = $this->expenseId === null
@@ -127,7 +152,16 @@ new #[Title('Record expense')] class extends Component {
             'amount' => $validated['amount'],
             'spent_on' => $validated['spent_on'],
             'description' => $validated['description'],
-        ])->save();
+        ]);
+
+        if ($this->receipt !== null) {
+            $expense->fill([
+                'receipt' => base64_encode($this->receipt->get()),
+                'receipt_mime' => $this->receipt->getMimeType(),
+            ]);
+        }
+
+        $expense->save();
 
         Flux::toast(variant: 'success', text: __('Expense saved.'));
 
@@ -185,8 +219,105 @@ new #[Title('Record expense')] class extends Component {
 
             <flux:input wire:model="spent_on" :label="__('Date spent')" type="date" :max="now()->toDateString()" required />
 
+            {{-- A phone photo is several megabytes and is kept in the database,
+                 so the browser shrinks it to 1600px of JPEG before it is sent:
+                 still legible, a few hundred kilobytes. What it cannot decode
+                 goes up as it is, and the rules in save() decide. Not
+                 capture="environment": that would open the camera only, and a
+                 screenshot of an e-receipt is as good as a photo. --}}
+            <div
+                class="flex flex-col gap-2"
+                x-data="{
+                    uploading: false,
+                    async pick(event) {
+                        const original = event.target.files[0];
+
+                        if (! original) {
+                            return;
+                        }
+
+                        const file = await this.shrink(original).catch(() => original);
+                        const done = () => this.uploading = false;
+
+                        this.uploading = true;
+                        this.$wire.upload('receipt', file, done, done);
+                    },
+                    shrink(file) {
+                        return new Promise((resolve, reject) => {
+                            const image = new Image();
+                            const url = URL.createObjectURL(file);
+
+                            image.onload = () => {
+                                const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+                                const canvas = document.createElement('canvas');
+                                canvas.width = Math.round(image.naturalWidth * scale);
+                                canvas.height = Math.round(image.naturalHeight * scale);
+
+                                const context = canvas.getContext('2d');
+                                context.fillStyle = '#fff';
+                                context.fillRect(0, 0, canvas.width, canvas.height);
+                                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                                URL.revokeObjectURL(url);
+
+                                canvas.toBlob(
+                                    (blob) => blob ? resolve(new File([blob], 'receipt.jpg', { type: 'image/jpeg' })) : reject(),
+                                    'image/jpeg',
+                                    0.8,
+                                );
+                            };
+                            image.onerror = () => {
+                                URL.revokeObjectURL(url);
+                                reject();
+                            };
+                            image.src = url;
+                        });
+                    },
+                }"
+            >
+                <label for="receipt" class="text-sm font-medium">
+                    {{ $hasReceipt ? __('Replace the receipt') : __('Receipt') }}
+                </label>
+
+                @if ($hasReceipt && $receipt === null)
+                    <a href="{{ route('employee.expenses.receipt', $expenseId) }}" target="_blank" rel="noopener" class="block self-start">
+                        <img
+                            src="{{ route('employee.expenses.receipt', $expenseId) }}"
+                            alt="{{ __('The receipt on file') }}"
+                            class="max-h-48 rounded-lg border border-zinc-200 dark:border-zinc-700"
+                        >
+                        <span class="text-xs text-zinc-500">{{ __('Receipt on file — open full size') }}</span>
+                    </a>
+                @endif
+
+                <input
+                    id="receipt"
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    x-on:change="pick($event)"
+                    class="text-sm text-zinc-600 file:me-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-700 hover:file:bg-zinc-200 dark:text-zinc-300 dark:file:bg-zinc-700 dark:file:text-zinc-100"
+                >
+                <p class="text-xs text-zinc-500">
+                    {{ $expenseId === null
+                        ? __('A photo or screenshot, so whoever checks the figures can match them. PNG, JPG or WebP.')
+                        : __('Optional. Leave empty to keep the receipt on file.') }}
+                </p>
+                <p x-show="uploading" x-cloak class="text-xs text-zinc-500">{{ __('Uploading…') }}</p>
+
+                @if ($receipt !== null && $receipt->isPreviewable())
+                    <img
+                        src="{{ $receipt->temporaryUrl() }}"
+                        alt="{{ __('The receipt being attached') }}"
+                        class="max-h-48 self-start rounded-lg border border-zinc-200 dark:border-zinc-700"
+                    >
+                @endif
+
+                @error('receipt')
+                    <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+                @enderror
+            </div>
+
             <div class="flex items-center gap-3">
-                <flux:button variant="primary" type="submit">{{ __('Save expense') }}</flux:button>
+                <flux:button variant="primary" type="submit" wire:loading.attr="disabled" wire:target="receipt,save">{{ __('Save expense') }}</flux:button>
                 <flux:button variant="ghost" :href="route('employee.expenses.index')" wire:navigate>{{ __('Cancel') }}</flux:button>
             </div>
         </form>

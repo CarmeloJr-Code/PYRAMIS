@@ -91,6 +91,7 @@ new #[Title('Expenses')] class extends Component {
     public function expenses(): Collection
     {
         return Expense::query()
+            ->withoutReceipt()
             ->with(['category', 'outlet', 'recordedBy'])
             ->spentBetween($this->from, $this->to)
             ->when($this->outletId > 0, fn ($query) => $query->where('outlet_id', $this->outletId))
@@ -222,6 +223,7 @@ new #[Title('Expenses')] class extends Component {
                     <flux:table.column>{{ __('Location') }}</flux:table.column>
                     <flux:table.column>{{ __('Recorded by') }}</flux:table.column>
                     <flux:table.column>{{ __('Amount') }}</flux:table.column>
+                    <flux:table.column>{{ __('Receipt') }}</flux:table.column>
                     <flux:table.column />
                 </flux:table.columns>
 
@@ -234,6 +236,20 @@ new #[Title('Expenses')] class extends Component {
                             <flux:table.cell>{{ $expense->outlet->name }}</flux:table.cell>
                             <flux:table.cell class="text-zinc-500">{{ $expense->recordedBy->name }}</flux:table.cell>
                             <flux:table.cell>&#8369;{{ number_format((float) $expense->amount, 2) }}</flux:table.cell>
+                            <flux:table.cell>
+                                @if ($expense->hasReceipt())
+                                    <a href="{{ route('employee.expenses.receipt', $expense) }}" target="_blank" rel="noopener" class="inline-block" title="{{ __('Open the receipt full size') }}">
+                                        <img
+                                            src="{{ route('employee.expenses.receipt', $expense) }}"
+                                            alt="{{ __('Receipt for :description', ['description' => $expense->description]) }}"
+                                            loading="lazy"
+                                            class="h-10 w-10 rounded border border-zinc-200 object-cover dark:border-zinc-700"
+                                        >
+                                    </a>
+                                @else
+                                    <span class="text-sm text-zinc-400">{{ __('No receipt') }}</span>
+                                @endif
+                            </flux:table.cell>
                             <flux:table.cell class="text-end">
                                 @can('manage-expenses')
                                     <flux:button size="sm" variant="ghost" :href="route('employee.expenses.edit', $expense)" wire:navigate>

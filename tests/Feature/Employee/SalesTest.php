@@ -17,12 +17,15 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 use RuntimeException;
 use Tests\TestCase;
 
 class SalesTest extends TestCase
 {
     use RefreshDatabase;
+
+    private ?ProductVariant $variant = null;
 
     /**
      * An order sitting at Ready with two lines, waiting to be collected.
@@ -218,5 +221,114 @@ class SalesTest extends TestCase
             ->assertSet('date', now()->toDateString())
             ->set('date', '')
             ->assertSet('date', now()->toDateString());
+    }
+
+    /**
+     * A completed sale of one line at the given price, rung up at the given moment.
+     */
+    private function soldAt(string $moment, string $price): Sale
+    {
+        $sale = Sale::factory()->create(['sold_at' => $moment]);
+        // One size for them all: a month of sales would otherwise run the
+        // factory out of size names.
+        $this->variant ??= ProductVariant::factory()->create();
+
+        SaleItem::factory()->for($sale)->for($this->variant)->create(['quantity' => 1, 'unit_price' => $price]);
+
+        return $sale;
+    }
+
+    public function test_the_weekly_view_covers_monday_to_sunday_around_the_chosen_day(): void
+    {
+        $this->travelTo('2026-10-21 12:00:00'); // A Wednesday.
+
+        $monday = $this->soldAt('2026-10-19 09:00:00', '100.00');
+        $sunday = $this->soldAt('2026-10-25 17:00:00', '200.00');
+        $lastSunday = $this->soldAt('2026-10-18 17:00:00', '999.00');
+        $nextMonday = $this->soldAt('2026-10-26 09:00:00', '888.00');
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.index')
+            ->set('period', 'week')
+            ->assertSet('period', 'week')
+            ->assertSeeText('300.00')
+            ->assertSeeText('19 Oct 2026 – 25 Oct 2026')
+            ->assertSeeText($monday->reference)
+            ->assertSeeText($sunday->reference)
+            ->assertDontSeeText($lastSunday->reference)
+            ->assertDontSeeText($nextMonday->reference)
+            // The rows span days, so they say which.
+            ->assertSeeText('19 Oct, 9:00am');
+    }
+
+    public function test_the_monthly_view_covers_the_calendar_month_of_the_chosen_day(): void
+    {
+        $this->travelTo('2026-10-21 12:00:00');
+
+        $first = $this->soldAt('2026-10-01 08:00:00', '150.00');
+        $last = $this->soldAt('2026-10-31 18:00:00', '250.00');
+        $september = $this->soldAt('2026-09-30 18:00:00', '777.00');
+
+        Livewire::withQueryParams(['date' => '2026-10-05', 'period' => 'month'])
+            ->actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.index')
+            ->assertSeeText('400.00')
+            ->assertSeeText('01 Oct 2026 – 31 Oct 2026')
+            ->assertSeeText($first->reference)
+            ->assertSeeText($last->reference)
+            ->assertDontSeeText($september->reference)
+            ->assertSeeText('2 transactions');
+    }
+
+    public function test_a_voided_sale_stays_in_the_week_but_leaves_its_total(): void
+    {
+        $this->travelTo('2026-10-21 12:00:00');
+
+        $this->soldAt('2026-10-19 09:00:00', '300.00');
+        $voided = $this->soldAt('2026-10-20 09:00:00', '700.00');
+        $voided->void();
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.index')
+            ->set('period', 'week')
+            ->assertSeeText($voided->reference)
+            ->assertSeeText('300.00')
+            ->assertSeeText('1 transaction')
+            ->assertDontSeeText('1,000.00');
+    }
+
+    #[TestWith(['year'])]
+    #[TestWith([''])]
+    public function test_an_unknown_period_shows_the_day(string $period): void
+    {
+        Livewire::withQueryParams(['period' => $period])
+            ->actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.index')
+            ->assertOk()
+            ->assertSet('period', 'day')
+            ->set('period', 'fortnight')
+            ->assertSet('period', 'day');
+    }
+
+    public function test_a_month_of_sales_is_paged_and_a_new_period_starts_on_page_one(): void
+    {
+        $this->travelTo('2026-10-21 12:00:00');
+
+        foreach (range(1, 30) as $day) {
+            $this->soldAt(sprintf('2026-10-%02d 10:00:00', $day), '10.00');
+        }
+
+        $component = Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.index')
+            ->set('period', 'month');
+
+        // Every sale counts towards the total, not just the page showing.
+        $component->assertSeeText('300.00')->assertSeeText('30 transactions');
+        $this->assertCount(25, $component->instance()->sales());
+
+        $component->call('nextPage')
+            ->assertSet('paginators.page', 2)
+            ->set('period', 'day')
+            ->assertSet('paginators.page', 1);
     }
 }

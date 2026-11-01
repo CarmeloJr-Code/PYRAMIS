@@ -1,19 +1,33 @@
 <?php
 
-use App\Concerns\ReportRange;
 use App\Actions\VoidSale;
+use App\Concerns\ReportRange;
 use App\Models\Sale;
-use Illuminate\Support\Collection;
+use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Title('Sales')] class extends Component {
+    use WithPagination;
+
+    /**
+     * The stretches the list can cover, each a calendar one around the chosen day.
+     */
+    private const PERIODS = ['day', 'week', 'month'];
+
+    private const PER_PAGE = 25;
+
     #[Url(as: 'date', except: '')]
     public string $date = '';
+
+    #[Url(as: 'period', except: 'day')]
+    public string $period = 'day';
 
     /**
      * Authorize every entry into the component, not just the route.
@@ -23,6 +37,7 @@ new #[Title('Sales')] class extends Component {
         Gate::authorize('access-sales');
 
         $this->date = ReportRange::day($this->date, now()->toImmutable());
+        $this->keepPeriod();
     }
 
     /**
@@ -31,46 +46,74 @@ new #[Title('Sales')] class extends Component {
     public function updatedDate(): void
     {
         $this->date = ReportRange::day($this->date, now()->toImmutable());
+
+        $this->resetPage();
     }
 
     /**
-     * The sales recorded on the chosen day, newest first.
-     *
-     * @return Collection<int, Sale>
+     * A new stretch starts back on its first page.
+     */
+    public function updatedPeriod(): void
+    {
+        $this->keepPeriod();
+
+        $this->resetPage();
+    }
+
+    /**
+     * The days covered: the chosen day, or the Monday-to-Sunday week or the
+     * calendar month it falls in.
      */
     #[Computed]
-    public function sales(): Collection
+    public function range(): ReportRange
+    {
+        $day = CarbonImmutable::parse($this->date);
+
+        [$from, $to] = match ($this->period) {
+            'week' => [$day->startOfWeek(), $day->endOfWeek()],
+            'month' => [$day->startOfMonth(), $day->endOfMonth()],
+            default => [$day, $day],
+        };
+
+        return ReportRange::between($from->toDateString(), $to->toDateString());
+    }
+
+    /**
+     * The sales recorded over the range, newest first, a page at a time: a
+     * month of them is too many to load at once.
+     *
+     * @return LengthAwarePaginator<int, Sale>
+     */
+    #[Computed]
+    public function sales(): LengthAwarePaginator
     {
         return Sale::query()
             ->with(['outlet', 'items', 'recordedBy', 'order'])
-            ->whereDate('sold_at', $this->date)
+            ->whereDate('sold_at', '>=', $this->range->from())
+            ->whereDate('sold_at', '<=', $this->range->to())
             ->orderByDesc('sold_at')
-            ->get();
+            ->paginate(self::PER_PAGE);
     }
 
     /**
-     * Total Sales for the day — the first operational metric the Phase 4 spec
-     * asks for. Voided sales are excluded: they are kept for audit, not for
-     * takings.
+     * Total Sales over the range — the first operational metric the Phase 4
+     * spec asks for. Summed in SQL across every page, and voided sales are
+     * excluded: they are kept for audit, not for takings.
      */
     #[Computed]
-    public function dailyTotal(): string
+    public function total(): string
     {
-        $centavos = $this->sales
-            ->reject(fn (Sale $sale): bool => $sale->isVoided())
-            ->sum(fn (Sale $sale): int => $sale->totalInCentavos());
-
         // Grouped for reading, unlike Sale::total(), which stays a bare value.
-        return number_format($centavos / 100, 2);
+        return number_format(Sale::takingsInCentavos($this->range->from(), $this->range->to()) / 100, 2);
     }
 
     /**
-     * How many sales actually count towards the day's takings.
+     * How many sales actually count towards the range's takings.
      */
     #[Computed]
     public function completedCount(): int
     {
-        return $this->sales->reject(fn (Sale $sale): bool => $sale->isVoided())->count();
+        return Sale::countCompleted($this->range->from(), $this->range->to());
     }
 
     /**
@@ -83,7 +126,19 @@ new #[Title('Sales')] class extends Component {
 
         app(VoidSale::class)->handle(Sale::findOrFail($saleId), Auth::user());
 
-        unset($this->sales, $this->dailyTotal, $this->completedCount);
+        unset($this->sales, $this->total, $this->completedCount);
+    }
+
+    /**
+     * Read anything but a known period, as an edited URL might carry, as a day.
+     */
+    private function keepPeriod(): void
+    {
+        if (! in_array($this->period, self::PERIODS, true)) {
+            $this->period = 'day';
+        }
+
+        unset($this->range);
     }
 }; ?>
 
@@ -102,18 +157,27 @@ new #[Title('Sales')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <flux:input
-            wire:model.live="date"
-            type="date"
-            :label="__('Day')"
-            class="max-w-48"
-        />
+        <div class="flex flex-wrap items-end gap-4">
+            <flux:radio.group wire:model.live="period" :label="__('Show')" variant="segmented">
+                <flux:radio value="day" :label="__('Daily')" />
+                <flux:radio value="week" :label="__('Weekly')" />
+                <flux:radio value="month" :label="__('Monthly')" />
+            </flux:radio.group>
+
+            <flux:input
+                wire:model.live="date"
+                type="date"
+                :label="match ($period) { 'week' => __('Week of'), 'month' => __('Month of'), default => __('Day') }"
+                class="max-w-48"
+            />
+        </div>
 
         <div class="flex flex-col items-end">
             <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Total sales') }}</span>
-            <span class="text-3xl font-semibold">&#8369;{{ $this->dailyTotal }}</span>
+            <span class="text-3xl font-semibold">&#8369;{{ $this->total }}</span>
             <span class="text-sm text-zinc-500">
-                {{ trans_choice('{1} :count transaction|[2,*] :count transactions', $this->completedCount, ['count' => $this->completedCount]) }}
+                {{ $this->range->label() }} &middot;
+                {{ trans_choice('{0} no transactions|{1} :count transaction|[2,*] :count transactions', $this->completedCount, ['count' => $this->completedCount]) }}
             </span>
         </div>
     </div>
@@ -121,11 +185,13 @@ new #[Title('Sales')] class extends Component {
     @if ($this->sales->isEmpty())
         <flux:callout icon="banknotes">
             <flux:callout.heading>{{ __('Nothing recorded') }}</flux:callout.heading>
-            <flux:callout.text>{{ __('No sales were recorded on this day.') }}</flux:callout.text>
+            <flux:callout.text>
+                {{ match ($period) { 'week' => __('No sales were recorded this week.'), 'month' => __('No sales were recorded this month.'), default => __('No sales were recorded on this day.') } }}
+            </flux:callout.text>
         </flux:callout>
     @else
         <div class="overflow-x-auto">
-            <flux:table>
+            <flux:table :paginate="$this->sales">
                 <flux:table.columns>
                     <flux:table.column>{{ __('Sale') }}</flux:table.column>
                     <flux:table.column>{{ __('Time') }}</flux:table.column>
@@ -140,7 +206,8 @@ new #[Title('Sales')] class extends Component {
                     @foreach ($this->sales as $sale)
                         <flux:table.row :key="$sale->id">
                             <flux:table.cell class="font-mono font-medium">{{ $sale->reference }}</flux:table.cell>
-                            <flux:table.cell>{{ $sale->sold_at->format('g:ia') }}</flux:table.cell>
+                            {{-- Over a week or a month the rows span days, so they say which. --}}
+                            <flux:table.cell>{{ $sale->sold_at->format($period === 'day' ? 'g:ia' : 'd M, g:ia') }}</flux:table.cell>
                             <flux:table.cell>{{ $sale->outlet->name }}</flux:table.cell>
                             <flux:table.cell>
                                 @if ($sale->order)

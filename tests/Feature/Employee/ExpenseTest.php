@@ -8,8 +8,11 @@ use App\Models\ExpenseCategory;
 use App\Models\Outlet;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class ExpenseTest extends TestCase
@@ -20,12 +23,39 @@ class ExpenseTest extends TestCase
 
     private ExpenseCategory $category;
 
+    /**
+     * A one-pixel PNG: a real image, so the image rule passes without GD.
+     */
+    private const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->mainBranch = Outlet::factory()->mainBranch()->create(['name' => 'Main Branch']);
         $this->category = ExpenseCategory::factory()->create(['name' => 'Utilities']);
+    }
+
+    /**
+     * A photo of a receipt, as the browser sends it.
+     */
+    private function receipt(string $name = 'receipt.png'): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent($name, base64_decode(self::PNG));
+    }
+
+    /**
+     * The form filled in for a new expense, everything but the receipt.
+     */
+    private function filledIn(User $user): Testable
+    {
+        return Livewire::actingAs($user)
+            ->test('pages::employee.expenses.manage')
+            ->set('description', 'Flour delivery')
+            ->set('amount', '2450.50')
+            ->set('expense_category_id', $this->category->id)
+            ->set('outlet_id', $this->mainBranch->id)
+            ->set('spent_on', now()->toDateString());
     }
 
     /**
@@ -89,6 +119,7 @@ class ExpenseTest extends TestCase
             ->set('expense_category_id', $this->category->id)
             ->set('outlet_id', $this->mainBranch->id)
             ->set('spent_on', now()->subDay()->toDateString())
+            ->set('receipt', $this->receipt())
             ->call('save')
             ->assertHasNoErrors();
 
@@ -309,6 +340,7 @@ class ExpenseTest extends TestCase
             ->set('expense_category_id', $this->category->id)
             ->set('outlet_id', $this->mainBranch->id)
             ->set('spent_on', now()->toDateString())
+            ->set('receipt', $this->receipt())
             ->call('save')
             ->assertHasNoErrors();
 
@@ -336,5 +368,146 @@ class ExpenseTest extends TestCase
             ->assertHasErrors(['name' => 'unique']);
 
         $this->assertSame(1, ExpenseCategory::count());
+    }
+
+    public function test_an_expense_cannot_be_recorded_without_its_receipt(): void
+    {
+        $this->filledIn(User::factory()->cashier()->create())
+            ->call('save')
+            ->assertHasErrors(['receipt' => 'required'])
+            ->assertSee('Attach a photo or screenshot of the receipt.');
+
+        $this->assertSame(0, Expense::count());
+    }
+
+    public function test_the_receipt_is_filed_with_the_expense(): void
+    {
+        $this->filledIn(User::factory()->cashier()->create())
+            ->set('receipt', $this->receipt())
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $expense = Expense::firstWhere('description', 'Flour delivery');
+
+        $this->assertTrue($expense->hasReceipt());
+        $this->assertSame('image/png', $expense->receipt_mime);
+        $this->assertSame(base64_decode(self::PNG), base64_decode($expense->receipt));
+    }
+
+    public function test_a_receipt_that_is_not_an_image_or_too_large_is_refused(): void
+    {
+        $cashier = User::factory()->cashier()->create();
+
+        $this->filledIn($cashier)
+            ->set('receipt', UploadedFile::fake()->create('receipt.pdf', 10, 'application/pdf'))
+            ->call('save')
+            ->assertHasErrors(['receipt' => 'image']);
+
+        $this->filledIn($cashier)
+            ->set('receipt', UploadedFile::fake()->create('receipt.png', 5000, 'image/png'))
+            ->call('save')
+            ->assertHasErrors(['receipt' => 'max']);
+
+        $this->assertSame(0, Expense::count());
+    }
+
+    public function test_a_correction_keeps_the_receipt_on_file_unless_another_is_attached(): void
+    {
+        $expense = Expense::factory()->for($this->mainBranch)->for($this->category, 'category')->withReceipt()->create();
+        $administrator = User::factory()->administrator()->create();
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.expenses.manage', ['expense' => $expense])
+            ->assertSet('hasReceipt', true)
+            ->assertSeeHtml(route('employee.expenses.receipt', $expense))
+            ->set('description', 'Corrected')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(self::PNG, $expense->fresh()->receipt);
+
+        $replacement = base64_encode(base64_decode(self::PNG).'replaced');
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.expenses.manage', ['expense' => $expense])
+            ->set('receipt', UploadedFile::fake()->createWithContent('new.png', base64_decode($replacement)))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame($replacement, $expense->fresh()->receipt);
+    }
+
+    public function test_an_expense_filed_before_receipts_were_asked_can_still_be_corrected(): void
+    {
+        $expense = Expense::factory()->for($this->mainBranch)->for($this->category, 'category')->create();
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.expenses.manage', ['expense' => $expense])
+            ->set('description', 'Corrected')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('Corrected', $expense->fresh()->description);
+        $this->assertFalse($expense->fresh()->hasReceipt());
+    }
+
+    #[TestWith([UserRole::Administrator])]
+    #[TestWith([UserRole::Cashier])]
+    public function test_the_receipt_is_served_to_those_who_handle_spending(UserRole $role): void
+    {
+        $expense = Expense::factory()->for($this->mainBranch)->for($this->category, 'category')->withReceipt()->create();
+
+        $response = $this->actingAs(User::factory()->create(['role' => $role]))
+            ->get(route('employee.expenses.receipt', $expense))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+
+        $this->assertSame(base64_decode(self::PNG), $response->getContent());
+    }
+
+    public function test_the_receipt_is_kept_from_bakers_and_guests(): void
+    {
+        $expense = Expense::factory()->for($this->mainBranch)->for($this->category, 'category')->withReceipt()->create();
+
+        $this->get(route('employee.expenses.receipt', $expense))->assertRedirect(route('login'));
+
+        $this->actingAs(User::factory()->baker()->create())
+            ->get(route('employee.expenses.receipt', $expense))
+            ->assertForbidden();
+    }
+
+    public function test_an_expense_without_a_receipt_has_none_to_serve(): void
+    {
+        $expense = Expense::factory()->for($this->mainBranch)->for($this->category, 'category')->create();
+
+        $this->actingAs(User::factory()->administrator()->create())
+            ->get(route('employee.expenses.receipt', $expense))
+            ->assertNotFound();
+    }
+
+    public function test_the_list_shows_each_receipt_without_loading_the_photos(): void
+    {
+        $receipted = Expense::factory()->for($this->mainBranch)->for($this->category, 'category')
+            ->withReceipt()->create(['description' => 'Electricity']);
+        Expense::factory()->for($this->mainBranch)->for($this->category, 'category')
+            ->create(['description' => 'Old bill']);
+
+        $component = Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.expenses.index')
+            ->assertSeeHtml('src="'.route('employee.expenses.receipt', $receipted).'"')
+            ->assertSee('No receipt');
+
+        foreach ($component->instance()->expenses() as $expense) {
+            $this->assertArrayNotHasKey('receipt', $expense->getAttributes());
+        }
+    }
+
+    public function test_the_form_shrinks_the_photo_before_sending_it(): void
+    {
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.expenses.manage')
+            ->assertSeeHtml("this.\$wire.upload('receipt'")
+            ->assertSeeHtml('accept="image/png,image/jpeg,image/webp"')
+            ->assertDontSeeHtml('capture=');
     }
 }

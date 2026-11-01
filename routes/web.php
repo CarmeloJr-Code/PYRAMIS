@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Employee\ExpenseReceiptController;
 use App\Http\Controllers\Employee\OrderReceiptController;
 use App\Http\Middleware\EnsureEmployeeIsActive;
 use Illuminate\Http\Request;
@@ -81,6 +82,7 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($
         Route::livewire('expenses/{expense}/edit', 'pages::employee.expenses.manage')
             ->middleware('can:manage-expenses')
             ->name('expenses.edit');
+        Route::get('expenses/{expense}/receipt', ExpenseReceiptController::class)->name('expenses.receipt');
     });
 
     Route::middleware('can:access-inventory')->group(function () {

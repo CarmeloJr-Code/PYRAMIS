@@ -13,7 +13,7 @@ Checked against this repo — don't assume otherwise.
 
 - Laravel 13, PHP `^8.4` (21 locked packages require `>=8.4`; both Dockerfile stages are `php8.4-alpine`)
 - Livewire 4 + Flux UI (`livewire/flux`), Blade, Tailwind v4
-- Auth: Fortify, plus passkeys (`@laravel/passkeys`)
+- Auth: Fortify — password and two-factor. Passkeys are switched off (`Features::passkeys()` removed); the `passkeys` table and the `User` trait remain
 - PostgreSQL via Supabase, through Eloquent
 - Deploy: Render (`render.yaml`, `Dockerfile` committed)
 - AI: Laravel AI SDK (`laravel/ai`) + Groq `openai/gpt-oss-20b`. The spec named OpenAI GPT-5 Nano; no OpenAI key could be obtained, and this is the nearest model Groq serves. Provider and model are named only by the attributes on `app/Ai/Agents/ForecastReadingAgent.php`; the vendor `config/ai.php` already reads `GROQ_API_KEY`, so nothing is published.

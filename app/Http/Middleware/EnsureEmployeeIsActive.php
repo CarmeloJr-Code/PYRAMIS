@@ -11,8 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Keeps a deactivated employee out of the workspace.
  *
  * Guarded at the door rather than inside the login pipeline, because a session
- * can begin in more ways than one — a password, a passkey, a two-factor
- * challenge, or a remembered cookie from before the account was closed. One
+ * can begin in more ways than one — a password, a two-factor challenge, or a
+ * remembered cookie from before the account was closed. One
  * check on the way in covers all of them, and covers a session that was already
  * open when the account was deactivated.
  */

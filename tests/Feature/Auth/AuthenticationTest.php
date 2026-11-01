@@ -83,6 +83,16 @@ class AuthenticationTest extends TestCase
         $this->get('/employee/register')->assertNotFound();
     }
 
+    public function test_passkey_sign_in_is_not_available(): void
+    {
+        $this->assertFalse(Route::has('passkey.login'));
+        $this->assertFalse(Route::has('passkey.login-options'));
+
+        $this->get(route('login'))->assertDontSee('Sign in with a passkey');
+        $this->get('/employee/passkeys/login/options')->assertNotFound();
+        $this->post('/employee/passkeys/login')->assertNotFound();
+    }
+
     public function test_the_public_landing_page_offers_neither_sign_in_nor_sign_up(): void
     {
         // The workspace is reached only by its own address.

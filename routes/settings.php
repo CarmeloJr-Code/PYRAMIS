@@ -18,10 +18,3 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain(c
         ])
         ->name('security.edit');
 });
-
-Route::domain(config('app.workspace_domain'))->get('.well-known/passkey-endpoints', function () {
-    return response()->json([
-        'enroll' => route('security.edit'),
-        'manage' => route('security.edit'),
-    ]);
-})->name('well-known.passkeys');

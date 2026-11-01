@@ -101,6 +101,7 @@ class RoleAuthorizationTest extends TestCase
                 'employee.products.index',
                 'employee.products.create',
                 'employee.products.edit',
+                'employee.products.categories',
             ]],
             'manage-outlets' => ['manage-outlets', [UserRole::Administrator], [
                 'employee.outlets.index',

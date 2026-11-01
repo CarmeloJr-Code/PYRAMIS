@@ -210,6 +210,12 @@ new #[Title('Manage product')] class extends Component {
             @endforeach
         </flux:select>
 
+        <flux:text class="-mt-4 text-sm">
+            {{ __('Missing one?') }}
+            <flux:link :href="route('employee.products.categories')" wire:navigate>{{ __('Add it under product categories') }}</flux:link>
+            {{ __('first — anything typed here is not kept.') }}
+        </flux:text>
+
         <flux:textarea wire:model="description" :label="__('Description')" rows="3" maxlength="1000" />
 
         <flux:switch wire:model="is_active" :label="__('Active')" :description="__('Inactive products stay out of the customer catalogue.')" />

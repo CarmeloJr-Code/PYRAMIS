@@ -64,6 +64,7 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($
     Route::middleware('can:manage-products')->group(function () {
         Route::livewire('products', 'pages::employee.products.index')->name('products.index');
         Route::livewire('products/create', 'pages::employee.products.manage')->name('products.create');
+        Route::livewire('products/categories', 'pages::employee.products.categories')->name('products.categories');
         Route::livewire('products/{product}/edit', 'pages::employee.products.manage')->name('products.edit');
     });
 

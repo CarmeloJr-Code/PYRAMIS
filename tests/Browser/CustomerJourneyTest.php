@@ -97,8 +97,8 @@ class CustomerJourneyTest extends DuskTestCase
                 ->type('customer_name', 'R2D2 Reyes!')
                 ->assertInputValue('customer_name', 'RD Reyes')
 
-                ->type('customer_phone', '0917abc 123+4567')
-                ->assertInputValue('customer_phone', '0917 1234567')
+                ->type('customer_phone', '0917abc 123+4567 8')
+                ->assertInputValue('customer_phone', '09171234567')
 
                 ->type('customer_email', 'ana @example.com')
                 ->assertInputValue('customer_email', 'ana@example.com');

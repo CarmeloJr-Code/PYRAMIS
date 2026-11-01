@@ -140,13 +140,13 @@ class AdministratorJourneyTest extends DuskTestCase
                 ->waitForText('New outlet')
                 ->type('name', 'Valencia Outlet')
                 ->type('address', 'Valencia City, Bukidnon')
-                ->type('phone', '0917abc 123x')
-                ->assertInputValue('phone', '0917 123')
+                ->type('phone', '0917abc 123 4567x8')
+                ->assertInputValue('phone', '09171234567')
                 ->press('Save outlet')
                 ->waitForLocation('/employee/outlets');
         });
 
         // What reached the server is what was left in the field.
-        $this->assertDatabaseHas('outlets', ['name' => 'Valencia Outlet', 'phone' => '0917 123']);
+        $this->assertDatabaseHas('outlets', ['name' => 'Valencia Outlet', 'phone' => '09171234567']);
     }
 }

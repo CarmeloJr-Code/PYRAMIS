@@ -22,7 +22,7 @@ class OrderFactory extends Factory
         return [
             'outlet_id' => Outlet::factory(),
             'customer_name' => fake()->name(),
-            'customer_phone' => fake()->phoneNumber(),
+            'customer_phone' => fake()->numerify('09#########'),
             'customer_email' => fake()->safeEmail(),
             'pickup_at' => now()->addDays(2),
             'notes' => null,

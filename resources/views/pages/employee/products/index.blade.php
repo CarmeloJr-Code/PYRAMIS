@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Product;
-use Illuminate\Support\Facades\Gate;
+use Flux\Flux;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -42,6 +44,36 @@ new #[Title('Products')] class extends Component {
         $product->update(['is_active' => ! $product->is_active]);
 
         unset($this->products);
+    }
+
+    /**
+     * Remove a product added in error, with its sizes and their recipes.
+     *
+     * Only one nothing has happened to yet: an order, sale, bake, stock move or
+     * restock keeps its sizes, and the database restricts deleting them, so a
+     * product with a past is deactivated instead.
+     */
+    public function delete(int $productId): void
+    {
+        Gate::authorize('manage-products');
+
+        $product = Product::findOrFail($productId);
+        $variantIds = $product->variants()->pluck('id');
+
+        $used = collect(['order_items', 'sale_items', 'production_runs', 'product_stock_movements', 'restock_items'])
+            ->contains(fn (string $table): bool => DB::table($table)->whereIn('product_variant_id', $variantIds)->exists());
+
+        if ($used) {
+            Flux::toast(variant: 'warning', text: __(':name has orders, sales or stock on record. Deactivate it instead.', ['name' => $product->name]));
+
+            return;
+        }
+
+        $product->delete();
+
+        unset($this->products);
+
+        Flux::toast(variant: 'success', text: __('Product deleted.'));
     }
 }; ?>
 
@@ -110,6 +142,16 @@ new #[Title('Products')] class extends Component {
                                 <flux:button size="sm" variant="ghost" :href="route('employee.products.edit', $product)" wire:navigate>
                                     {{ __('Edit') }}
                                 </flux:button>
+
+                                <flux:button
+                                    size="sm"
+                                    variant="ghost"
+                                    icon="trash"
+                                    wire:click="delete({{ $product->id }})"
+                                    wire:confirm="{{ __('Delete :name and its sizes? It is gone for good.', ['name' => $product->name]) }}"
+                                    wire:key="delete-{{ $product->id }}"
+                                    :aria-label="__('Delete')"
+                                />
                             </flux:table.cell>
                         </flux:table.row>
                     @endforeach

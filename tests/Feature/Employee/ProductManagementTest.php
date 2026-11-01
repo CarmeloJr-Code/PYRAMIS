@@ -4,12 +4,17 @@ namespace Tests\Feature\Employee;
 
 use App\Enums\UserRole;
 use App\Models\Category;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\Recipe;
+use App\Models\RecipeItem;
+use App\Models\SaleItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class ProductManagementTest extends TestCase
@@ -272,5 +277,47 @@ class ProductManagementTest extends TestCase
             ->assertSeeHtml('max="9999999.99"')
             ->assertSeeHtml('inputmode="decimal"')
             ->assertSeeHtml('maxlength="1000"');
+    }
+
+    public function test_a_product_nothing_has_happened_to_is_deleted_with_its_sizes_and_recipes(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::factory()->for($product)->create();
+        $recipe = Recipe::factory()->for($variant, 'productVariant')->create();
+        RecipeItem::factory()->for($recipe)->create();
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.index')
+            ->assertSeeHtml('wire:confirm')
+            ->call('delete', $product->id)
+            ->assertDontSee($product->name);
+
+        $this->assertModelMissing($product);
+        $this->assertModelMissing($variant);
+        $this->assertModelMissing($recipe);
+        $this->assertDatabaseEmpty('recipe_items');
+    }
+
+    /**
+     * @param  class-string<OrderItem|SaleItem>  $line
+     */
+    #[TestWith([OrderItem::class])]
+    #[TestWith([SaleItem::class])]
+    public function test_a_product_with_a_past_is_kept_and_left_to_be_deactivated(string $line): void
+    {
+        $product = Product::factory()->create(['is_active' => true]);
+        $sold = ProductVariant::factory()->for($product)->create();
+        ProductVariant::factory()->for($product)->create();
+
+        $line::factory()->create(['product_variant_id' => $sold->id]);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.index')
+            ->call('delete', $product->id)
+            ->assertSee($product->name);
+
+        $this->assertModelExists($product);
+        $this->assertSame(2, $product->variants()->count());
+        $this->assertTrue($product->fresh()->is_active);
     }
 }

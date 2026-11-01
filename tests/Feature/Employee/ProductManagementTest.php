@@ -31,6 +31,7 @@ class ProductManagementTest extends TestCase
         return [
             'index' => ['employee.products.index'],
             'create' => ['employee.products.create'],
+            'categories' => ['employee.products.categories'],
         ];
     }
 
@@ -319,5 +320,89 @@ class ProductManagementTest extends TestCase
         $this->assertModelExists($product);
         $this->assertSame(2, $product->variants()->count());
         $this->assertTrue($product->fresh()->is_active);
+    }
+
+    public function test_an_administrator_adds_a_category_a_product_can_then_be_filed_under(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.products.categories')
+            ->set('name', '  Holiday Specials ')
+            ->call('add')
+            ->assertHasNoErrors()
+            ->assertSet('name', '')
+            ->assertSee('Holiday Specials');
+
+        $category = Category::firstWhere('name', 'Holiday Specials');
+
+        $this->assertNotNull($category);
+        $this->assertSame('holiday-specials', $category->slug);
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.products.manage')
+            ->assertSee('Holiday Specials')
+            ->set('name', 'Ube Fruitcake')
+            ->set('category_id', $category->id)
+            ->set('variants', [['id' => null, 'name' => 'Loaf', 'price' => '650.00', 'is_available' => true]])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame($category->id, Product::firstWhere('name', 'Ube Fruitcake')->category_id);
+    }
+
+    #[TestWith(['', 'required'])]
+    #[TestWith(['   ', 'required'])]
+    #[TestWith(['A', 'min'])]
+    #[TestWith([' Cakes ', 'unique'])]
+    public function test_a_category_that_is_missing_too_short_or_already_there_is_refused(string $name, string $rule): void
+    {
+        Category::factory()->create(['name' => 'Cakes', 'slug' => 'cakes']);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.categories')
+            ->set('name', $name)
+            ->call('add')
+            ->assertHasErrors(['name' => $rule]);
+
+        $this->assertSame(1, Category::count());
+    }
+
+    public function test_a_name_whose_slug_is_taken_gets_its_own(): void
+    {
+        Category::factory()->create(['name' => 'Cakes', 'slug' => 'cakes']);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.categories')
+            ->set('name', 'Cakes!')
+            ->call('add')
+            ->assertHasNoErrors();
+
+        $this->assertSame('cakes-2', Category::firstWhere('name', 'Cakes!')->slug);
+    }
+
+    public function test_the_list_counts_the_products_in_each_category(): void
+    {
+        $cakes = Category::factory()->create(['name' => 'Cakes']);
+        Product::factory()->count(2)->for($cakes)->create();
+        Category::factory()->create(['name' => 'Breads']);
+
+        $categories = Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.categories')
+            ->instance()
+            ->categories()
+            ->keyBy('name');
+
+        $this->assertSame(2, $categories['Cakes']->products_count);
+        $this->assertSame(0, $categories['Breads']->products_count);
+    }
+
+    public function test_the_component_itself_refuses_non_administrators_adding_a_category(): void
+    {
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.products.categories')
+            ->assertForbidden();
+
+        $this->assertSame(0, Category::count());
     }
 }

@@ -84,9 +84,15 @@ new #[Title('Products')] class extends Component {
             <flux:text class="mt-2">{{ __('The Purple Yam Malaybalay catalogue. Each product carries one or more sellable sizes.') }}</flux:text>
         </div>
 
-        <flux:button :href="route('employee.products.create')" variant="primary" icon="plus" wire:navigate>
-            {{ __('New product') }}
-        </flux:button>
+        <div class="flex items-center gap-3">
+            <flux:button :href="route('employee.products.categories')" variant="ghost" icon="tag" wire:navigate>
+                {{ __('Categories') }}
+            </flux:button>
+
+            <flux:button :href="route('employee.products.create')" variant="primary" icon="plus" wire:navigate>
+                {{ __('New product') }}
+            </flux:button>
+        </div>
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

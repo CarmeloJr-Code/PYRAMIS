@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Outlet;
+use App\Rules\PhilippineMobile;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -55,12 +56,8 @@ new #[Title('Manage outlet')] class extends Component {
                 Rule::unique('outlets', 'name')->ignore($this->outletId),
             ],
             'address' => ['required', 'string', 'max:500'],
-            // A landline as readily as a mobile: digits and the separators
-            // people write between their groups, with an optional leading +.
-            'phone' => ['nullable', 'string', 'min:7', 'max:20', 'regex:/^\+?[\d\s.()\-]+$/'],
+            'phone' => ['nullable', 'string', new PhilippineMobile],
             'is_active' => ['boolean'],
-        ], [
-            'phone.regex' => __('Please use digits only, like 0917 123 4567 or (088) 221 1234.'),
         ]);
 
         $outlet = $this->outletId === null
@@ -102,13 +99,12 @@ new #[Title('Manage outlet')] class extends Component {
 
         <flux:input
             wire:model="phone"
-            x-on:input="keep($el, /[^\d+\s.()-]/g); keep($el, /(?!^)\+/g)"
+            x-on:input="keep($el, /\D/g); if ($el.value.length > 11) { $el.value = $el.value.slice(0, 11); $el.dispatchEvent(new Event('input')) }"
             :label="__('Phone')"
             type="tel"
-            inputmode="tel"
-            maxlength="20"
-            placeholder="(088) 221 1234"
-            :description="__('Optional. Mobile or landline.')"
+            inputmode="numeric"
+            placeholder="09171234567"
+            :description="__('Optional. 11-digit mobile number.')"
         />
 
         <flux:switch

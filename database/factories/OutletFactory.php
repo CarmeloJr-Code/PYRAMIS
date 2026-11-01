@@ -22,7 +22,7 @@ class OutletFactory extends Factory
             'address' => fake()->address(),
             // Shaped as the outlet form accepts it; fake()->phoneNumber() can
             // carry an extension like "x123", which an edit would then refuse.
-            'phone' => fake()->numerify('0917 ### ####'),
+            'phone' => fake()->numerify('0917#######'),
             'is_active' => true,
         ];
     }

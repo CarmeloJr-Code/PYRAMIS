@@ -159,25 +159,12 @@ class PlaceOrderTest extends TestCase
         $this->assertDatabaseEmpty('orders');
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function mobileProvider(): array
-    {
-        return [
-            'spaced' => ['0917 123 4567'],
-            'dashed' => ['0917-123-4567'],
-            'international' => ['+63 917 123 4567'],
-        ];
-    }
-
-    #[DataProvider('mobileProvider')]
-    public function test_a_mobile_number_is_stored_one_way_however_it_was_typed(string $typed): void
+    public function test_an_eleven_digit_mobile_number_is_stored_as_typed(): void
     {
         Session::put('cart', [$this->variant()->id => 1]);
 
         $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
-            ->set('customer_phone', $typed)
+            ->set('customer_phone', '09171234567')
             ->call('submit')
             ->assertHasNoErrors();
 
@@ -194,6 +181,9 @@ class PlaceOrderTest extends TestCase
             'not a mobile prefix' => ['0817 123 4567'],
             'letters' => ['abcdefghijk'],
             'one digit too many' => ['091712345678'],
+            'one digit short' => ['0917123456'],
+            'spaced' => ['0917 123 4567'],
+            'international' => ['+639171234567'],
         ];
     }
 
@@ -330,7 +320,7 @@ class PlaceOrderTest extends TestCase
 
         Livewire::test('pages::storefront.order')
             ->assertSeeHtml("keep(\$el, /[^\\p{L}\\s.'-]/gu)")
-            ->assertSeeHtml('keep($el, /[^\d+\s.()-]/g); keep($el, /(?!^)\+/g)')
+            ->assertSeeHtml('keep($el, /\D/g); if ($el.value.length > 11)')
             ->assertSeeHtml('keep($el, /\s/g)')
             ->assertSeeHtml('inputmode="numeric"');
     }

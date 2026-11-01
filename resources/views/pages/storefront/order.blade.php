@@ -80,7 +80,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                 Rule::exists('outlets', 'id')->where('is_active', true),
             ],
             'customer_name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\\pL\\s.'\\-]+$/u"],
-            'customer_phone' => ['required', 'string', 'max:20', new PhilippineMobile],
+            'customer_phone' => ['required', 'string', new PhilippineMobile],
             'customer_email' => ['nullable', 'email', 'max:255'],
             'pickup_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'pickup_time' => [
@@ -270,7 +270,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             $order = Order::create([
                 'outlet_id' => $validated['outlet_id'],
                 'customer_name' => $validated['customer_name'],
-                'customer_phone' => PhilippineMobile::normalize($validated['customer_phone']),
+                'customer_phone' => $validated['customer_phone'],
                 'customer_email' => $validated['customer_email'] ?: null,
                 'pickup_at' => $pickupAt,
                 'notes' => $validated['notes'] ?: null,
@@ -429,14 +429,13 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                 />
                 <flux:input
                     wire:model.blur="customer_phone"
-                    x-on:input="keep($el, /[^\d+\s.()-]/g); keep($el, /(?!^)\+/g)"
+                    x-on:input="keep($el, /\D/g); if ($el.value.length > 11) { $el.value = $el.value.slice(0, 11); $el.dispatchEvent(new Event('input')) }"
                     :label="__('Phone')"
                     type="tel"
-                    inputmode="tel"
-                    maxlength="20"
+                    inputmode="numeric"
                     autocomplete="tel"
-                    placeholder="0917 123 4567"
-                    :description="__('Philippine mobile number.')"
+                    placeholder="09171234567"
+                    :description="__('11-digit mobile number.')"
                     required
                 />
                 <flux:input

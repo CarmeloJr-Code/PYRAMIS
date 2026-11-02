@@ -291,6 +291,240 @@ class OrderQueueTest extends TestCase
             ->assertSeeText($orders->last()->reference);
     }
 
+    /**
+     * Two sizes of one product, the way the menu board lists them.
+     *
+     * @return array{0: ProductVariant, 1: ProductVariant}
+     */
+    private function twoSizes(): array
+    {
+        $cake = Product::factory()->create(['name' => 'Ube Cake']);
+
+        return [
+            ProductVariant::factory()->for($cake)->create(['name' => 'Large (10x14)']),
+            ProductVariant::factory()->for($cake)->create(['name' => 'Round (7x3)']),
+        ];
+    }
+
+    /**
+     * An order for some of one size, picked up at the given time.
+     */
+    private function pickup(ProductVariant $variant, string $at, int $quantity = 1, OrderStatus $status = OrderStatus::Pending): Order
+    {
+        $order = Order::factory()->status($status)->create(['pickup_at' => $at]);
+
+        OrderItem::factory()->for($order)->for($variant)->create(['quantity' => $quantity, 'unit_price' => $variant->price]);
+
+        return $order;
+    }
+
+    /**
+     * The queue as a cashier sees it.
+     */
+    private function queue(): Testable
+    {
+        return Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.index');
+    }
+
+    public function test_picking_a_day_shows_only_the_orders_picked_up_that_day(): void
+    {
+        [$large] = $this->twoSizes();
+        $first = $this->pickup($large, '2026-12-05 00:00:00');
+        $last = $this->pickup($large, '2026-12-05 23:59:59');
+        $before = $this->pickup($large, '2026-12-04 23:59:59');
+        $after = $this->pickup($large, '2026-12-06 00:00:00');
+
+        $this->queue()
+            ->set('pickupDay', '2026-12-05')
+            ->assertSeeText($first->reference)
+            ->assertSeeText($last->reference)
+            ->assertDontSeeText($before->reference)
+            ->assertDontSeeText($after->reference);
+    }
+
+    public function test_picking_a_size_shows_only_the_orders_that_carry_it(): void
+    {
+        [$large, $round] = $this->twoSizes();
+        $wanted = $this->pickup($large, '2026-12-05 09:00:00');
+        $otherSize = $this->pickup($round, '2026-12-05 09:00:00');
+
+        $this->queue()
+            ->set('variantId', $large->id)
+            ->assertSeeText($wanted->reference)
+            ->assertDontSeeText($otherSize->reference);
+    }
+
+    public function test_a_day_and_a_size_together_show_only_where_they_meet(): void
+    {
+        [$large, $round] = $this->twoSizes();
+        $wanted = $this->pickup($large, '2026-12-05 09:00:00');
+        $otherDay = $this->pickup($large, '2026-12-06 09:00:00');
+        $otherSize = $this->pickup($round, '2026-12-05 09:00:00');
+
+        $this->queue()
+            ->set('pickupDay', '2026-12-05')
+            ->set('variantId', $large->id)
+            ->assertSeeText($wanted->reference)
+            ->assertDontSeeText($otherDay->reference)
+            ->assertDontSeeText($otherSize->reference);
+    }
+
+    public function test_the_tally_counts_each_size_due_that_day(): void
+    {
+        [$large, $round] = $this->twoSizes();
+        $this->pickup($large, '2026-12-05 09:00:00', quantity: 2);
+        $this->pickup($large, '2026-12-05 15:00:00', quantity: 3);
+        $this->pickup($round, '2026-12-05 10:00:00', quantity: 1);
+
+        // Another day, and orders that are no longer coming: none of them is due.
+        $this->pickup($large, '2026-12-06 09:00:00', quantity: 7);
+        $this->pickup($large, '2026-12-05 11:00:00', quantity: 5, status: OrderStatus::Completed);
+        $this->pickup($round, '2026-12-05 11:00:00', quantity: 4, status: OrderStatus::Cancelled);
+
+        $tally = $this->queue()
+            ->set('pickupDay', '2026-12-05')
+            ->assertSeeText('Due for pickup on 5 Dec')
+            ->instance()
+            ->tally;
+
+        $this->assertSame(
+            [
+                ['Large (10x14)', 5, 2],
+                ['Round (7x3)', 1, 1],
+            ],
+            $tally->map(fn (OrderItem $line): array => [$line->productVariant->name, $line->quantity, (int) $line->order_count])->all(),
+        );
+    }
+
+    public function test_the_tally_follows_a_picked_status(): void
+    {
+        [$large] = $this->twoSizes();
+        $this->pickup($large, '2026-12-05 09:00:00', quantity: 2);
+        $this->pickup($large, '2026-12-05 11:00:00', quantity: 5, status: OrderStatus::Completed);
+
+        $tally = $this->queue()
+            ->set('statusFilter', OrderStatus::Completed->value)
+            ->set('pickupDay', '2026-12-05')
+            ->instance()
+            ->tally;
+
+        $this->assertSame([5], $tally->pluck('quantity')->all());
+    }
+
+    public function test_the_tally_shows_the_whole_day_whatever_size_is_picked(): void
+    {
+        [$large, $round] = $this->twoSizes();
+        $this->pickup($large, '2026-12-05 09:00:00');
+        $this->pickup($round, '2026-12-05 10:00:00');
+
+        $tally = $this->queue()
+            ->set('pickupDay', '2026-12-05')
+            ->set('variantId', $large->id)
+            ->instance()
+            ->tally;
+
+        $this->assertCount(2, $tally);
+    }
+
+    public function test_there_is_no_tally_until_a_day_is_picked(): void
+    {
+        [$large] = $this->twoSizes();
+        $this->pickup($large, '2026-12-05 09:00:00');
+
+        $this->queue()->assertDontSeeText('Due for pickup on');
+    }
+
+    public function test_show_these_on_a_tally_line_picks_its_size(): void
+    {
+        [$large, $round] = $this->twoSizes();
+        $wanted = $this->pickup($large, '2026-12-05 09:00:00');
+        $otherSize = $this->pickup($round, '2026-12-05 10:00:00');
+
+        $this->queue()
+            ->set('pickupDay', '2026-12-05')
+            ->call('$set', 'variantId', $large->id)
+            ->assertSet('variantId', $large->id)
+            ->assertSeeText($wanted->reference)
+            ->assertDontSeeText($otherSize->reference);
+    }
+
+    public function test_clearing_brings_back_every_day_and_size(): void
+    {
+        [$large, $round] = $this->twoSizes();
+        $wanted = $this->pickup($large, '2026-12-05 09:00:00');
+        $otherSize = $this->pickup($round, '2026-12-06 10:00:00');
+
+        $this->queue()
+            ->set('pickupDay', '2026-12-05')
+            ->set('variantId', $large->id)
+            ->assertDontSeeText($otherSize->reference)
+            ->call('clearPickupFilters')
+            ->assertSet('pickupDay', '')
+            ->assertSet('variantId', 0)
+            ->assertSeeText($wanted->reference)
+            ->assertSeeText($otherSize->reference);
+    }
+
+    public function test_a_day_that_is_not_a_date_is_ignored(): void
+    {
+        [$large] = $this->twoSizes();
+        $order = $this->pickup($large, '2026-12-05 09:00:00');
+
+        foreach (['2026-02-30', 'tomorrow', '05/12/2026'] as $typed) {
+            Livewire::withQueryParams(['day' => $typed])
+                ->actingAs(User::factory()->cashier()->create())
+                ->test('pages::employee.orders.index')
+                ->assertOk()
+                ->assertSeeText($order->reference)
+                ->assertDontSeeText('Due for pickup on');
+        }
+    }
+
+    public function test_a_size_that_does_not_exist_finds_nothing(): void
+    {
+        [$large] = $this->twoSizes();
+        $order = $this->pickup($large, '2026-12-05 09:00:00');
+
+        Livewire::withQueryParams(['size' => 999999])
+            ->actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.index')
+            ->assertOk()
+            ->assertSeeText('No orders match this filter.')
+            ->assertDontSeeText($order->reference);
+    }
+
+    public function test_changing_the_day_or_size_starts_the_new_list_at_the_top(): void
+    {
+        [$large] = $this->twoSizes();
+        $orders = $this->finishedOrders(26);
+        $first = $orders->first();
+        OrderItem::factory()->for($first)->for($large)->create(['quantity' => 1, 'unit_price' => $large->price]);
+
+        // Each filter alone matches one order, so a page two would be empty.
+        $this->queue()
+            ->set('statusFilter', OrderStatus::Completed->value)
+            ->call('gotoPage', 2)
+            ->set('pickupDay', $first->pickup_at->toDateString())
+            ->assertSeeText($first->reference);
+
+        $this->queue()
+            ->set('statusFilter', OrderStatus::Completed->value)
+            ->call('gotoPage', 2)
+            ->set('variantId', $large->id)
+            ->assertSeeText($first->reference);
+    }
+
+    public function test_a_baker_is_refused_whatever_day_or_size_is_asked_for(): void
+    {
+        [$large] = $this->twoSizes();
+
+        Livewire::withQueryParams(['day' => '2026-12-05', 'size' => $large->id])
+            ->actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.orders.index')
+            ->assertForbidden();
+    }
+
     public function test_a_cashier_walks_an_order_through_the_whole_workflow(): void
     {
         $order = $this->order(OrderStatus::Pending);

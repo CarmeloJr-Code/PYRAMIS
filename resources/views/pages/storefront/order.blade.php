@@ -526,7 +526,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                         :label="__('Pickup time')"
                         :description="$this->pickupTimes === []
                             ? __('No pickup times are left today — please choose another date.')
-                            : __('Every hour from 8:00 AM to 7:00 PM.')"
+                            : __('From 8 AM to 7 PM.')"
                         required
                     >
                         <flux:select.option value="">{{ __('Choose a time') }}</flux:select.option>

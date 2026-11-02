@@ -200,4 +200,44 @@ class GcashPaymentTest extends TestCase
             ->assertOk()
             ->assertSeeText('You will pay by GCash on the next screen.');
     }
+
+    public function test_the_order_page_walks_the_customer_through_checkout_and_warns_there_are_no_refunds(): void
+    {
+        $variant = ProductVariant::factory()->create();
+
+        $this->withSession(['cart' => [$variant->id => 1]])
+            ->get(route('order'))
+            ->assertOk()
+            ->assertSeeText('How to order')
+            ->assertSeeTextInOrder([
+                'Check your items',
+                'Fill in your name and mobile number.',
+                'Choose the outlet, date and time',
+                'Place pre-order',
+                'pay the total by GCash',
+                'We check your payment and confirm your order.',
+                'Show your order reference at the outlet',
+            ])
+            ->assertSeeText('Once your order is confirmed, it cannot be cancelled or refunded.');
+    }
+
+    public function test_an_empty_order_page_shows_neither_the_steps_nor_the_warning(): void
+    {
+        $this->get(route('order'))
+            ->assertOk()
+            ->assertSeeText('Your order is empty.')
+            ->assertDontSeeText('How to order')
+            ->assertDontSee('data-test="no-refund-notice"', false);
+    }
+
+    public function test_the_payment_step_repeats_the_no_refund_warning_until_the_order_moves_on(): void
+    {
+        $this->get(route('orders.show', $this->order()))
+            ->assertOk()
+            ->assertSeeText('Once your order is confirmed, it cannot be cancelled or refunded.');
+
+        $this->get(route('orders.show', $this->order(OrderStatus::Confirmed)))
+            ->assertOk()
+            ->assertDontSee('data-test="no-refund-notice"', false);
+    }
 }

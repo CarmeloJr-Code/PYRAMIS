@@ -282,6 +282,10 @@ new #[Layout('layouts::storefront')] class extends Component {
                     @enderror
                 </div>
 
+                <p role="note" data-test="no-refund-notice" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    {{ __('Once your order is confirmed, it cannot be cancelled or refunded.') }}
+                </p>
+
                 <flux:button variant="primary" type="submit" class="self-start" wire:loading.attr="disabled" wire:target="receipt,submitPayment">
                     {{ __('Send payment details') }}
                 </flux:button>

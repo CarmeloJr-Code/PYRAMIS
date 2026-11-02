@@ -412,6 +412,20 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             </a>
         </div>
     @else
+        <section aria-labelledby="how-heading" class="flex flex-col gap-3 rounded-2xl border border-orchid-200 bg-white p-6">
+            <h2 id="how-heading" class="text-lg font-semibold text-orchid-800">{{ __('How to order') }}</h2>
+
+            <ol class="flex list-decimal flex-col gap-2 ps-5 text-sm text-snow-600">
+                <li>{{ __('Check your items and how many of each you want.') }}</li>
+                <li>{{ __('Fill in your name and mobile number.') }}</li>
+                <li>{{ __('Choose the outlet, date and time you will pick up.') }}</li>
+                <li>{{ __('Press "Place pre-order". You will get an order reference.') }}</li>
+                <li>{{ __('On the next page, pay the total by GCash and send us your payment details.') }}</li>
+                <li>{{ __('We check your payment and confirm your order.') }}</li>
+                <li>{{ __('Show your order reference at the outlet when you pick up.') }}</li>
+            </ol>
+        </section>
+
         <div class="grid gap-8 lg:grid-cols-[1.1fr_1fr]">
             <section class="flex flex-col gap-4">
                 <h2 class="text-lg font-semibold">{{ __('Items') }}</h2>
@@ -523,6 +537,10 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                 </div>
 
                 <flux:textarea wire:model.blur="notes" :label="__('Notes')" rows="2" maxlength="1000" :description="__('Anything we should know — a message on the cake, for example.')" />
+
+                <p role="note" data-test="no-refund-notice" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                    {{ __('Please check your order before you place it. Once your order is confirmed, it cannot be cancelled or refunded.') }}
+                </p>
 
                 <flux:button variant="primary" type="submit">{{ __('Place pre-order') }}</flux:button>
             </form>

@@ -519,14 +519,14 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     @endforeach
                 </flux:select>
 
-                <div class="grid gap-5 sm:grid-cols-2">
+                <div class="grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-1">
                     <flux:input wire:model.blur="pickup_date" :label="__('Pickup date')" type="date" :min="today()->toDateString()" required />
                     <flux:select
                         wire:model.blur="pickup_time"
-                        :label="__('Pickup time')"
-                        :description="$this->pickupTimes === []
+                        :label="__('Pickup time (From 8 AM to 7 PM)')"
+                        :description:trailing="$this->pickupTimes === []
                             ? __('No pickup times are left today — please choose another date.')
-                            : __('From 8 AM to 7 PM.')"
+                            : null"
                         required
                     >
                         <flux:select.option value="">{{ __('Choose a time') }}</flux:select.option>

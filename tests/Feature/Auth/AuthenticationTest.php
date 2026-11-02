@@ -19,6 +19,19 @@ class AuthenticationTest extends TestCase
         $response->assertOk();
     }
 
+    public function test_the_workspace_carries_the_purple_yam_mark(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('purple-yam-logo', false)
+            ->assertSee('/favicon.svg?v=2', false);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('employee.dashboard'))
+            ->assertOk()
+            ->assertSee('purple-yam-logo', false);
+    }
+
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();

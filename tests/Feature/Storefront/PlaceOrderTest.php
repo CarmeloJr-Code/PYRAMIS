@@ -388,7 +388,8 @@ class PlaceOrderTest extends TestCase
 
         $component = Livewire::test('pages::storefront.order')
             ->set('pickup_date', now()->addDay()->toDateString())
-            ->assertSeeText('Every hour from 8:00 AM to 7:00 PM.');
+            ->assertSeeText('From 8 AM to 7 PM.')
+            ->assertDontSeeText('Every hour from');
 
         $this->assertSame(
             ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM'],

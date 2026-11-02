@@ -2,7 +2,12 @@
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\ProductVariant;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -29,6 +34,18 @@ new #[Title('Orders')] class extends Component {
     public string $search = '';
 
     /**
+     * The pickup day being looked at, as Y-m-d — empty for every day.
+     */
+    #[Url(as: 'day', except: '')]
+    public string $pickupDay = '';
+
+    /**
+     * The product size being looked at — 0 for every one.
+     */
+    #[Url(as: 'size', except: 0)]
+    public int $variantId = 0;
+
+    /**
      * Authorize every entry into the component, not just the route.
      */
     public function mount(): void
@@ -52,12 +69,16 @@ new #[Title('Orders')] class extends Component {
      * customer whose order was already collected or cancelled is shown that,
      * not told it does not exist.
      *
+     * A pickup day and a product size narrow whatever the rest picked, so every
+     * order of one size due on one day can be gathered together.
+     *
      * @return LengthAwarePaginator<int, Order>
      */
     #[Computed]
     public function orders(): LengthAwarePaginator
     {
         $term = $this->term();
+        $day = $this->day();
 
         return Order::query()
             ->with(['outlet', 'items'])
@@ -91,9 +112,101 @@ new #[Title('Orders')] class extends Component {
                     $match->orWhereRaw("replace(replace(customer_phone, ' ', ''), '-', '') like ?", ["%{$digits}%"]);
                 }
             }))
+            ->when($day !== null, fn ($query) => $this->pickedUpOn($query, $day))
+            ->when($this->variantId > 0, fn ($query) => $query->whereHas(
+                'items',
+                fn ($items) => $items->where('product_variant_id', $this->variantId),
+            ))
             ->orderBy('pickup_at')
             ->orderBy('id')
             ->paginate(self::PER_PAGE);
+    }
+
+    /**
+     * Every product size, for the size picker — by product, then size.
+     *
+     * Unavailable sizes stay in: an order taken before a size was withdrawn
+     * still has to be found.
+     *
+     * @return Collection<int, ProductVariant>
+     */
+    #[Computed]
+    public function variants(): Collection
+    {
+        return ProductVariant::query()
+            ->with('product')
+            ->get()
+            ->sortBy([
+                fn (ProductVariant $a, ProductVariant $b): int => $a->product->name <=> $b->product->name,
+                fn (ProductVariant $a, ProductVariant $b): int => $a->name <=> $b->name,
+            ])
+            ->values();
+    }
+
+    /**
+     * How many of each size are due on the picked day, and on how many orders.
+     *
+     * The whole day under the picked status, whatever the search or size: it is
+     * what the size picker is chosen from. Nothing when no day is picked.
+     *
+     * @return Collection<int, OrderItem>
+     */
+    #[Computed]
+    public function tally(): Collection
+    {
+        $day = $this->day();
+
+        if ($day === null) {
+            return collect();
+        }
+
+        return OrderItem::query()
+            ->with('productVariant.product')
+            ->selectRaw('product_variant_id, sum(quantity) as quantity, count(distinct order_id) as order_count')
+            ->whereHas('order', function (Builder $query) use ($day): void {
+                $this->pickedUpOn($query, $day);
+
+                $this->statusFilter !== ''
+                    ? $query->where('status', $this->statusFilter)
+                    : $query->whereNotIn('status', [OrderStatus::Completed->value, OrderStatus::Cancelled->value]);
+            })
+            ->groupBy('product_variant_id')
+            ->get()
+            ->sortBy([
+                fn (OrderItem $a, OrderItem $b): int => $a->productVariant->product->name <=> $b->productVariant->product->name,
+                fn (OrderItem $a, OrderItem $b): int => $a->productVariant->name <=> $b->productVariant->name,
+            ])
+            ->values();
+    }
+
+    /**
+     * Narrow orders to those picked up on the given day.
+     *
+     * A range rather than a date function, so an index on pickup_at can serve
+     * it and SQLite and Postgres read it alike.
+     *
+     * @param  Builder<Order>  $query
+     */
+    private function pickedUpOn(Builder $query, CarbonImmutable $day): void
+    {
+        $query->whereBetween('pickup_at', [$day->startOfDay(), $day->endOfDay()]);
+    }
+
+    /**
+     * The picked pickup day, or null for every day.
+     *
+     * The URL is editable and a cleared date field sends an empty string, so
+     * anything that is not a real Y-m-d date means no day was picked.
+     */
+    private function day(): ?CarbonImmutable
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $this->pickupDay) !== 1) {
+            return null;
+        }
+
+        $day = CarbonImmutable::createFromFormat('!Y-m-d', $this->pickupDay);
+
+        return $day !== false && $day->toDateString() === $this->pickupDay ? $day : null;
     }
 
     /**
@@ -112,6 +225,31 @@ new #[Title('Orders')] class extends Component {
      */
     public function updatedSearch(): void
     {
+        $this->resetPage();
+    }
+
+    /**
+     * So does a different pickup day.
+     */
+    public function updatedPickupDay(): void
+    {
+        $this->resetPage();
+    }
+
+    /**
+     * And a different product size.
+     */
+    public function updatedVariantId(): void
+    {
+        $this->resetPage();
+    }
+
+    /**
+     * Drop the pickup day and size, back to orders of every size on every day.
+     */
+    public function clearPickupFilters(): void
+    {
+        $this->reset('pickupDay', 'variantId');
         $this->resetPage();
     }
 
@@ -185,6 +323,21 @@ new #[Title('Orders')] class extends Component {
         />
     </div>
 
+    <div class="mb-4 flex flex-wrap items-end gap-4">
+        <flux:input wire:model.live="pickupDay" type="date" :label="__('Pickup day')" class="max-w-48" />
+
+        <flux:select wire:model.live="variantId" :label="__('Product and size')" class="max-w-72">
+            <flux:select.option value="0">{{ __('All products') }}</flux:select.option>
+            @foreach ($this->variants as $variant)
+                <flux:select.option :value="$variant->id" wire:key="size-{{ $variant->id }}">{{ $variant->product->name }} · {{ $variant->name }}</flux:select.option>
+            @endforeach
+        </flux:select>
+
+        @if ($pickupDay !== '' || $variantId > 0)
+            <flux:button size="sm" variant="ghost" wire:click="clearPickupFilters">{{ __('Clear') }}</flux:button>
+        @endif
+    </div>
+
     <div class="mb-6 flex flex-wrap gap-2">
         <flux:button
             size="sm"
@@ -208,6 +361,49 @@ new #[Title('Orders')] class extends Component {
             </flux:button>
         @endforeach
     </div>
+
+    @if ($this->tally->isNotEmpty())
+        <div class="mb-6" data-test="pickup-tally">
+            <flux:heading size="lg" level="2" class="mb-2">
+                {{ __('Due for pickup on :day', ['day' => \Carbon\CarbonImmutable::parse($pickupDay)->format('j M')]) }}
+            </flux:heading>
+
+            <div class="overflow-x-auto">
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Product') }}</flux:table.column>
+                        <flux:table.column>{{ __('Size') }}</flux:table.column>
+                        <flux:table.column>{{ __('Quantity') }}</flux:table.column>
+                        <flux:table.column>{{ __('Orders') }}</flux:table.column>
+                        <flux:table.column />
+                    </flux:table.columns>
+
+                    <flux:table.rows>
+                        @foreach ($this->tally as $line)
+                            <flux:table.row
+                                :key="'tally-'.$line->product_variant_id"
+                                :class="$line->product_variant_id === $variantId ? 'bg-zinc-100 dark:bg-zinc-800' : ''"
+                            >
+                                <flux:table.cell>{{ $line->productVariant->product->name }}</flux:table.cell>
+                                <flux:table.cell>{{ $line->productVariant->name }}</flux:table.cell>
+                                <flux:table.cell class="font-medium">{{ $line->quantity }}</flux:table.cell>
+                                <flux:table.cell>{{ (int) $line->order_count }}</flux:table.cell>
+                                <flux:table.cell class="text-end">
+                                    <flux:button
+                                        size="sm"
+                                        variant="ghost"
+                                        wire:click="$set('variantId', {{ $line->product_variant_id }})"
+                                    >
+                                        {{ __('Show these') }}
+                                    </flux:button>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </div>
+    @endif
 
     @if ($this->orders->isEmpty() && trim($search) !== '')
         <flux:callout icon="magnifying-glass">

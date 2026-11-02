@@ -74,6 +74,8 @@ class ShiftSchedulingTest extends TestCase
 
         Livewire::actingAs($administrator)
             ->test('pages::employee.workforce.manage')
+            ->assertSee('Assignment')
+            ->assertDontSee('What it is')
             ->set('name', 'Morning bake')
             ->set('outlet_id', $this->outlet->id)
             ->set('date', '2026-09-10')

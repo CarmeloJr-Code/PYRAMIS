@@ -118,7 +118,7 @@ new #[Title('Manage shift')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <form wire:submit="save" class="flex flex-col gap-6">
-        <flux:input wire:model="name" :label="__('What it is')" placeholder="{{ __('Morning bake') }}" maxlength="255" required autofocus />
+        <flux:input wire:model="name" :label="__('Assignment')" placeholder="{{ __('Morning bake') }}" maxlength="255" required autofocus />
 
         <flux:select wire:model="outlet_id" :label="__('Where')" required>
             <flux:select.option value="">{{ __('Choose a location') }}</flux:select.option>

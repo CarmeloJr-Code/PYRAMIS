@@ -113,7 +113,7 @@ Sign the manager out; they return at the end.
 |---|---|---|---|
 | M6 | "The kiosk restock is packed. Send it." | Restocking → open → Deliver to outlet → *Delivered* | Does the four-of-six shortfall show, and is it understood? |
 | M7 | "How much did the bakery take today, and what did it spend?" | Reports → Sales (₱640.00) and Expenses (₱350.00) | Two reports or the dashboard — either is right. Which do they choose? |
-| M8 | "What does the system think you should bake more of?" | Forecast → *Demand outlook* → the AI reading | Do they read *An estimate, not a prediction*? Ask afterwards: "Would you act on that? How much would you trust it?" Record the answer verbatim — it is the only evidence on BR-008 in use that exists. |
+| M8 | "What does the system think you should bake more of?" | Forecast → *Sales forecast* → the AI summary | Do they read *This is an estimate, not a guarantee*? Ask afterwards: "Would you act on that? How much would you trust it?" Record the answer verbatim — it is the only evidence on BR-008 in use that exists. |
 | M9 (L) | "The kiosk wants four Chocolate Cake Tincan Rounds on Saturday. Ask the kitchen." | Restocking → Schedule restock → … | Timed. Compare with M4. A large drop is learnability; no drop with a low SEQ is a finding. |
 | M10 | "Kyle's shift tomorrow moves to seven o'clock. Change it." | Workforce → the shift → edit | Editing rather than creating. |
 

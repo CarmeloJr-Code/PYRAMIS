@@ -228,7 +228,7 @@ new #[Title('Expense report')] class extends Component {
         </div>
 
         <flux:heading size="lg" class="mt-8">{{ __('By location') }}</flux:heading>
-        <flux:text class="mt-1">{{ __('Every location over the same days, whatever the filter above is set to.') }}</flux:text>
+        <flux:text class="mt-1">{{ __('Every location over the same dates, no matter what the filter above is set to.') }}</flux:text>
 
         <div class="mt-4 overflow-x-auto">
             <flux:table>

@@ -87,7 +87,7 @@ new #[Title('Product categories')] class extends Component {
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Product categories') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('The headings products are filed under on the menu. A new one appears on the storefront once a product is filed under it.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('The groups products are sorted into on the menu. A group shows on the storefront once it has a product.') }}</flux:text>
         </div>
 
         <flux:button size="sm" variant="ghost" :href="route('employee.products.index')" wire:navigate>

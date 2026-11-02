@@ -262,7 +262,7 @@ new class extends Component {
                     <flux:input
                         wire:model="yield_quantity"
                         :label="__('One batch makes')"
-                        :description="__('How many of this size come out of a single batch. What a run of any other number takes is scaled from here.')"
+                        :description="__('How many of this size one batch makes. Other amounts are worked out from this.')"
                         type="number"
                         min="1"
                         step="1"

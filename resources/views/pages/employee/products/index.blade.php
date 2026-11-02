@@ -81,7 +81,7 @@ new #[Title('Products')] class extends Component {
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Products') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('The Purple Yam Malaybalay catalogue. Each product carries one or more sellable sizes.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('Everything Purple Yam Malaybalay sells. Each product has one or more sizes.') }}</flux:text>
         </div>
 
         <div class="flex items-center gap-3">

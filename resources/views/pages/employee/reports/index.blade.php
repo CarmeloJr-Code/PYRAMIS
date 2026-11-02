@@ -9,7 +9,7 @@ new #[Title('Reports')] class extends Component {
 
 <section class="w-full">
     <flux:heading size="xl" level="1">{{ __('Reports') }}</flux:heading>
-    <flux:text class="mt-2">{{ __('What the business did over a stretch of days, read from the records as they were kept.') }}</flux:text>
+    <flux:text class="mt-2">{{ __('See how the business did over a chosen period.') }}</flux:text>
 
     <flux:separator variant="subtle" class="my-6" />
 
@@ -22,7 +22,7 @@ new #[Title('Reports')] class extends Component {
         @can('access-sales')
             <flux:card>
                 <flux:heading size="lg">{{ __('Sales') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Takings day by day, what sold, where it sold, and how the stretch compares with the one before it.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('Daily takings, what sold, where it sold, and how it compares with the period before.') }}</flux:text>
                 <flux:button :href="route('employee.reports.sales')" variant="ghost" size="sm" class="mt-4" wire:navigate>
                     {{ __('Open') }}
                 </flux:button>
@@ -32,7 +32,7 @@ new #[Title('Reports')] class extends Component {
         @can('access-inventory')
             <flux:card>
                 <flux:heading size="lg">{{ __('Inventory') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Stock as it stands, what is at or below its reorder level, and what moved through the stockroom.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('Current stock, what is running low, and what was used.') }}</flux:text>
                 <flux:button :href="route('employee.reports.inventory')" variant="ghost" size="sm" class="mt-4" wire:navigate>
                     {{ __('Open') }}
                 </flux:button>
@@ -42,7 +42,7 @@ new #[Title('Reports')] class extends Component {
         @can('access-production')
             <flux:card>
                 <flux:heading size="lg">{{ __('Production') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('How much came out of the oven, on which days, and of what.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('How much was baked, on which days, and of what.') }}</flux:text>
                 <flux:button :href="route('employee.reports.production')" variant="ghost" size="sm" class="mt-4" wire:navigate>
                     {{ __('Open') }}
                 </flux:button>
@@ -52,7 +52,7 @@ new #[Title('Reports')] class extends Component {
         @can('access-expenses')
             <flux:card>
                 <flux:heading size="lg">{{ __('Expenses') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('What was spent, under which heading, and at which location.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('What was spent, in which category, and at which location.') }}</flux:text>
                 <flux:button :href="route('employee.reports.expenses')" variant="ghost" size="sm" class="mt-4" wire:navigate>
                     {{ __('Open') }}
                 </flux:button>
@@ -62,7 +62,7 @@ new #[Title('Reports')] class extends Component {
         @can('access-workforce')
             <flux:card>
                 <flux:heading size="lg">{{ __('Workforce') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Rostered shifts, who was assigned to them, and what each employee put on the record.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('Shifts, who worked them, and what each employee recorded.') }}</flux:text>
                 <flux:button :href="route('employee.reports.workforce')" variant="ghost" size="sm" class="mt-4" wire:navigate>
                     {{ __('Open') }}
                 </flux:button>
@@ -72,7 +72,7 @@ new #[Title('Reports')] class extends Component {
         @can('manage-outlets')
             <flux:card>
                 <flux:heading size="lg">{{ __('Outlet performance') }}</flux:heading>
-                <flux:text class="mt-2">{{ __('Every location side by side: what it took, what it received, and what it cost to run.') }}</flux:text>
+                <flux:text class="mt-2">{{ __('Each location side by side: what it sold, what it received, and what it cost to run.') }}</flux:text>
                 <flux:button :href="route('employee.reports.outlets')" variant="ghost" size="sm" class="mt-4" wire:navigate>
                     {{ __('Open') }}
                 </flux:button>

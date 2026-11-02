@@ -116,7 +116,7 @@ new #[Title('Manage employee')] class extends Component {
     <flux:heading size="xl" level="1">
         {{ $employeeId === null ? __('New employee') : __('Edit employee') }}
     </flux:heading>
-    <flux:text class="mt-2">{{ __('PYRAMIS has no public sign-up, so accounts are created here or with the make:employee command.') }}</flux:text>
+    <flux:text class="mt-2">{{ __('There is no public sign-up, so employee accounts are created here.') }}</flux:text>
 
     <flux:separator variant="subtle" class="my-6" />
 
@@ -124,7 +124,7 @@ new #[Title('Manage employee')] class extends Component {
         <flux:callout icon="key" variant="warning" class="mb-6">
             <flux:callout.heading>{{ __('First sign-in password') }}</flux:callout.heading>
             <flux:callout.text>
-                {{ __('Copy it now — it is not stored and will not be shown again. Have them change it after signing in.') }}
+                {{ __('Copy it now. It won\'t be shown again. Ask them to change it after they sign in.') }}
             </flux:callout.text>
             <p class="mt-3 font-mono text-lg break-all select-all">{{ $generatedPassword }}</p>
         </flux:callout>

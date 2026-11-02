@@ -313,7 +313,9 @@ class DemandOutlookTest extends TestCase
 
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.forecast')
-            ->assertSee('Demand outlook');
+            ->assertSee('Sales forecast')
+            ->assertDontSee('Demand outlook')
+            ->assertDontSee('What to consider baking');
 
         // BR-008 and BR-009: a recommendation reaches the business through a
         // person, never through this screen.
@@ -327,7 +329,7 @@ class DemandOutlookTest extends TestCase
     {
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.forecast')
-            ->assertSee('An estimate, not a prediction')
-            ->assertSeeText('Nothing here changes stock, production, orders or schedules');
+            ->assertSee('This is an estimate, not a guarantee')
+            ->assertSeeText('Nothing on this page changes stock, baking, orders or schedules');
     }
 }

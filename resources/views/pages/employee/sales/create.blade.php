@@ -194,7 +194,7 @@ new #[Title('Record counter sale')] class extends Component {
 
 <section class="w-full max-w-3xl">
     <flux:heading size="xl" level="1">{{ __('Record counter sale') }}</flux:heading>
-    <flux:text class="mt-2">{{ __('For anything sold over the counter. Pre-orders are billed automatically when you complete them.') }}</flux:text>
+    <flux:text class="mt-2">{{ __('For walk-in sales at the counter. Pre-orders are billed automatically when you complete them.') }}</flux:text>
 
     <flux:separator variant="subtle" class="my-6" />
 

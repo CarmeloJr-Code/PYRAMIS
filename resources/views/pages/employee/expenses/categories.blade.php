@@ -80,7 +80,7 @@ new #[Title('Expense categories')] class extends Component {
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Expense categories') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('The headings expenses are filed under. Rename them to match how the business actually accounts for its spending.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('The groups expenses are sorted into. Rename them to match how the business tracks its spending.') }}</flux:text>
         </div>
 
         <flux:button size="sm" variant="ghost" :href="route('employee.expenses.index')" wire:navigate>

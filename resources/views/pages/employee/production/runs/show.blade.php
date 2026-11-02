@@ -62,7 +62,7 @@ new class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <flux:heading size="lg">{{ __('What it used') }}</flux:heading>
-    <flux:text class="mt-1">{{ __('Taken from the stock ledger, not recalculated — a later change to the recipe cannot rewrite what this bake actually consumed.') }}</flux:text>
+    <flux:text class="mt-1">{{ __('What this bake actually used, from the stock records. Later recipe changes don\'t affect it.') }}</flux:text>
 
     <div class="mt-4 overflow-x-auto">
         <flux:table>

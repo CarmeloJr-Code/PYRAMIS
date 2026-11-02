@@ -14,7 +14,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
-new #[Title('Demand outlook')] class extends Component {
+new #[Title('Sales forecast')] class extends Component {
     #[Url(as: 'lookback', except: BuildForecastContext::LOOKBACK_DAYS)]
     public int $lookbackDays = BuildForecastContext::LOOKBACK_DAYS;
 
@@ -174,31 +174,31 @@ new #[Title('Demand outlook')] class extends Component {
             return;
         }
 
-        Flux::toast(variant: 'success', text: __('The reading is ready — a suggestion to weigh, not an instruction.'));
+        Flux::toast(variant: 'success', text: __('Your AI summary is ready. It\'s a suggestion, not an instruction.'));
     }
 }; ?>
 
 <section class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <flux:heading size="xl" level="1">{{ __('Demand outlook') }}</flux:heading>
+            <flux:heading size="xl" level="1">{{ __('Sales forecast') }}</flux:heading>
             <flux:text class="mt-2">
-                {{ __('Read from :window, projected over the :days days to :end.', [
+                {{ __('Based on sales from :window. Forecast for the next :days days (to :end).', [
                     'window' => $this->outlook['window']['label'],
                     'days' => $this->outlook['horizon']['days'],
-                    'end' => $this->outlook['horizon']['to'],
+                    'end' => \Carbon\CarbonImmutable::parse($this->outlook['horizon']['to'])->format('d M Y'),
                 ]) }}
             </flux:text>
         </div>
 
         <div class="flex flex-wrap items-end gap-3">
-            <flux:select wire:model.live="lookbackDays" :label="__('Read back')" class="max-w-40">
+            <flux:select wire:model.live="lookbackDays" :label="__('Look back')" class="max-w-40">
                 @foreach (App\Actions\BuildForecastContext::LOOKBACKS as $days)
                     <flux:select.option :value="$days">{{ __(':days days', ['days' => $days]) }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="horizonDays" :label="__('Project ahead')" class="max-w-40">
+            <flux:select wire:model.live="horizonDays" :label="__('Look ahead')" class="max-w-40">
                 @foreach (App\Actions\BuildForecastContext::HORIZONS as $days)
                     <flux:select.option :value="$days">{{ __(':days days', ['days' => $days]) }}</flux:select.option>
                 @endforeach
@@ -212,9 +212,9 @@ new #[Title('Demand outlook')] class extends Component {
         instructions (BR-008, BR-009).
     --}}
     <flux:callout icon="information-circle" class="mt-6">
-        <flux:callout.heading>{{ __('An estimate, not a prediction') }}</flux:callout.heading>
+        <flux:callout.heading>{{ __('This is an estimate, not a guarantee') }}</flux:callout.heading>
         <flux:callout.text>
-            {{ __('Every figure below is worked out from sales and stock already recorded in PYRAMIS. Nothing here changes stock, production, orders or schedules — deciding what to do about it is yours.') }}
+            {{ __('These numbers come from your past sales and stock. Nothing on this page changes stock, baking, orders or schedules. You decide what to do.') }}
         </flux:callout.text>
     </flux:callout>
 
@@ -223,21 +223,18 @@ new #[Title('Demand outlook')] class extends Component {
 
     <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card>
-            <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Sold in the window') }}</span>
+            <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Sold (last :days days)', ['days' => $this->outlook['window']['days']]) }}</span>
             <p class="mt-1 text-3xl font-semibold">{{ number_format($demand['units_sold']) }}</p>
             <p class="mt-1 text-sm text-zinc-500">
-                {{ __(':average a day across :days days', [
-                    'average' => number_format($demand['daily_average'], 2),
-                    'days' => $this->outlook['window']['days'],
-                ]) }}
+                {{ __(':average per day', ['average' => number_format($demand['daily_average'], 2)]) }}
             </p>
         </flux:card>
 
         <flux:card>
-            <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Recent trend') }}</span>
+            <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Going up or down') }}</span>
             <p class="mt-1 text-3xl font-semibold">
                 @if ($demand['change'] === null)
-                    <span class="text-zinc-400">{{ __('No comparison') }}</span>
+                    <span class="text-zinc-400">{{ __('Not enough data') }}</span>
                 @else
                     <span class="{{ $demand['change'] < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' }}">
                         {{ $demand['change'] >= 0 ? '+' : '' }}{{ number_format($demand['change'], 1) }}%
@@ -245,7 +242,7 @@ new #[Title('Demand outlook')] class extends Component {
                 @endif
             </p>
             <p class="mt-1 text-sm text-zinc-500">
-                {{ __(':recent units lately against :previous before that', [
+                {{ __(':recent lately, :previous before that', [
                     'recent' => number_format($demand['recent_units']),
                     'previous' => number_format($demand['previous_units']),
                 ]) }}
@@ -253,21 +250,18 @@ new #[Title('Demand outlook')] class extends Component {
         </flux:card>
 
         <flux:card>
-            <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Projected demand') }}</span>
+            <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Expected sales') }}</span>
             <p class="mt-1 text-3xl font-semibold">{{ number_format($demand['projected_units']) }}</p>
             <p class="mt-1 text-sm text-zinc-500">
-                {{ __('Units over the next :days days, at ×:factor on the daily rate', [
-                    'days' => $this->outlook['horizon']['days'],
-                    'factor' => number_format($demand['trend_factor'], 2),
-                ]) }}
+                {{ __('Over the next :days days', ['days' => $this->outlook['horizon']['days']]) }}
             </p>
         </flux:card>
 
         <flux:card>
-            <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Baked in the window') }}</span>
+            <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Baked (last :days days)', ['days' => $this->outlook['window']['days']]) }}</span>
             <p class="mt-1 text-3xl font-semibold">{{ number_format($production['units_produced']) }}</p>
             <p class="mt-1 text-sm text-zinc-500">
-                {{ __(':average a day over :runs runs', [
+                {{ __(':average per day, from :runs bakes', [
                     'average' => number_format($production['daily_average'], 2),
                     'runs' => number_format($production['runs']),
                 ]) }}
@@ -275,8 +269,8 @@ new #[Title('Demand outlook')] class extends Component {
         </flux:card>
     </div>
 
-    <flux:heading size="lg" class="mt-8">{{ __('The shape of a week') }}</flux:heading>
-    <flux:text class="mt-1">{{ __('Average units sold on each weekday, over the days that weekday actually fell in the window.') }}</flux:text>
+    <flux:heading size="lg" class="mt-8">{{ __('Busiest days of the week') }}</flux:heading>
+    <flux:text class="mt-1">{{ __('Average number sold on each day of the week.') }}</flux:text>
 
     @php($busiest = collect($this->outlook['weekdays'])->max('average'))
 
@@ -292,21 +286,21 @@ new #[Title('Demand outlook')] class extends Component {
                     ></div>
                 </div>
                 <p class="mt-2 text-xs text-zinc-500">
-                    {{ trans_choice('{1} :count day observed|[2,*] :count days observed', $weekday['days_observed'], ['count' => $weekday['days_observed']]) }}
+                    {{ trans_choice('{1} :count day counted|[2,*] :count days counted', $weekday['days_observed'], ['count' => $weekday['days_observed']]) }}
                 </p>
             </div>
         @endforeach
     </div>
 
-    <flux:heading size="lg" class="mt-8">{{ __('What to consider baking') }}</flux:heading>
+    <flux:heading size="lg" class="mt-8">{{ __('Products that may run short') }}</flux:heading>
     <flux:text class="mt-1">
-        {{ __('Projected demand against what is already made, wherever it is standing. A shortfall is a suggestion to weigh, not a production order.') }}
+        {{ __('Expected sales compared with what is already baked. This is a suggestion, not a baking order.') }}
     </flux:text>
 
     @if ($this->outlook['products'] === [])
         <flux:callout icon="squares-2x2" class="mt-4">
-            <flux:callout.heading>{{ __('Nothing to project') }}</flux:callout.heading>
-            <flux:callout.text>{{ __('No size is currently available for sale.') }}</flux:callout.text>
+            <flux:callout.heading>{{ __('Nothing to forecast') }}</flux:callout.heading>
+            <flux:callout.text>{{ __('No product is for sale right now.') }}</flux:callout.text>
         </flux:callout>
     @else
         <div class="mt-4 overflow-x-auto">
@@ -315,11 +309,11 @@ new #[Title('Demand outlook')] class extends Component {
                     <flux:table.column>{{ __('Product') }}</flux:table.column>
                     <flux:table.column>{{ __('Size') }}</flux:table.column>
                     <flux:table.column>{{ __('Sold') }}</flux:table.column>
-                    <flux:table.column>{{ __('A day') }}</flux:table.column>
-                    <flux:table.column>{{ __('Trend') }}</flux:table.column>
-                    <flux:table.column>{{ __('Projected') }}</flux:table.column>
+                    <flux:table.column>{{ __('Per day') }}</flux:table.column>
+                    <flux:table.column>{{ __('Change') }}</flux:table.column>
+                    <flux:table.column>{{ __('Expected') }}</flux:table.column>
                     <flux:table.column>{{ __('In stock') }}</flux:table.column>
-                    <flux:table.column>{{ __('Shortfall') }}</flux:table.column>
+                    <flux:table.column>{{ __('Short by') }}</flux:table.column>
                 </flux:table.columns>
 
                 <flux:table.rows>
@@ -356,15 +350,15 @@ new #[Title('Demand outlook')] class extends Component {
         </div>
     @endif
 
-    <flux:heading size="lg" class="mt-8">{{ __('What to consider ordering') }}</flux:heading>
+    <flux:heading size="lg" class="mt-8">{{ __('Ingredients that may run out') }}</flux:heading>
     <flux:text class="mt-1">
-        {{ __('How long the stockroom lasts at the rate the ovens have been drawing on it.') }}
+        {{ __('How many days each ingredient will last at the current rate of use.') }}
     </flux:text>
 
     @if ($this->outlook['ingredients'] === [])
         <flux:callout icon="beaker" class="mt-4">
             <flux:callout.heading>{{ __('Nothing tracked yet') }}</flux:callout.heading>
-            <flux:callout.text>{{ __('No ingredient has been added to the stockroom.') }}</flux:callout.text>
+            <flux:callout.text>{{ __('No ingredients have been added yet.') }}</flux:callout.text>
         </flux:callout>
     @else
         <div class="mt-4 overflow-x-auto">
@@ -372,10 +366,10 @@ new #[Title('Demand outlook')] class extends Component {
                 <flux:table.columns>
                     <flux:table.column>{{ __('Ingredient') }}</flux:table.column>
                     <flux:table.column>{{ __('In stock') }}</flux:table.column>
-                    <flux:table.column>{{ __('Used a day') }}</flux:table.column>
+                    <flux:table.column>{{ __('Used per day') }}</flux:table.column>
                     <flux:table.column>{{ __('Needed') }}</flux:table.column>
-                    <flux:table.column>{{ __('Days of cover') }}</flux:table.column>
-                    <flux:table.column>{{ __('Standing') }}</flux:table.column>
+                    <flux:table.column>{{ __('Days left') }}</flux:table.column>
+                    <flux:table.column>{{ __('Status') }}</flux:table.column>
                 </flux:table.columns>
 
                 <flux:table.rows>
@@ -387,18 +381,18 @@ new #[Title('Demand outlook')] class extends Component {
                             <flux:table.cell>{{ number_format($row['needed_for_horizon'], 2) }} {{ $row['unit'] }}</flux:table.cell>
                             <flux:table.cell>
                                 @if ($row['days_of_cover'] === null)
-                                    <span class="text-zinc-400">{{ __('Not drawn on') }}</span>
+                                    <span class="text-zinc-400">{{ __('Not used yet') }}</span>
                                 @else
                                     {{ number_format($row['days_of_cover'], 1) }}
                                 @endif
                             </flux:table.cell>
                             <flux:table.cell>
                                 @if ($row['below_reorder'])
-                                    <flux:badge size="sm" color="red">{{ __('Below reorder level') }}</flux:badge>
+                                    <flux:badge size="sm" color="red">{{ __('Reorder now') }}</flux:badge>
                                 @elseif ($row['needs_attention'])
-                                    <flux:badge size="sm" color="amber">{{ __('Short for the horizon') }}</flux:badge>
+                                    <flux:badge size="sm" color="amber">{{ __('Not enough') }}</flux:badge>
                                 @else
-                                    <flux:badge size="sm" color="zinc">{{ __('Covered') }}</flux:badge>
+                                    <flux:badge size="sm" color="zinc">{{ __('Enough') }}</flux:badge>
                                 @endif
                             </flux:table.cell>
                         </flux:table.row>
@@ -410,22 +404,22 @@ new #[Title('Demand outlook')] class extends Component {
 
     <flux:separator variant="subtle" class="my-6" />
 
-    <flux:heading size="lg">{{ __('A reading of these figures') }}</flux:heading>
+    <flux:heading size="lg">{{ __('AI summary') }}</flux:heading>
     <flux:text class="mt-1">
-        {{ __('PYRAMIS can ask a language model to read the figures above back to you — what stands out, and what might be worth considering. It is asked only when you press the button.') }}
+        {{ __('AI can read the numbers above and point out what stands out. It only runs when you press the button.') }}
     </flux:text>
 
     @if (! $this->readingAvailable)
         <flux:callout icon="sparkles" class="mt-4">
-            <flux:callout.heading>{{ __('Readings are not switched on') }}</flux:callout.heading>
+            <flux:callout.heading>{{ __('AI summary is turned off') }}</flux:callout.heading>
             <flux:callout.text>
-                {{ __('No AI key is set on this server, so PYRAMIS cannot ask for a reading. Everything above is unaffected — it is worked out from your own records and needs no AI at all.') }}
+                {{ __('No AI key is set up on this server. The numbers above still work. They don\'t need AI.') }}
             </flux:callout.text>
         </flux:callout>
     @else
         @if ($reading === null)
             <flux:button variant="primary" icon="sparkles" wire:click="generateReading" class="mt-4">
-                {{ __('Ask for a reading') }}
+                {{ __('Get AI summary') }}
             </flux:button>
         @endif
 
@@ -437,9 +431,9 @@ new #[Title('Demand outlook')] class extends Component {
         --}}
         <div wire:loading.flex wire:target="generateReading, refreshReading" class="mt-4">
             <flux:callout icon="sparkles" class="w-full animate-pulse">
-                <flux:callout.heading>{{ __('Reading the figures') }}</flux:callout.heading>
+                <flux:callout.heading>{{ __('Writing the summary') }}</flux:callout.heading>
                 <flux:callout.text>
-                    {{ __('This takes a few seconds. Nothing above is changing — those figures are already final.') }}
+                    {{ __('This takes a few seconds. The numbers above won\'t change.') }}
                 </flux:callout.text>
             </flux:callout>
         </div>
@@ -449,9 +443,9 @@ new #[Title('Demand outlook')] class extends Component {
 
             <div wire:loading.class="opacity-40" wire:target="refreshReading">
                 <flux:callout variant="warning" icon="exclamation-triangle" class="mt-4">
-                    <flux:callout.heading>{{ __('Written by a language model') }}</flux:callout.heading>
+                    <flux:callout.heading>{{ __('Written by AI') }}</flux:callout.heading>
                     <flux:callout.text>
-                        {{ __('Everything in this section is an opinion about the figures above — not a prediction, and not a decision. It can be wrong. It has changed nothing: no stock moved, no run was logged, no order was placed. Every suggestion here is yours to accept, adjust or ignore.') }}
+                        {{ __('This is the AI\'s opinion, not a prediction and not a decision. It can be wrong. It has not changed anything: no stock moved, no bake was logged, no order was placed. You decide what to do.') }}
                     </flux:callout.text>
                 </flux:callout>
 
@@ -461,20 +455,20 @@ new #[Title('Demand outlook')] class extends Component {
                     </flux:badge>
 
                     <flux:button size="sm" variant="subtle" icon="arrow-path" wire:click="refreshReading">
-                        {{ __('Read it again') }}
+                        {{ __('Refresh') }}
                     </flux:button>
                 </div>
 
                 @if ($this->figuresMoved)
                     <flux:text class="mt-2 text-sm text-amber-600 dark:text-amber-400">
-                        {{ __('Records have been added since this was written, so it describes figures that have moved on.') }}
+                        {{ __('New records have come in since this was written, so it may be out of date.') }}
                     </flux:text>
                 @endif
 
                 <flux:text class="mt-4">{{ $reading['summary'] }}</flux:text>
 
                 @if ($reading['key_factors'] !== [])
-                    <flux:heading size="sm" class="mt-6">{{ __('What stands out') }}</flux:heading>
+                    <flux:heading size="sm" class="mt-6">{{ __('Key points') }}</flux:heading>
                     <dl class="mt-2 space-y-3">
                         @foreach ($reading['key_factors'] as $factor)
                             <div>
@@ -485,18 +479,18 @@ new #[Title('Demand outlook')] class extends Component {
                     </dl>
                 @endif
 
-                <flux:heading size="sm" class="mt-6">{{ __('Worth considering for production') }}</flux:heading>
+                <flux:heading size="sm" class="mt-6">{{ __('Baking ideas') }}</flux:heading>
 
                 @if ($reading['production_recommendations'] === [])
                     <flux:text class="mt-2 text-sm text-zinc-500">
-                        {{ __('Nothing stood out for production.') }}
+                        {{ __('No baking ideas this time.') }}
                     </flux:text>
                 @else
                     <div class="mt-2 overflow-x-auto">
                         <flux:table>
                             <flux:table.columns>
                                 <flux:table.column>{{ __('Size') }}</flux:table.column>
-                                <flux:table.column>{{ __('What to consider') }}</flux:table.column>
+                                <flux:table.column>{{ __('Idea') }}</flux:table.column>
                                 <flux:table.column>{{ __('Why') }}</flux:table.column>
                                 <flux:table.column>{{ __('Priority') }}</flux:table.column>
                             </flux:table.columns>
@@ -507,7 +501,7 @@ new #[Title('Demand outlook')] class extends Component {
                                         <flux:table.cell>
                                             {{ $row['item'] }}
                                             @unless ($this->inCatalogue($row['item']))
-                                                <flux:badge size="sm" color="zinc">{{ __('Not in the catalogue') }}</flux:badge>
+                                                <flux:badge size="sm" color="zinc">{{ __('Not a product we sell') }}</flux:badge>
                                             @endunless
                                         </flux:table.cell>
                                         <flux:table.cell>{{ $row['action'] }}</flux:table.cell>
@@ -522,18 +516,18 @@ new #[Title('Demand outlook')] class extends Component {
                     </div>
                 @endif
 
-                <flux:heading size="sm" class="mt-6">{{ __('Worth considering for the stockroom') }}</flux:heading>
+                <flux:heading size="sm" class="mt-6">{{ __('Ingredient ideas') }}</flux:heading>
 
                 @if ($reading['inventory_recommendations'] === [])
                     <flux:text class="mt-2 text-sm text-zinc-500">
-                        {{ __('Nothing stood out for the stockroom.') }}
+                        {{ __('No ingredient ideas this time.') }}
                     </flux:text>
                 @else
                     <div class="mt-2 overflow-x-auto">
                         <flux:table>
                             <flux:table.columns>
                                 <flux:table.column>{{ __('Ingredient') }}</flux:table.column>
-                                <flux:table.column>{{ __('What to consider') }}</flux:table.column>
+                                <flux:table.column>{{ __('Idea') }}</flux:table.column>
                                 <flux:table.column>{{ __('Why') }}</flux:table.column>
                                 <flux:table.column>{{ __('Priority') }}</flux:table.column>
                             </flux:table.columns>
@@ -544,7 +538,7 @@ new #[Title('Demand outlook')] class extends Component {
                                         <flux:table.cell>
                                             {{ $row['ingredient'] }}
                                             @unless ($this->inStockroom($row['ingredient']))
-                                                <flux:badge size="sm" color="zinc">{{ __('Not in the stockroom') }}</flux:badge>
+                                                <flux:badge size="sm" color="zinc">{{ __('Not an ingredient we stock') }}</flux:badge>
                                             @endunless
                                         </flux:table.cell>
                                         <flux:table.cell>{{ $row['action'] }}</flux:table.cell>
@@ -560,7 +554,7 @@ new #[Title('Demand outlook')] class extends Component {
                 @endif
 
                 <flux:text class="mt-4 text-sm text-zinc-500">
-                    {{ __('Read by :model at :time, from the figures as they stood then.', [
+                    {{ __('Written by :model on :time.', [
                         'model' => $reading['model'],
                         'time' => \Carbon\CarbonImmutable::parse($reading['generated_at'])->format('j M Y, g:ia'),
                     ]) }}
@@ -572,6 +566,6 @@ new #[Title('Demand outlook')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <flux:text class="text-sm text-zinc-500">
-        {{ __('How the projection is worked out: the daily rate over the window, multiplied by how the recent half compares with the half before it. That multiplier is held between ×0.5 and ×2.0, so one unusual stretch cannot project a rate the bakery has never run at.') }}
+        {{ __('How the forecast works: we take the average sold per day, then nudge it up or down depending on whether sales rose or fell lately. The nudge is capped (between half and double), so one odd week can\'t throw it off.') }}
     </flux:text>
 </section>

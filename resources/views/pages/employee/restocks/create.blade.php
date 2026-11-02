@@ -167,7 +167,7 @@ new #[Title('Schedule restock')] class extends Component {
 
 <section class="w-full max-w-3xl">
     <flux:heading size="xl" level="1">{{ __('Schedule restock') }}</flux:heading>
-    <flux:text class="mt-2">{{ __('What the main branch should send an outlet, and when. Stock moves when it is delivered, not now.') }}</flux:text>
+    <flux:text class="mt-2">{{ __('What the main branch will send to an outlet, and when. Stock only moves when it is delivered.') }}</flux:text>
 
     <flux:separator variant="subtle" class="my-6" />
 

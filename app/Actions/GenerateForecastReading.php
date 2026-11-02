@@ -81,7 +81,7 @@ final class GenerateForecastReading
     {
         if (blank(config('ai.providers.groq.key'))) {
             throw new RuntimeException(
-                'AI readings are not switched on for this server. The figures above are unaffected.',
+                'AI summary is turned off on this server. The numbers above are still correct.',
             );
         }
 
@@ -138,7 +138,7 @@ final class GenerateForecastReading
 
         if (RateLimiter::tooManyAttempts($key, self::HOURLY_LIMIT)) {
             throw new RuntimeException(sprintf(
-                'You have asked for %d readings this hour, which is as many as the free allowance stretches to. The figures above are already up to date; try again in %d minutes.',
+                'You\'ve used all %d AI summaries for this hour. Try again in %d minutes. The numbers above are still correct.',
                 self::HOURLY_LIMIT,
                 (int) ceil(RateLimiter::availableIn($key) / 60),
             ));
@@ -192,10 +192,10 @@ final class GenerateForecastReading
     private function explain(Throwable $exception): string
     {
         return match (true) {
-            $exception instanceof RateLimitedException => 'The free daily allowance for AI readings has run out, or too many have been asked for at once. The figures above are unaffected — try again in a minute.',
-            $exception instanceof ProviderOverloadedException => 'The AI service is busy just now. The figures above are unaffected — try again in a minute.',
-            $exception instanceof ProviderConnectionException => 'PYRAMIS could not reach the AI service. The figures above are unaffected — they need no connection at all.',
-            default => 'The reading could not be produced just now. The figures above are unaffected.',
+            $exception instanceof RateLimitedException => 'The AI has reached its free limit for now. Try again in a minute. The numbers above are still correct.',
+            $exception instanceof ProviderOverloadedException => 'The AI is busy right now. Try again in a minute. The numbers above are still correct.',
+            $exception instanceof ProviderConnectionException => 'PYRAMIS could not connect to the AI. The numbers above are still correct.',
+            default => 'The AI summary could not be made right now. The numbers above are still correct.',
         };
     }
 
@@ -213,7 +213,7 @@ final class GenerateForecastReading
 
         if ($summary === '') {
             throw new RuntimeException(
-                'The reading came back empty. Nothing has been kept, so asking again is worth a try.',
+                'The AI sent back an empty summary. Please try again.',
             );
         }
 

@@ -52,7 +52,7 @@ class CustomerJourneyTest extends DuskTestCase
                 ->type('customer_phone', '09171234567')
                 ->select('outlet_id', (string) $this->kiosk->id)
                 ->fillDateField('pickup_date', $pickupDate)
-                ->fillDateField('pickup_time', '10:30')
+                ->select('pickup_time', '10:00')
                 ->press('Place pre-order')
 
                 // The reference is the only thing a customer holds, so the

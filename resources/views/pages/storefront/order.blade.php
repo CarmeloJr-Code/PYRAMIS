@@ -87,10 +87,9 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             'customer_phone' => ['required', 'string', new PhilippineMobile],
             'customer_email' => $this->optionalEmailRules(),
             'pickup_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'pickup_time' => [
-                'required', 'date_format:H:i',
-                'after_or_equal:'.self::PICKUP_OPENS, 'before_or_equal:'.self::PICKUP_CLOSES,
-            ],
+            // Any hour of the window. One already gone today is refused on
+            // submit, with a message that says so.
+            'pickup_time' => ['required', Rule::in($this->pickupHours())],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -102,9 +101,40 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     {
         return [
             'customer_name.regex' => __('Please use letters only in your name.'),
-            'pickup_time.after_or_equal' => __('Pickup is from 8:00 AM to 7:00 PM. Please choose a time in that window.'),
-            'pickup_time.before_or_equal' => __('Pickup is from 8:00 AM to 7:00 PM. Please choose a time in that window.'),
+            'pickup_time.in' => __('Please choose a pickup time between 8:00 AM and 7:00 PM.'),
         ];
+    }
+
+    /**
+     * Every hour a pickup may be booked for, as H:i, opening to closing.
+     *
+     * @return list<string>
+     */
+    private function pickupHours(): array
+    {
+        return array_map(
+            fn (int $hour): string => sprintf('%02d:00', $hour),
+            range((int) self::PICKUP_OPENS, (int) self::PICKUP_CLOSES),
+        );
+    }
+
+    /**
+     * The pickup times the customer can still choose, as H:i => "8:00 AM".
+     *
+     * On today's date the hours already gone are left out, so the list never
+     * offers a time that submit would refuse.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function pickupTimes(): array
+    {
+        $today = $this->pickup_date === now()->toDateString();
+
+        return collect($this->pickupHours())
+            ->reject(fn (string $hour): bool => $today && Carbon::createFromFormat('Y-m-d H:i', "{$this->pickup_date} {$hour}")->isPast())
+            ->mapWithKeys(fn (string $hour): array => [$hour => Carbon::createFromFormat('H:i', $hour)->format('g:i A')])
+            ->all();
     }
 
     /**
@@ -114,6 +144,12 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     {
         if (in_array($property, self::TRIMMED, true)) {
             $this->tidy($property);
+        }
+
+        // Moving to today can take the chosen hour off the list. Clear it
+        // rather than keep a time the dropdown no longer shows.
+        if ($property === 'pickup_date' && $this->pickup_time !== '' && ! array_key_exists($this->pickup_time, $this->pickupTimes)) {
+            $this->pickup_time = '';
         }
 
         if (array_key_exists($property, $this->rules())) {
@@ -471,15 +507,19 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
 
                 <div class="grid gap-5 sm:grid-cols-2">
                     <flux:input wire:model.blur="pickup_date" :label="__('Pickup date')" type="date" :min="today()->toDateString()" required />
-                    <flux:input
+                    <flux:select
                         wire:model.blur="pickup_time"
                         :label="__('Pickup time')"
-                        type="time"
-                        min="08:00"
-                        max="19:00"
-                        :description="__('Between 8:00 AM and 7:00 PM.')"
+                        :description="$this->pickupTimes === []
+                            ? __('No pickup times are left today — please choose another date.')
+                            : __('Every hour from 8:00 AM to 7:00 PM.')"
                         required
-                    />
+                    >
+                        <flux:select.option value="">{{ __('Choose a time') }}</flux:select.option>
+                        @foreach ($this->pickupTimes as $value => $label)
+                            <flux:select.option :value="$value" wire:key="pickup-time-{{ $value }}">{{ $label }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
                 </div>
 
                 <flux:textarea wire:model.blur="notes" :label="__('Notes')" rows="2" maxlength="1000" :description="__('Anything we should know — a message on the cake, for example.')" />

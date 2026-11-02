@@ -149,9 +149,13 @@ new #[Title('Sales')] class extends Component {
             <flux:text>{{ __('Transactions recorded at the counter and from collected pre-orders.') }}</flux:text>
         </div>
 
-        <flux:button :href="route('employee.sales.create')" variant="primary" icon="plus" wire:navigate>
-            {{ __('Record counter sale') }}
-        </flux:button>
+        <div class="flex flex-wrap items-center gap-3">
+            <x-summary-report-button :report="\App\Enums\SummaryReport::Sales" />
+
+            <flux:button :href="route('employee.sales.create')" variant="primary" icon="plus" wire:navigate>
+                {{ __('Record counter sale') }}
+            </flux:button>
+        </div>
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

@@ -112,7 +112,9 @@ new #[Title('Workforce')] class extends Component {
             <flux:text class="mt-2">{{ __('Who is working, where, and when.') }}</flux:text>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+            <x-summary-report-button :report="\App\Enums\SummaryReport::Workforce" />
+
             <flux:button :href="route('employee.workforce.employees.index')" variant="ghost" icon="identification" wire:navigate>
                 {{ __('Employees') }}
             </flux:button>

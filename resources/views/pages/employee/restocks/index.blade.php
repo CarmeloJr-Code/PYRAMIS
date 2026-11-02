@@ -75,11 +75,15 @@ new #[Title('Restocking')] class extends Component {
             <flux:text class="mt-2">{{ __('Finished goods going from the main branch out to the outlets.') }}</flux:text>
         </div>
 
-        @can('schedule-restocks')
-            <flux:button :href="route('employee.restocks.create')" variant="primary" icon="plus" wire:navigate>
-                {{ __('Schedule restock') }}
-            </flux:button>
-        @endcan
+        <div class="flex flex-wrap items-center gap-3">
+            <x-summary-report-button :report="\App\Enums\SummaryReport::Restocking" />
+
+            @can('schedule-restocks')
+                <flux:button :href="route('employee.restocks.create')" variant="primary" icon="plus" wire:navigate>
+                    {{ __('Schedule restock') }}
+                </flux:button>
+            @endcan
+        </div>
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

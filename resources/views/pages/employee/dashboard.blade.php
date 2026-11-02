@@ -377,13 +377,17 @@ new #[Title('Dashboard')] class extends Component {
 }; ?>
 
 <section class="w-full">
-    <div class="flex flex-col gap-1">
-        <flux:heading size="xl" level="1">{{ __('Welcome, :name', ['name' => $this->employee->name]) }}</flux:heading>
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <flux:heading size="xl" level="1">{{ __('Welcome, :name', ['name' => $this->employee->name]) }}</flux:heading>
 
-        <div class="flex items-center gap-2">
-            <flux:badge size="sm" color="purple" data-test="role-badge">{{ $this->employee->role->label() }}</flux:badge>
-            <flux:text>{{ __('Purple Yam Malaybalay') }}</flux:text>
+            <div class="flex items-center gap-2">
+                <flux:badge size="sm" color="purple" data-test="role-badge">{{ $this->employee->role->label() }}</flux:badge>
+                <flux:text>{{ __('Purple Yam Malaybalay') }}</flux:text>
+            </div>
         </div>
+
+        <x-summary-report-button :report="\App\Enums\SummaryReport::Dashboard" />
     </div>
 
     {{-- What to pick up next, before any figure: each one opens where it is done. --}}

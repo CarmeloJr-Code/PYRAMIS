@@ -14,6 +14,7 @@
                 :label="__('Email address')"
                 :value="old('email')"
                 type="email"
+                maxlength="255"
                 required
                 autofocus
                 autocomplete="email"

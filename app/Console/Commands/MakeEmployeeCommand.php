@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Concerns\EmailValidationRules;
 use App\Concerns\PasswordValidationRules;
 use App\Enums\UserRole;
 use App\Models\User;
@@ -16,7 +17,7 @@ use function Laravel\Prompts\text;
 
 class MakeEmployeeCommand extends Command
 {
-    use PasswordValidationRules;
+    use EmailValidationRules, PasswordValidationRules;
 
     /**
      * The name and signature of the console command.
@@ -58,10 +59,10 @@ class MakeEmployeeCommand extends Command
             required: true,
         );
 
-        $email = $this->option('email') ?? text(
+        $email = $this->normaliseEmail($this->option('email') ?? text(
             label: 'Email address',
             required: true,
-        );
+        ));
 
         $role = $this->option('role') ?? select(
             label: 'Role',
@@ -91,7 +92,7 @@ class MakeEmployeeCommand extends Command
             'password_confirmation' => $confirmation,
         ], [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class)],
+            'email' => $this->employeeEmailRules(),
             'role' => ['required', Rule::enum(UserRole::class)],
             'password' => $this->passwordRules(),
         ]);

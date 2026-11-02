@@ -16,6 +16,7 @@
                 value="{{ request('email') }}"
                 :label="__('Email')"
                 type="email"
+                maxlength="255"
                 required
                 autocomplete="email"
             />

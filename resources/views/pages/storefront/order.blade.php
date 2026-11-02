@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\NotifyEmployees;
+use App\Concerns\EmailValidationRules;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Outlet;
@@ -20,6 +21,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Component {
+    use EmailValidationRules;
+
     /**
      * How many pre-orders one browser may place in an hour.
      *
@@ -62,7 +65,8 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
 
     /**
      * The fields a stray space can spoil — trimmed before they are checked,
-     * so a name of nothing but spaces reads as no name at all.
+     * so a name of nothing but spaces reads as no name at all. The email is
+     * lowercased as well, by tidy().
      */
     private const TRIMMED = ['customer_name', 'customer_phone', 'customer_email'];
 
@@ -81,7 +85,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             ],
             'customer_name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\\pL\\s.'\\-]+$/u"],
             'customer_phone' => ['required', 'string', new PhilippineMobile],
-            'customer_email' => ['nullable', 'email', 'max:255'],
+            'customer_email' => $this->optionalEmailRules(),
             'pickup_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'pickup_time' => [
                 'required', 'date_format:H:i',
@@ -109,12 +113,22 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     public function updated(string $property): void
     {
         if (in_array($property, self::TRIMMED, true)) {
-            $this->{$property} = trim($this->{$property});
+            $this->tidy($property);
         }
 
         if (array_key_exists($property, $this->rules())) {
             $this->validateOnly($property);
         }
+    }
+
+    /**
+     * Put a typed field in the form it is checked and stored in.
+     */
+    private function tidy(string $property): void
+    {
+        $this->{$property} = $property === 'customer_email'
+            ? $this->normaliseEmail($this->{$property})
+            : trim($this->{$property});
     }
 
     /**
@@ -228,7 +242,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
         $this->throttle();
 
         foreach (self::TRIMMED as $property) {
-            $this->{$property} = trim($this->{$property});
+            $this->tidy($property);
         }
 
         $validated = $this->validate();

@@ -13,8 +13,10 @@
                 name="email"
                 :label="__('Email address')"
                 type="email"
+                maxlength="255"
                 required
                 autofocus
+                autocomplete="email"
                 placeholder="email@example.com"
             />
 

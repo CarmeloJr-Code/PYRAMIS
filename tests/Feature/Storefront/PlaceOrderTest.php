@@ -51,7 +51,7 @@ class PlaceOrderTest extends TestCase
             ->set('customer_phone', '09171234567')
             ->set('outlet_id', $this->outlet->id)
             ->set('pickup_date', now()->addDay()->toDateString())
-            ->set('pickup_time', '10:30');
+            ->set('pickup_time', '10:00');
     }
 
     /**
@@ -355,7 +355,8 @@ class PlaceOrderTest extends TestCase
     #[TestWith(['19:01'])]
     #[TestWith(['00:00'])]
     #[TestWith(['22:30'])]
-    public function test_a_pickup_outside_8am_to_7pm_is_refused(string $time): void
+    #[TestWith(['10:30'])]
+    public function test_a_pickup_off_the_hour_or_outside_8am_to_7pm_is_refused(string $time): void
     {
         Session::put('cart', [$this->variant()->id => 1]);
 
@@ -363,7 +364,7 @@ class PlaceOrderTest extends TestCase
             ->set('pickup_time', $time)
             ->call('submit')
             ->assertHasErrors('pickup_time')
-            ->assertSee('Pickup is from 8:00 AM to 7:00 PM.');
+            ->assertSee('Please choose a pickup time between 8:00 AM and 7:00 PM.');
 
         $this->assertDatabaseEmpty('orders');
     }
@@ -385,10 +386,69 @@ class PlaceOrderTest extends TestCase
     {
         Session::put('cart', [$this->variant()->id => 1]);
 
+        $component = Livewire::test('pages::storefront.order')
+            ->set('pickup_date', now()->addDay()->toDateString())
+            ->assertSeeText('Every hour from 8:00 AM to 7:00 PM.');
+
+        $this->assertSame(
+            ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM'],
+            array_values($component->get('pickupTimes')),
+        );
+
+        $component
+            ->assertSeeHtml('value="08:00"')
+            ->assertSeeHtml('value="19:00"')
+            ->assertDontSeeHtml('value="07:00"')
+            ->assertDontSeeHtml('value="20:00"');
+    }
+
+    public function test_today_offers_only_the_hours_still_to_come(): void
+    {
+        $this->travelTo(now()->setTime(14, 5));
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $component = Livewire::test('pages::storefront.order')
+            ->set('pickup_date', now()->toDateString());
+
+        $this->assertSame(
+            ['15:00', '16:00', '17:00', '18:00', '19:00'],
+            array_keys($component->get('pickupTimes')),
+        );
+    }
+
+    public function test_after_closing_today_no_time_is_offered(): void
+    {
+        $this->travelTo(now()->setTime(19, 30));
+        Session::put('cart', [$this->variant()->id => 1]);
+
         Livewire::test('pages::storefront.order')
-            ->assertSeeHtml('min="08:00"')
-            ->assertSeeHtml('max="19:00"')
-            ->assertSeeText('Between 8:00 AM and 7:00 PM.');
+            ->set('pickup_date', now()->toDateString())
+            ->assertSet('pickupTimes', [])
+            ->assertSeeText('No pickup times are left today');
+    }
+
+    public function test_moving_to_today_clears_an_hour_that_has_already_gone(): void
+    {
+        $this->travelTo(now()->setTime(14, 0));
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->set('pickup_date', now()->addDay()->toDateString())
+            ->set('pickup_time', '09:00')
+            ->set('pickup_date', now()->toDateString())
+            ->assertSet('pickup_time', '');
+    }
+
+    public function test_an_hour_still_to_come_is_kept_when_moving_to_today(): void
+    {
+        $this->travelTo(now()->setTime(14, 0));
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->set('pickup_date', now()->addDay()->toDateString())
+            ->set('pickup_time', '16:00')
+            ->set('pickup_date', now()->toDateString())
+            ->assertSet('pickup_time', '16:00');
     }
 
     public function test_the_pickup_date_and_time_are_stored_as_one_moment(): void
@@ -396,7 +456,7 @@ class PlaceOrderTest extends TestCase
         $this->placeOrder()->assertHasNoErrors();
 
         $this->assertSame(
-            now()->addDay()->setTime(10, 30)->toDateTimeString(),
+            now()->addDay()->setTime(10, 0)->toDateTimeString(),
             Order::first()->pickup_at->toDateTimeString(),
         );
     }

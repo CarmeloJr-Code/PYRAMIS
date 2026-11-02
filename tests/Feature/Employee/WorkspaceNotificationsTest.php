@@ -80,7 +80,7 @@ class WorkspaceNotificationsTest extends TestCase
             ->set('customer_phone', '09171234567')
             ->set('outlet_id', Outlet::factory()->create()->id)
             ->set('pickup_date', now()->addDay()->toDateString())
-            ->set('pickup_time', '10:30')
+            ->set('pickup_time', '10:00')
             ->call('submit')
             ->assertHasNoErrors();
 

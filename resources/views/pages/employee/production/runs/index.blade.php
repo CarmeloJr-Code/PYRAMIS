@@ -209,7 +209,7 @@ new #[Title('Production runs')] class extends Component {
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Production runs') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('Logging a bake takes its ingredients out of the stockroom and records what came out of the oven.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('Logging a bake takes its ingredients out of stock and adds what was baked.') }}</flux:text>
         </div>
 
         <flux:button size="sm" variant="ghost" :href="route('employee.production')" wire:navigate>
@@ -266,7 +266,7 @@ new #[Title('Production runs')] class extends Component {
 
                         @unless ($this->canCover)
                             <flux:callout icon="exclamation-triangle" variant="danger" class="mt-2">
-                                <flux:callout.text>{{ __('The stockroom cannot cover this run. Nothing is deducted unless all of it can be.') }}</flux:callout.text>
+                                <flux:callout.text>{{ __('There isn\'t enough stock for this bake. Nothing is taken out unless all of it is there.') }}</flux:callout.text>
                             </flux:callout>
                         @endunless
 

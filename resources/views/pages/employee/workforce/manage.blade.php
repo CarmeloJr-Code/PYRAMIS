@@ -113,7 +113,7 @@ new #[Title('Manage shift')] class extends Component {
     <flux:heading size="xl" level="1">
         {{ $shiftId === null ? __('New shift') : __('Edit shift') }}
     </flux:heading>
-    <flux:text class="mt-2">{{ __('A stretch of work at a place. Who covers it is set on the shift itself.') }}</flux:text>
+    <flux:text class="mt-2">{{ __('A block of work at one location. You choose who works it on the shift page.') }}</flux:text>
 
     <flux:separator variant="subtle" class="my-6" />
 

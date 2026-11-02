@@ -223,7 +223,7 @@ new class extends Component {
             <flux:heading size="lg">{{ __('What is going') }}</flux:heading>
 
             @if ($restock->status === RestockStatus::Preparing)
-                <flux:text class="mt-1">{{ __('Set the quantity actually put aside for each size. A short bake is recorded as it is, not as it was asked for.') }}</flux:text>
+                <flux:text class="mt-1">{{ __('Enter how many of each size were actually set aside. If it came up short, enter what you really have.') }}</flux:text>
 
                 <form wire:submit="savePrepared" class="mt-4 flex flex-col gap-4">
                     @foreach ($restock->items as $item)
@@ -289,7 +289,7 @@ new class extends Component {
                         <flux:text>{{ __('Nothing has been set aside yet.') }}</flux:text>
                         <flux:button variant="primary" wire:click="startPreparing">{{ __('Start preparing') }}</flux:button>
                     @elseif ($restock->status === RestockStatus::Preparing)
-                        <flux:text>{{ __('Delivering moves the prepared goods off the main branch shelf and onto the outlet’s.') }}</flux:text>
+                        <flux:text>{{ __('Delivering moves the goods from the main branch to the outlet’s stock.') }}</flux:text>
                         <flux:button
                             variant="primary"
                             wire:click="deliver"

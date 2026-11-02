@@ -192,7 +192,7 @@ new #[Title('Finished goods')] class extends Component {
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Finished goods') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('What is on the shelf, counted from every movement recorded against it.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('What is on the shelf now, counted from every stock change.') }}</flux:text>
         </div>
 
         <flux:button size="sm" variant="ghost" :href="route('employee.inventory.index')" wire:navigate>
@@ -269,7 +269,7 @@ new #[Title('Finished goods')] class extends Component {
                 @endif
 
                 <flux:heading size="lg" class="mt-8">{{ __('Recent movements') }}</flux:heading>
-                <flux:text class="mt-1">{{ __('Kept as recorded. A miscount is corrected by an adjustment, never by editing history.') }}</flux:text>
+                <flux:text class="mt-1">{{ __('Kept as recorded. To fix a miscount, add an adjustment.') }}</flux:text>
 
                 @if ($this->movements->isEmpty())
                     <flux:callout icon="clock" class="mt-4">
@@ -318,7 +318,7 @@ new #[Title('Finished goods')] class extends Component {
             <div class="lg:col-span-2">
                 <flux:card>
                     <flux:heading size="lg">{{ __('Correct the count') }}</flux:heading>
-                    <flux:text class="mt-2">{{ __('For a miscount or a tray lost. Production and restocking record themselves.') }}</flux:text>
+                    <flux:text class="mt-2">{{ __('Use this for a miscount or a lost tray. Baking and restocks are recorded on their own.') }}</flux:text>
 
                     <form wire:submit="adjust" class="mt-4 flex flex-col gap-4">
                         <flux:select wire:model="product_variant_id" :label="__('Size')" required>

@@ -359,14 +359,14 @@ class DashboardMetricsTest extends TestCase
             ->test('bake-next')
             ->assertSee('Ube Cake')
             ->assertSee('Round (7x3)')
-            ->assertSeeText('a suggestion, not a production order');
+            ->assertSeeText('A suggestion, not a baking order');
     }
 
     public function test_bake_next_says_so_when_nothing_is_short(): void
     {
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('bake-next')
-            ->assertSeeText('Nothing short over the next 7 days.');
+            ->assertSeeText('Nothing will run short in the next 7 days.');
     }
 
     public function test_bake_next_is_the_administrators_alone(): void

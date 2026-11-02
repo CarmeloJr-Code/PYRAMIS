@@ -82,11 +82,11 @@ class AdministratorJourneyTest extends DuskTestCase
 
                 ->waitForNavigate()->clickLink('Forecast')
                 ->waitForLocation('/employee/forecast')
-                ->waitForText('Demand outlook')
+                ->waitForText('Sales forecast')
 
                 // The line the whole screen hangs on: decision support, never
                 // an instruction and never a guarantee.
-                ->assertSee('An estimate, not a prediction')
+                ->assertSee('This is an estimate, not a guarantee')
                 ->assertSee('Ube Cake');
         });
 

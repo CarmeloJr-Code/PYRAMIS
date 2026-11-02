@@ -235,7 +235,7 @@ new class extends Component {
 
         <div class="lg:col-span-2">
             <flux:heading size="lg">{{ __('Stock ledger') }}</flux:heading>
-            <flux:text class="mt-1">{{ __('Every movement, kept as recorded. Corrections are made by recording an adjustment, never by editing history.') }}</flux:text>
+            <flux:text class="mt-1">{{ __('Every stock change, as it was recorded. To fix a mistake, add an adjustment.') }}</flux:text>
 
             <div class="mt-4">
                 @if ($this->movements->isEmpty())

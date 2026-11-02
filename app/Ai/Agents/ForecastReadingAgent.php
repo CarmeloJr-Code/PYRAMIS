@@ -92,7 +92,10 @@ final class ForecastReadingAgent implements Agent, HasStructuredOutput
           hedging honestly is more useful than sounding confident.
         - Recommend nothing about money, pricing, hiring or spending. Production
           and ingredient stock only.
-        - Plain English, short sentences. The reader runs a bakery, not a
+        - Write simply. Use everyday words a busy baker understands, and keep
+          each sentence to about fifteen words. Say "expected" rather than
+          "projected", and leave out words like "horizon", "window", "trend
+          factor" or "days of cover". The reader runs a bakery, not a
           spreadsheet.
 
         Keep the summary to three or four sentences. Give at most four key

@@ -180,7 +180,7 @@ new #[Title('Record expense')] class extends Component {
     @if ($this->categories->isEmpty())
         <flux:callout icon="tag">
             <flux:callout.heading>{{ __('No categories yet') }}</flux:callout.heading>
-            <flux:callout.text>{{ __('An expense has to be filed under something. A manager sets the headings up first.') }}</flux:callout.text>
+            <flux:callout.text>{{ __('Every expense needs a category. A manager has to add the categories first.') }}</flux:callout.text>
         </flux:callout>
     @else
         <form wire:submit="save" class="flex flex-col gap-6">
@@ -298,7 +298,7 @@ new #[Title('Record expense')] class extends Component {
                 >
                 <p class="text-xs text-zinc-500">
                     {{ $expenseId === null
-                        ? __('A photo or screenshot, so whoever checks the figures can match them. PNG, JPG or WebP.')
+                        ? __('A photo or screenshot of the receipt, so the amount can be checked. PNG, JPG or WebP.')
                         : __('Optional. Leave empty to keep the receipt on file.') }}
                 </p>
                 <p x-show="uploading" x-cloak class="text-xs text-zinc-500">{{ __('Uploading…') }}</p>

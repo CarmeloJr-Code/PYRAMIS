@@ -122,14 +122,14 @@ new #[Title('Manage ingredient')] class extends Component {
 
         @if ($unitIsLocked)
             <flux:text class="-mt-4 text-sm">
-                {{ __('The unit is fixed once stock has been recorded, so the existing movements keep their meaning.') }}
+                {{ __('The unit can\'t be changed once stock has been recorded.') }}
             </flux:text>
         @endif
 
         <flux:input
             wire:model="reorder_level"
             :label="__('Reorder level')"
-            :description="__('Stock at or below this counts as low. Leave at 0 if the business has not set one.')"
+            :description="__('Stock at or below this counts as low. Leave at 0 if there isn\'t one.')"
             type="number"
             step="0.001"
             min="0"
@@ -142,7 +142,7 @@ new #[Title('Manage ingredient')] class extends Component {
         <flux:switch
             wire:model="is_active"
             :label="__('Currently stocked')"
-            :description="__('Ingredients no longer bought are kept, not deleted, so their history survives.')"
+            :description="__('Ingredients you no longer buy are kept, not deleted, so their history stays.')"
         />
 
         <div class="flex items-center gap-3">

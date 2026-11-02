@@ -237,7 +237,7 @@ new class extends Component {
         </p>
 
         <flux:text size="sm" class="text-zinc-500">
-            {{ __('Prices are what the customer was quoted when they ordered, not current catalogue prices.') }}
+            {{ __('Prices are what the customer was charged when they ordered, not today\'s prices.') }}
         </flux:text>
     </div>
 
@@ -277,7 +277,7 @@ new class extends Component {
                 @endif
             </div>
         @else
-            <flux:text>{{ __('The customer has not sent their payment details yet. Check your GCash app for a payment with this order reference.') }}</flux:text>
+            <flux:text>{{ __('The customer hasn\'t sent their payment details yet. Check your GCash app for a payment with this order reference.') }}</flux:text>
         @endif
 
         @if ($order->status === OrderStatus::Pending)

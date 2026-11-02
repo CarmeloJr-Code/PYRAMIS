@@ -50,7 +50,7 @@ new #[Title('Recipes')] class extends Component {
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Recipes') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('What each size is made of, per batch. A size without a recipe cannot be produced against the stockroom.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('What each size is made of, per batch. A size can\'t be baked until it has a recipe.') }}</flux:text>
         </div>
 
         <flux:button size="sm" variant="ghost" :href="route('employee.production')" wire:navigate>

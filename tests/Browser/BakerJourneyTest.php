@@ -82,7 +82,7 @@ class BakerJourneyTest extends DuskTestCase
                 ->waitForText('Nothing has been set aside yet')
                 ->waitForLivewire()->press('Start preparing')
 
-                ->waitForText('Set the quantity actually put aside')
+                ->waitForText('Enter how many of each size were actually set aside')
                 ->type('prepared.'.$item->id, '4')
                 ->waitForLivewire()->press('Save prepared quantities')
                 ->waitForText('Deliver to outlet');

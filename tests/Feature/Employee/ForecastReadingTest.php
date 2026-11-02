@@ -141,8 +141,8 @@ class ForecastReadingTest extends TestCase
         ForecastReadingAgent::fake([$this->reading()]);
 
         $this->screen()
-            ->assertSee('Ask for a reading')
-            ->assertDontSee('What stands out');
+            ->assertSee('Get AI summary')
+            ->assertDontSee('Key points');
 
         // Loading the page costs exactly what it did before this slice.
         ForecastReadingAgent::assertNeverPrompted();
@@ -302,8 +302,8 @@ class ForecastReadingTest extends TestCase
         ForecastReadingAgent::fake([$this->reading()]);
 
         $this->screen()
-            ->assertSee('Readings are not switched on')
-            ->assertDontSee('Ask for a reading')
+            ->assertSee('AI summary is turned off')
+            ->assertDontSee('Get AI summary')
             ->call('generateReading')
             ->assertSet('reading', null);
 
@@ -399,7 +399,7 @@ class ForecastReadingTest extends TestCase
 
         $this->screen()
             ->call('generateReading')
-            ->assertSee('Not in the catalogue');
+            ->assertSee('Not a product we sell');
     }
 
     public function test_the_reading_shows_where_it_came_from(): void
@@ -420,9 +420,9 @@ class ForecastReadingTest extends TestCase
 
         $this->screen()
             ->call('generateReading')
-            ->assertSee('Written by a language model')
-            ->assertSeeText('not a prediction, and not a decision')
-            ->assertSeeText('no stock moved, no run was logged, no order was placed');
+            ->assertSee('Written by AI')
+            ->assertSeeText('not a prediction and not a decision')
+            ->assertSeeText('no stock moved, no bake was logged, no order was placed');
     }
 
     public function test_the_reading_writes_nothing_to_the_business_records(): void

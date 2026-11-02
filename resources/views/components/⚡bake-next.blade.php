@@ -77,7 +77,7 @@ new class extends Component {
                 <span class="min-w-0">
                     <span class="block truncate text-sm font-medium">{{ $product['product'] }} &middot; {{ $product['size'] }}</span>
                     <span class="block truncate text-xs text-zinc-500">
-                        {{ __('Projected :projected, :stock on hand', ['projected' => $product['projected_units'], 'stock' => $product['stock_on_hand']]) }}
+                        {{ __('Expected :projected, :stock in stock', ['projected' => $product['projected_units'], 'stock' => $product['stock_on_hand']]) }}
                     </span>
                 </span>
                 <span class="shrink-0 text-sm font-semibold text-purple-600 dark:text-purple-400">
@@ -85,9 +85,9 @@ new class extends Component {
                 </span>
             </div>
         @empty
-            <flux:text class="px-2 py-2">{{ __('Nothing short over the next :days days.', ['days' => $this->horizonDays]) }}</flux:text>
+            <flux:text class="px-2 py-2">{{ __('Nothing will run short in the next :days days.', ['days' => $this->horizonDays]) }}</flux:text>
         @endforelse
     </div>
 
-    <flux:text class="mt-2 text-xs">{{ __('From the demand outlook — a suggestion, not a production order.') }}</flux:text>
+    <flux:text class="mt-2 text-xs">{{ __('From the sales forecast. A suggestion, not a baking order.') }}</flux:text>
 </flux:card>

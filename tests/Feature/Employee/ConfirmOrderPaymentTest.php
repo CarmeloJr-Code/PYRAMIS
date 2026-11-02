@@ -62,7 +62,7 @@ class ConfirmOrderPaymentTest extends TestCase
 
         Livewire::actingAs(User::factory()->cashier()->create())
             ->test('pages::employee.orders.show', ['order' => $order])
-            ->assertSeeText('The customer has not sent their payment details yet.')
+            ->assertSeeText("The customer hasn't sent their payment details yet.")
             ->set('amount', '1980.00')
             ->set('gcash_reference', '1234567890123')
             ->call('confirmPayment')

@@ -41,7 +41,7 @@ new #[Title('Production')] class extends Component {
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Production') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('What the bakery makes, what it takes, and what that draws from the stockroom.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('What the bakery bakes, the recipes it uses, and the ingredients it needs.') }}</flux:text>
         </div>
 
         <x-summary-report-button :report="\App\Enums\SummaryReport::Production" />

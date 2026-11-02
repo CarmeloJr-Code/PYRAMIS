@@ -156,7 +156,9 @@ new #[Title('Expenses')] class extends Component {
             <flux:text class="mt-2">{{ __('What the business spent, where, and on what.') }}</flux:text>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+            <x-summary-report-button :report="\App\Enums\SummaryReport::Expenses" />
+
             @can('manage-expenses')
                 <flux:button :href="route('employee.expenses.categories')" variant="ghost" icon="tag" wire:navigate>
                     {{ __('Categories') }}

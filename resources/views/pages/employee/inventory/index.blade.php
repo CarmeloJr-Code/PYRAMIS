@@ -55,6 +55,8 @@ new #[Title('Inventory')] class extends Component {
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
+            <x-summary-report-button :report="\App\Enums\SummaryReport::Inventory" />
+
             <flux:button :href="route('employee.inventory.finished')" variant="ghost" icon="cake" wire:navigate>
                 {{ __('Finished goods') }}
             </flux:button>

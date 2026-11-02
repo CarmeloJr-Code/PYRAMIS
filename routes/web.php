@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Employee\ExpenseReceiptController;
 use App\Http\Controllers\Employee\OrderReceiptController;
+use App\Http\Controllers\Employee\SummaryReportController;
 use App\Http\Middleware\EnsureEmployeeIsActive;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -158,6 +159,10 @@ Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($
         Route::livewire('outlets', 'pages::employee.reports.outlets')
             ->middleware('can:manage-outlets')->name('outlets');
     });
+
+    // Each operational tab's summary as a PDF, for today, this week or this
+    // month. One route for every tab; the controller checks the tab's own gate.
+    Route::get('summaries/{report}/{period}', SummaryReportController::class)->name('summaries.show');
 
     // A Baker's or Cashier's own roster. It shows the signed-in employee their
     // own work and nobody else's; the Administrator reads it through workforce.

@@ -62,9 +62,13 @@ new #[Title('Outlets')] class extends Component {
             <flux:text class="mt-2">{{ __('Pickup locations customers can choose when pre-ordering.') }}</flux:text>
         </div>
 
-        <flux:button :href="route('employee.outlets.create')" variant="primary" icon="plus" wire:navigate>
-            {{ __('New outlet') }}
-        </flux:button>
+        <div class="flex flex-wrap items-center gap-3">
+            <x-summary-report-button :report="\App\Enums\SummaryReport::Outlets" />
+
+            <flux:button :href="route('employee.outlets.create')" variant="primary" icon="plus" wire:navigate>
+                {{ __('New outlet') }}
+            </flux:button>
+        </div>
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

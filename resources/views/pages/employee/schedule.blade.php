@@ -59,7 +59,11 @@ new #[Title('My schedule')] class extends Component {
             <flux:text class="mt-2">{{ __('The shifts you are assigned to.') }}</flux:text>
         </div>
 
-        <flux:switch wire:model.live="includePast" :label="__('Include past shifts')" />
+        <div class="flex flex-wrap items-center gap-4">
+            <flux:switch wire:model.live="includePast" :label="__('Include past shifts')" />
+
+            <x-summary-report-button :report="\App\Enums\SummaryReport::Schedule" />
+        </div>
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

@@ -164,9 +164,13 @@ new #[Title('Orders')] class extends Component {
 }; ?>
 
 <section class="w-full">
-    <div class="flex flex-col gap-2">
-        <flux:heading size="xl" level="1">{{ __('Orders') }}</flux:heading>
-        <flux:text>{{ __('Customer pre-orders, soonest pickup first. Open orders are shown by default.') }}</flux:text>
+    <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="flex flex-col gap-2">
+            <flux:heading size="xl" level="1">{{ __('Orders') }}</flux:heading>
+            <flux:text>{{ __('Customer pre-orders, soonest pickup first. Open orders are shown by default.') }}</flux:text>
+        </div>
+
+        <x-summary-report-button :report="\App\Enums\SummaryReport::Orders" />
     </div>
 
     <flux:separator variant="subtle" class="my-6" />

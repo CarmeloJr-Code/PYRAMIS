@@ -13,6 +13,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -23,13 +25,15 @@ class OrderQueueTest extends TestCase
 
     /**
      * An order carrying one line, in the given state.
+     *
+     * @param  array<string, mixed>  $attributes
      */
-    protected function order(OrderStatus $status = OrderStatus::Pending): Order
+    protected function order(OrderStatus $status = OrderStatus::Pending, array $attributes = []): Order
     {
         $order = Order::factory()
             ->status($status)
             ->for(Outlet::factory()->create(['name' => 'Main Branch']))
-            ->create();
+            ->create($attributes);
 
         OrderItem::factory()
             ->for($order)
@@ -159,6 +163,132 @@ class OrderQueueTest extends TestCase
         $component
             ->set('statusFilter', '')
             ->assertSeeText($open->reference);
+    }
+
+    /**
+     * Two open orders whose customers share nothing a search could catch.
+     *
+     * @return array{0: Order, 1: Order}
+     */
+    private function twoCustomers(): array
+    {
+        return [
+            $this->order(attributes: ['customer_name' => 'Maria Santos', 'customer_phone' => '09171234567']),
+            $this->order(attributes: ['customer_name' => 'Jose Rizal', 'customer_phone' => '09289998888']),
+        ];
+    }
+
+    /**
+     * Search the queue as a cashier.
+     */
+    private function search(string $typed, string $statusFilter = ''): Testable
+    {
+        return Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.index')
+            ->set('statusFilter', $statusFilter)
+            ->set('search', $typed);
+    }
+
+    public function test_a_reference_read_out_loosely_finds_its_order(): void
+    {
+        [$order, $other] = $this->twoCustomers();
+        $suffix = substr($order->reference, 3);
+
+        // Read off a phone screen, copied by hand, or only half of it.
+        foreach ([
+            Str::lower($order->reference),
+            'py '.substr($suffix, 0, 5).' '.substr($suffix, 5),
+            $suffix,
+            substr($suffix, 2, 5),
+        ] as $typed) {
+            $this->search($typed)
+                ->assertSeeText($order->reference)
+                ->assertDontSeeText($other->reference);
+        }
+    }
+
+    public function test_a_customer_name_finds_their_order_whatever_the_case(): void
+    {
+        [$order, $other] = $this->twoCustomers();
+
+        $this->search('maria')
+            ->assertSeeText($order->reference)
+            ->assertDontSeeText($other->reference);
+    }
+
+    public function test_part_of_a_phone_number_finds_the_order(): void
+    {
+        [$order, $other] = $this->twoCustomers();
+
+        foreach (['0917', '1234 567'] as $typed) {
+            $this->search($typed)
+                ->assertSeeText($order->reference)
+                ->assertDontSeeText($other->reference);
+        }
+    }
+
+    public function test_a_phone_stored_with_spaces_is_still_found(): void
+    {
+        // Taken before the order form insisted on eleven bare digits.
+        $order = $this->order(attributes: ['customer_phone' => '0917 555 0104']);
+
+        $this->search('09175550104')->assertSeeText($order->reference);
+    }
+
+    public function test_a_search_finds_an_order_that_has_already_been_collected(): void
+    {
+        $done = $this->order(OrderStatus::Completed);
+
+        // Under the default open view, which on its own would hide it.
+        $this->search($done->reference)->assertSeeText($done->reference);
+    }
+
+    public function test_a_search_stays_inside_a_picked_status(): void
+    {
+        // By name: a missed reference is echoed back in the no-match message.
+        $done = $this->order(OrderStatus::Completed, ['customer_name' => 'Maria Santos']);
+
+        $this->search('Maria', OrderStatus::Pending->value)
+            ->assertSeeText('No orders match')
+            ->assertDontSeeText($done->reference);
+    }
+
+    public function test_a_search_with_no_match_says_so(): void
+    {
+        [$order] = $this->twoCustomers();
+
+        $this->search('PY-2222222222')
+            ->assertSeeText('No orders match')
+            ->assertDontSeeText($order->reference)
+            ->call('$set', 'search', '')
+            ->assertSeeText($order->reference);
+    }
+
+    public function test_like_wildcards_are_taken_literally_not_as_match_anything(): void
+    {
+        [$order] = $this->twoCustomers();
+
+        $this->search('M_ria')->assertDontSeeText($order->reference);
+        $this->search('%')->assertSeeText($order->reference)->assertDontSeeText('No orders match');
+    }
+
+    public function test_the_reference_prefix_alone_does_not_match_every_order(): void
+    {
+        [$order] = $this->twoCustomers();
+
+        $this->search('PY')->assertDontSeeText($order->reference);
+    }
+
+    public function test_changing_the_search_starts_the_new_list_at_the_top(): void
+    {
+        $orders = $this->finishedOrders(26);
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.index')
+            ->set('statusFilter', OrderStatus::Completed->value)
+            ->call('gotoPage', 2)
+            ->set('search', $orders->last()->reference)
+            ->assertSeeText($orders->last()->reference);
     }
 
     public function test_a_cashier_walks_an_order_through_the_whole_workflow(): void

@@ -202,8 +202,14 @@ new #[Layout('layouts::storefront')] class extends Component {
     <header class="flex flex-col gap-3">
         <p class="text-xs font-medium tracking-[0.2em] text-snow-400 uppercase">{{ __('Order reference') }}</p>
         <h1 class="font-mono text-3xl font-semibold tracking-tight text-orchid-800">{{ $order->reference }}</h1>
-        <p class="text-snow-500">{{ __('Keep this reference — it is how you check back on your order.') }}</p>
+        <p class="text-snow-500">{{ __('Keep this reference — it is how you check back on your order, and what you show at the counter when you collect it.') }}</p>
     </header>
+
+    @if ($order->status === OrderStatus::Ready)
+        <p role="status" class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+            {{ __('Your order is ready. Show this reference at :outlet to collect it.', ['outlet' => $order->outlet->name]) }}
+        </p>
+    @endif
 
     @php($stages = $this->progress())
 

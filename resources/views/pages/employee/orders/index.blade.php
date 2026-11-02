@@ -4,6 +4,7 @@ use App\Enums\OrderStatus;
 use App\Models\Order;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -23,6 +24,9 @@ new #[Title('Orders')] class extends Component {
 
     #[Url(as: 'status', except: '')]
     public string $statusFilter = '';
+
+    #[Url(as: 'q', except: '')]
+    public string $search = '';
 
     /**
      * Authorize every entry into the component, not just the route.
@@ -44,11 +48,17 @@ new #[Title('Orders')] class extends Component {
      * a total order the database is free to return equal rows in any order it
      * likes, and a row can appear on two pages or on none.
      *
+     * A search looks past the open queue unless a status was picked, so a
+     * customer whose order was already collected or cancelled is shown that,
+     * not told it does not exist.
+     *
      * @return LengthAwarePaginator<int, Order>
      */
     #[Computed]
     public function orders(): LengthAwarePaginator
     {
+        $term = $this->term();
+
         return Order::query()
             ->with(['outlet', 'items'])
             // Proof sent and nobody has checked it yet: the orders the counter
@@ -59,11 +69,28 @@ new #[Title('Orders')] class extends Component {
             ->when(
                 $this->statusFilter !== '',
                 fn ($query) => $query->where('status', $this->statusFilter),
-                fn ($query) => $query->whereNotIn('status', [
+                fn ($query) => $query->when($term === '', fn ($query) => $query->whereNotIn('status', [
                     OrderStatus::Completed->value,
                     OrderStatus::Cancelled->value,
-                ]),
+                ])),
             )
+            ->when($term !== '', fn ($query) => $query->where(function ($match) use ($term): void {
+                $match->whereLike('customer_name', "%{$term}%");
+
+                // Every reference starts with PY, so the prefix alone matches
+                // nothing in particular.
+                if (! in_array($fragment = $this->referenceFragment($term), ['', 'PY'], true)) {
+                    $match->orWhereLike('reference', "%{$fragment}%");
+                }
+
+                // Only a term that is all number is a phone number — otherwise
+                // the digits in "PY-234" would match every phone containing 234.
+                // Orders taken before the form insisted on 09XXXXXXXXX may hold
+                // spaces or dashes, so those are ignored on both sides.
+                if (preg_match('/^[\d\s+-]+$/', $term) === 1 && strlen($digits = preg_replace('/\D/', '', $term)) >= 3) {
+                    $match->orWhereRaw("replace(replace(customer_phone, ' ', ''), '-', '') like ?", ["%{$digits}%"]);
+                }
+            }))
             ->orderBy('pickup_at')
             ->orderBy('id')
             ->paginate(self::PER_PAGE);
@@ -78,6 +105,43 @@ new #[Title('Orders')] class extends Component {
     public function updatedStatusFilter(): void
     {
         $this->resetPage();
+    }
+
+    /**
+     * A different search is a different list too.
+     */
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    /**
+     * What the cashier typed, ready to sit inside a LIKE pattern.
+     *
+     * LIKE wildcards are dropped rather than escaped, as on the storefront menu:
+     * SQLite and Postgres disagree on the default escape character.
+     */
+    private function term(): string
+    {
+        return trim(preg_replace('/\s+/', ' ', str_replace(['%', '_', '\\'], ' ', $this->search)) ?? '');
+    }
+
+    /**
+     * A reference as it is stored, however much of it was read out.
+     *
+     * Case, spaces and the dash are forgiven. The PY prefix is dropped only when
+     * it is plainly the prefix — "PY-", "PY " or a whole reference — so a name
+     * like "Pyramid" is not cut down to "RAMID".
+     */
+    private function referenceFragment(string $term): string
+    {
+        $compact = Str::upper(preg_replace('/[\s-]+/', '', $term) ?? '');
+
+        if (preg_match('/^py[\s-]/i', $term) === 1 || (strlen($compact) === 12 && str_starts_with($compact, 'PY'))) {
+            $compact = substr($compact, 2);
+        }
+
+        return $compact;
     }
 
     /**
@@ -107,6 +171,16 @@ new #[Title('Orders')] class extends Component {
 
     <flux:separator variant="subtle" class="my-6" />
 
+    <div class="mb-4 max-w-md">
+        <flux:input
+            type="search"
+            wire:model.live.debounce.300ms="search"
+            icon="magnifying-glass"
+            :placeholder="__('Reference, name or phone')"
+            :aria-label="__('Search orders by reference, name or phone')"
+        />
+    </div>
+
     <div class="mb-6 flex flex-wrap gap-2">
         <flux:button
             size="sm"
@@ -131,7 +205,15 @@ new #[Title('Orders')] class extends Component {
         @endforeach
     </div>
 
-    @if ($this->orders->isEmpty())
+    @if ($this->orders->isEmpty() && trim($search) !== '')
+        <flux:callout icon="magnifying-glass">
+            <flux:callout.heading>{{ __('No orders match “:search”.', ['search' => $search]) }}</flux:callout.heading>
+            <flux:callout.text>{{ __('Check the reference with the customer, or search by their name or phone.') }}</flux:callout.text>
+            <x-slot name="actions">
+                <flux:button size="sm" wire:click="$set('search', '')">{{ __('Clear the search') }}</flux:button>
+            </x-slot>
+        </flux:callout>
+    @elseif ($this->orders->isEmpty())
         <flux:callout icon="inbox">
             <flux:callout.heading>{{ __('Nothing here') }}</flux:callout.heading>
             <flux:callout.text>{{ __('No orders match this filter.') }}</flux:callout.text>

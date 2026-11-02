@@ -56,6 +56,23 @@ class OrderTrackingTest extends TestCase
             ->assertSee('aria-current="step"', false);
     }
 
+    public function test_a_ready_order_tells_the_customer_to_show_the_reference_at_the_outlet(): void
+    {
+        $this->get(route('orders.show', $this->order(status: OrderStatus::Ready)))
+            ->assertOk()
+            ->assertSeeText('Show this reference at Main Branch to collect it.');
+    }
+
+    public function test_an_order_not_yet_ready_does_not_send_the_customer_to_collect_it(): void
+    {
+        foreach ([OrderStatus::Pending, OrderStatus::Preparing, OrderStatus::Completed] as $status) {
+            $this->get(route('orders.show', $this->order(status: $status)))
+                ->assertOk()
+                ->assertSeeText('what you show at the counter when you collect it')
+                ->assertDontSeeText('Your order is ready.');
+        }
+    }
+
     public function test_an_unknown_reference_is_not_found(): void
     {
         $this->get(route('orders.show', ['order' => 'PY-2222222222']))->assertNotFound();

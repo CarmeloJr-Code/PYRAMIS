@@ -9,7 +9,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\TestWith;
+use Tests\Feature\EmailAddressTest;
 use Tests\TestCase;
 
 class EmployeeRecordsTest extends TestCase
@@ -53,12 +55,12 @@ class EmployeeRecordsTest extends TestCase
         $component = Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.workforce.employees.manage')
             ->set('name', 'Rosa Baker')
-            ->set('email', 'rosa@purpleyam.test')
+            ->set('email', 'rosa@purpleyam.store')
             ->set('role', UserRole::Baker->value)
             ->call('save')
             ->assertHasNoErrors();
 
-        $employee = User::firstWhere('email', 'rosa@purpleyam.test');
+        $employee = User::firstWhere('email', 'rosa@purpleyam.store');
 
         $this->assertNotNull($employee);
         $this->assertSame(UserRole::Baker, $employee->role);
@@ -80,17 +82,17 @@ class EmployeeRecordsTest extends TestCase
 
     public function test_it_refuses_a_duplicate_email_or_a_missing_role(): void
     {
-        User::factory()->create(['email' => 'taken@purpleyam.test']);
+        User::factory()->create(['email' => 'taken@purpleyam.store']);
 
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.workforce.employees.manage')
             ->set('name', 'Someone')
-            ->set('email', 'taken@purpleyam.test')
+            ->set('email', 'taken@purpleyam.store')
             ->set('role', '')
             ->call('save')
             ->assertHasErrors(['email', 'role']);
 
-        $this->assertSame(1, User::where('email', 'taken@purpleyam.test')->count());
+        $this->assertSame(1, User::where('email', 'taken@purpleyam.store')->count());
     }
 
     public function test_an_administrator_edits_an_employee(): void
@@ -215,12 +217,12 @@ class EmployeeRecordsTest extends TestCase
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.workforce.employees.manage')
             ->set('name', $name)
-            ->set('email', 'rosa@purpleyam.test')
+            ->set('email', 'rosa@purpleyam.store')
             ->set('role', UserRole::Baker->value)
             ->call('save')
             ->assertHasErrors(['name' => $rule]);
 
-        $this->assertDatabaseMissing('users', ['email' => 'rosa@purpleyam.test']);
+        $this->assertDatabaseMissing('users', ['email' => 'rosa@purpleyam.store']);
     }
 
     public function test_a_digit_in_the_name_says_what_it_wants(): void
@@ -228,7 +230,7 @@ class EmployeeRecordsTest extends TestCase
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.workforce.employees.manage')
             ->set('name', 'R2D2 Reyes')
-            ->set('email', 'rosa@purpleyam.test')
+            ->set('email', 'rosa@purpleyam.store')
             ->set('role', UserRole::Baker->value)
             ->call('save')
             ->assertSee('Please use letters only in the name.');
@@ -239,7 +241,7 @@ class EmployeeRecordsTest extends TestCase
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.workforce.employees.manage')
             ->set('name', "Ma. Rosa O'Brien-Peñaflor")
-            ->set('email', 'rosa@purpleyam.test')
+            ->set('email', 'rosa@purpleyam.store')
             ->set('role', UserRole::Baker->value)
             ->call('save')
             ->assertHasNoErrors();
@@ -252,27 +254,126 @@ class EmployeeRecordsTest extends TestCase
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.workforce.employees.manage')
             ->set('name', '  Rosa Baker ')
-            ->set('email', ' rosa@purpleyam.test ')
+            ->set('email', ' rosa@purpleyam.store ')
             ->set('role', UserRole::Baker->value)
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('users', ['name' => 'Rosa Baker', 'email' => 'rosa@purpleyam.test']);
+        $this->assertDatabaseHas('users', ['name' => 'Rosa Baker', 'email' => 'rosa@purpleyam.store']);
     }
 
     public function test_an_email_padded_with_spaces_is_still_a_duplicate(): void
     {
-        User::factory()->create(['email' => 'taken@purpleyam.test']);
+        User::factory()->create(['email' => 'taken@purpleyam.store']);
 
         Livewire::actingAs(User::factory()->administrator()->create())
             ->test('pages::employee.workforce.employees.manage')
             ->set('name', 'Someone Else')
-            ->set('email', 'taken@purpleyam.test ')
+            ->set('email', 'taken@purpleyam.store ')
             ->set('role', UserRole::Baker->value)
             ->call('save')
             ->assertHasErrors(['email' => 'unique']);
 
-        $this->assertSame(1, User::where('email', 'taken@purpleyam.test')->count());
+        $this->assertSame(1, User::where('email', 'taken@purpleyam.store')->count());
+    }
+
+    public function test_an_email_differing_only_in_case_is_still_a_duplicate(): void
+    {
+        User::factory()->create(['email' => 'taken@purpleyam.store']);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'Someone Else')
+            ->set('email', 'Taken@PurpleYam.Store')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasErrors(['email' => 'unique']);
+
+        $this->assertDatabaseMissing('users', ['name' => 'Someone Else']);
+    }
+
+    public function test_an_employee_saved_with_capitals_signs_in_however_they_type_it(): void
+    {
+        $component = Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'Rosa Baker')
+            ->set('email', 'Rosa@PurpleYam.Store')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('users', ['email' => 'rosa@purpleyam.store']);
+
+        auth()->logout();
+
+        $this->post(route('login.store'), [
+            'email' => 'ROSA@purpleyam.store',
+            'password' => $component->get('generatedPassword'),
+        ])->assertSessionHasNoErrors();
+
+        $this->assertAuthenticatedAs(User::firstWhere('email', 'rosa@purpleyam.store'));
+    }
+
+    #[DataProviderExternal(EmailAddressTest::class, 'notAnEmailProvider')]
+    public function test_an_email_that_is_not_one_is_refused(string $email): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'Rosa Baker')
+            ->set('email', $email)
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasErrors('email')
+            ->assertSee('Please enter a working email address, like ana@gmail.com.');
+
+        $this->assertDatabaseMissing('users', ['name' => 'Rosa Baker']);
+    }
+
+    #[TestWith([''])]
+    #[TestWith(['   '])]
+    public function test_an_email_is_required(string $email): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'Rosa Baker')
+            ->set('email', $email)
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasErrors(['email' => 'required']);
+
+        $this->assertDatabaseMissing('users', ['name' => 'Rosa Baker']);
+    }
+
+    public function test_an_email_over_the_limit_is_refused(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'Rosa Baker')
+            ->set('email', str_repeat('a', 250).'@purpleyam.store')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasErrors(['email' => 'max']);
+
+        $this->assertDatabaseMissing('users', ['name' => 'Rosa Baker']);
+    }
+
+    public function test_editing_an_employee_keeps_their_own_email_and_lowercases_a_new_one(): void
+    {
+        $employee = User::factory()->baker()->create(['email' => 'rosa@purpleyam.store']);
+        $admin = User::factory()->administrator()->create();
+
+        Livewire::actingAs($admin)
+            ->test('pages::employee.workforce.employees.manage', ['user' => $employee])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        Livewire::actingAs($admin)
+            ->test('pages::employee.workforce.employees.manage', ['user' => $employee])
+            ->set('email', 'Rosa.Baker@PurpleYam.Store')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('rosa.baker@purpleyam.store', $employee->fresh()->email);
     }
 
     public function test_the_fields_restrict_what_can_be_typed_into_them(): void

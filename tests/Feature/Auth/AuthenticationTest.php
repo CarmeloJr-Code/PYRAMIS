@@ -48,6 +48,27 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticated();
     }
 
+    public function test_the_email_is_matched_whatever_its_case_or_surrounding_spaces(): void
+    {
+        $user = User::factory()->create(['email' => 'ana@purpleyam.store']);
+
+        $this->post(route('login.store'), [
+            'email' => '  Ana@PurpleYam.Store ',
+            'password' => 'password',
+        ])->assertSessionHasNoErrors();
+
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_the_email_field_is_capped_and_autofilled(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('type="email"', false)
+            ->assertSee('maxlength="255"', false)
+            ->assertSee('autocomplete="email"', false);
+    }
+
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();

@@ -38,6 +38,41 @@ class PasswordResetTest extends TestCase
         Notification::assertSentTo($user, ResetPassword::class);
     }
 
+    public function test_the_link_is_sent_whatever_the_case_of_the_email(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create(['email' => 'ana@purpleyam.store']);
+
+        $this->post(route('password.request'), ['email' => ' Ana@PurpleYam.Store '])
+            ->assertSessionHasNoErrors();
+
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    public function test_a_link_request_without_an_email_address_is_refused(): void
+    {
+        Notification::fake();
+
+        $this->post(route('password.request'), ['email' => 'not-an-email'])
+            ->assertSessionHasErrors('email');
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_the_email_fields_are_capped_and_autofilled(): void
+    {
+        $this->get(route('password.request'))
+            ->assertOk()
+            ->assertSee('maxlength="255"', false)
+            ->assertSee('autocomplete="email"', false);
+
+        $this->get(route('password.reset', 'a-token'))
+            ->assertOk()
+            ->assertSee('maxlength="255"', false)
+            ->assertSee('autocomplete="email"', false);
+    }
+
     public function test_reset_password_screen_can_be_rendered(): void
     {
         Notification::fake();

@@ -13,7 +13,9 @@ use Illuminate\Support\Str;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\TestWith;
+use Tests\Feature\EmailAddressTest;
 use Tests\TestCase;
 
 class PlaceOrderTest extends TestCase
@@ -244,6 +246,58 @@ class PlaceOrderTest extends TestCase
             ->assertHasNoErrors('customer_phone');
     }
 
+    public function test_an_email_is_stored_trimmed_and_lowercase(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_email', ' Ana.Reyes@Gmail.com ')
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('orders', ['customer_email' => 'ana.reyes@gmail.com']);
+    }
+
+    #[TestWith([''])]
+    #[TestWith(['   '])]
+    public function test_the_email_may_be_left_out(string $typed): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_email', $typed)
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('orders', ['customer_name' => 'Ana Reyes', 'customer_email' => null]);
+    }
+
+    #[DataProviderExternal(EmailAddressTest::class, 'notAnEmailProvider')]
+    public function test_an_email_that_is_not_one_is_refused(string $typed): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_email', $typed)
+            ->call('submit')
+            ->assertHasErrors('customer_email')
+            ->assertSee('Please enter a working email address, like ana@gmail.com.');
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_an_email_over_the_limit_is_refused(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('customer_email', str_repeat('a', 250).'@gmail.com')
+            ->call('submit')
+            ->assertHasErrors(['customer_email' => 'max']);
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
     public function test_it_rejects_a_bad_email_and_overlong_notes(): void
     {
         Session::put('cart', [$this->variant()->id => 1]);
@@ -322,7 +376,9 @@ class PlaceOrderTest extends TestCase
             ->assertSeeHtml("keep(\$el, /[^\\p{L}\\s.'-]/gu)")
             ->assertSeeHtml('keep($el, /\D/g); if ($el.value.length > 11)')
             ->assertSeeHtml('keep($el, /\s/g)')
-            ->assertSeeHtml('inputmode="numeric"');
+            ->assertSeeHtml('inputmode="numeric"')
+            ->assertSeeHtml('autocomplete="email"')
+            ->assertSeeHtml('maxlength="255"');
     }
 
     public function test_the_time_field_offers_only_opening_hours(): void

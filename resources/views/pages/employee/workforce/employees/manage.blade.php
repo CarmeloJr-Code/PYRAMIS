@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\ProvisionEmployee;
+use App\Concerns\EmailValidationRules;
 use App\Enums\UserRole;
 use App\Models\User;
 use Flux\Flux;
@@ -11,6 +12,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Manage employee')] class extends Component {
+    use EmailValidationRules;
+
     #[Locked]
     public ?int $employeeId = null;
 
@@ -64,15 +67,12 @@ new #[Title('Manage employee')] class extends Component {
         // Livewire skips the TrimStrings middleware, so a stray space would
         // otherwise be stored, and slip a duplicate email past unique.
         $this->name = trim($this->name);
-        $this->email = trim($this->email);
+        $this->email = $this->normaliseEmail($this->email);
 
         $validated = $this->validate([
             // The same letters a customer's name is held to on the storefront.
             'name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\\pL\\s.'\\-]+$/u"],
-            'email' => [
-                'required', 'string', 'email', 'max:255',
-                Rule::unique('users', 'email')->ignore($this->employeeId),
-            ],
+            'email' => $this->employeeEmailRules($this->employeeId),
             'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['boolean'],
         ], [

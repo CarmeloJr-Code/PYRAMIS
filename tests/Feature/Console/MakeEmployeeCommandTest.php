@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
+use Tests\Feature\EmailAddressTest;
 use Tests\TestCase;
 
 class MakeEmployeeCommandTest extends TestCase
@@ -18,14 +20,14 @@ class MakeEmployeeCommandTest extends TestCase
     {
         $this->artisan('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'baker',
         ])
             ->expectsQuestion('Password', 'correct-horse-battery-staple')
             ->expectsQuestion('Confirm password', 'correct-horse-battery-staple')
             ->assertSuccessful();
 
-        $employee = User::firstWhere('email', 'ana@purpleyam.test');
+        $employee = User::firstWhere('email', 'ana@purpleyam.store');
 
         $this->assertNotNull($employee);
         $this->assertSame('Ana Reyes', $employee->name);
@@ -37,14 +39,14 @@ class MakeEmployeeCommandTest extends TestCase
     {
         $this->artisan('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'cashier',
         ])
             ->expectsQuestion('Password', 'correct-horse-battery-staple')
             ->expectsQuestion('Confirm password', 'correct-horse-battery-staple')
             ->assertSuccessful();
 
-        $employee = User::firstWhere('email', 'ana@purpleyam.test');
+        $employee = User::firstWhere('email', 'ana@purpleyam.store');
 
         $this->assertNotSame('correct-horse-battery-staple', $employee->password);
         $this->assertTrue(Hash::check('correct-horse-battery-staple', $employee->password));
@@ -54,12 +56,12 @@ class MakeEmployeeCommandTest extends TestCase
     {
         $this->artisan('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'administrator',
             '--generate-password' => true,
         ])->assertSuccessful();
 
-        $employee = User::firstWhere('email', 'ana@purpleyam.test');
+        $employee = User::firstWhere('email', 'ana@purpleyam.store');
 
         $this->assertNotNull($employee);
         $this->assertSame(UserRole::Administrator, $employee->role);
@@ -72,7 +74,7 @@ class MakeEmployeeCommandTest extends TestCase
         // — and so this exercises the genuinely non-interactive path.
         $exitCode = Artisan::call('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'baker',
             '--generate-password' => true,
         ]);
@@ -88,7 +90,7 @@ class MakeEmployeeCommandTest extends TestCase
         $this->assertNotEmpty($matches, 'The generated password was not printed.');
 
         $this->assertTrue(
-            Hash::check($matches[1], User::firstWhere('email', 'ana@purpleyam.test')->password),
+            Hash::check($matches[1], User::firstWhere('email', 'ana@purpleyam.store')->password),
         );
     }
 
@@ -107,7 +109,7 @@ class MakeEmployeeCommandTest extends TestCase
 
         Artisan::call('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'baker',
             '--generate-password' => true,
         ]);
@@ -121,7 +123,7 @@ class MakeEmployeeCommandTest extends TestCase
         $this->assertTrue(
             Hash::check(
                 MarkupPasswordCommand::PASSWORD,
-                User::firstWhere('email', 'ana@purpleyam.test')->password,
+                User::firstWhere('email', 'ana@purpleyam.store')->password,
             ),
         );
     }
@@ -130,7 +132,7 @@ class MakeEmployeeCommandTest extends TestCase
     {
         $this->artisan('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'baker',
             '--no-interaction' => true,
         ])->assertFailed();
@@ -142,7 +144,7 @@ class MakeEmployeeCommandTest extends TestCase
     {
         $this->artisan('make:employee')
             ->expectsQuestion('Full name', 'Ana Reyes')
-            ->expectsQuestion('Email address', 'ana@purpleyam.test')
+            ->expectsQuestion('Email address', 'ana@purpleyam.store')
             ->expectsQuestion('Role', 'administrator')
             ->expectsQuestion('Password', 'correct-horse-battery-staple')
             ->expectsQuestion('Confirm password', 'correct-horse-battery-staple')
@@ -150,31 +152,88 @@ class MakeEmployeeCommandTest extends TestCase
 
         $this->assertSame(
             UserRole::Administrator,
-            User::firstWhere('email', 'ana@purpleyam.test')->role,
+            User::firstWhere('email', 'ana@purpleyam.store')->role,
         );
     }
 
     public function test_it_rejects_an_email_already_in_use(): void
     {
-        User::factory()->create(['email' => 'ana@purpleyam.test']);
+        User::factory()->create(['email' => 'ana@purpleyam.store']);
 
         $this->artisan('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'baker',
         ])
             ->expectsQuestion('Password', 'correct-horse-battery-staple')
             ->expectsQuestion('Confirm password', 'correct-horse-battery-staple')
             ->assertFailed();
 
-        $this->assertSame(1, User::where('email', 'ana@purpleyam.test')->count());
+        $this->assertSame(1, User::where('email', 'ana@purpleyam.store')->count());
+    }
+
+    public function test_it_rejects_an_email_in_use_under_other_capitals(): void
+    {
+        User::factory()->create(['email' => 'ana@purpleyam.store']);
+
+        $this->artisan('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => 'Ana@PurpleYam.Store',
+            '--role' => 'baker',
+            '--generate-password' => true,
+        ])->assertFailed();
+
+        $this->assertDatabaseCount('users', 1);
+    }
+
+    public function test_the_email_is_stored_trimmed_and_lowercase(): void
+    {
+        $this->artisan('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => ' Ana.Reyes@PurpleYam.Store ',
+            '--role' => 'baker',
+            '--generate-password' => true,
+        ])
+            ->expectsOutputToContain('Employee [ana.reyes@purpleyam.store] created')
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('users', ['email' => 'ana.reyes@purpleyam.store']);
+    }
+
+    #[DataProviderExternal(EmailAddressTest::class, 'notAnEmailProvider')]
+    public function test_it_rejects_an_email_that_is_not_one(string $email): void
+    {
+        $this->artisan('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => $email,
+            '--role' => 'baker',
+            '--generate-password' => true,
+        ])
+            ->expectsOutputToContain('Please enter a working email address, like ana@gmail.com.')
+            ->assertFailed();
+
+        $this->assertDatabaseEmpty('users');
+    }
+
+    public function test_it_rejects_an_email_over_the_limit(): void
+    {
+        $this->artisan('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => str_repeat('a', 250).'@purpleyam.store',
+            '--role' => 'baker',
+            '--generate-password' => true,
+        ])
+            ->expectsOutputToContain('must not be greater than 255 characters')
+            ->assertFailed();
+
+        $this->assertDatabaseEmpty('users');
     }
 
     public function test_it_rejects_a_role_outside_the_enum(): void
     {
         $this->artisan('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'customer',
         ])
             ->expectsQuestion('Password', 'correct-horse-battery-staple')
@@ -188,7 +247,7 @@ class MakeEmployeeCommandTest extends TestCase
     {
         $this->artisan('make:employee', [
             '--name' => 'Ana Reyes',
-            '--email' => 'ana@purpleyam.test',
+            '--email' => 'ana@purpleyam.store',
             '--role' => 'baker',
         ])
             ->expectsQuestion('Password', 'correct-horse-battery-staple')

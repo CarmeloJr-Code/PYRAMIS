@@ -5,6 +5,9 @@ namespace Tests\Feature\Settings;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
+use PHPUnit\Framework\Attributes\TestWith;
+use Tests\Feature\EmailAddressTest;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
@@ -36,6 +39,77 @@ class ProfileUpdateTest extends TestCase
         $this->assertEquals('Test User', $user->name);
         $this->assertEquals('test@example.com', $user->email);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_the_email_is_stored_trimmed_and_lowercase(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->set('email', ' Ana.Reyes@PurpleYam.Store ')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertSame('ana.reyes@purpleyam.store', $user->refresh()->email);
+    }
+
+    public function test_an_email_another_account_holds_is_refused_whatever_its_case(): void
+    {
+        User::factory()->create(['email' => 'taken@purpleyam.store']);
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->set('email', 'Taken@PurpleYam.Store')
+            ->call('updateProfileInformation')
+            ->assertHasErrors(['email' => 'unique']);
+
+        $this->assertNotSame('taken@purpleyam.store', $user->refresh()->email);
+    }
+
+    #[DataProviderExternal(EmailAddressTest::class, 'notAnEmailProvider')]
+    public function test_an_email_that_is_not_one_is_refused(string $email): void
+    {
+        $user = User::factory()->create();
+        $before = $user->email;
+
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->set('email', $email)
+            ->call('updateProfileInformation')
+            ->assertHasErrors('email')
+            ->assertSee('Please enter a working email address, like ana@gmail.com.');
+
+        $this->assertSame($before, $user->refresh()->email);
+    }
+
+    #[TestWith([''])]
+    #[TestWith(['   '])]
+    public function test_the_email_cannot_be_cleared(string $email): void
+    {
+        $user = User::factory()->create();
+        $before = $user->email;
+
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->set('email', $email)
+            ->call('updateProfileInformation')
+            ->assertHasErrors(['email' => 'required']);
+
+        $this->assertSame($before, $user->refresh()->email);
+    }
+
+    public function test_an_email_over_the_limit_is_refused(): void
+    {
+        $user = User::factory()->create();
+
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->set('email', str_repeat('a', 250).'@purpleyam.store')
+            ->call('updateProfileInformation')
+            ->assertHasErrors(['email' => 'max'])
+            ->assertSeeHtml('maxlength="255"');
     }
 
     public function test_email_verification_status_is_unchanged_when_email_address_is_unchanged(): void

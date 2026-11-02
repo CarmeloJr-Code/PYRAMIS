@@ -1,17 +1,18 @@
 <?php
 
-use App\Models\User;
+use App\Concerns\EmailValidationRules;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Computed;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Title('Profile settings')] class extends Component {
+    use EmailValidationRules;
+
     public string $name = '';
     public string $email = '';
 
@@ -24,13 +25,7 @@ new #[Title('Profile settings')] class extends Component {
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => [
-                'required',
-                'string',
-                'email',
-                'max:255',
-                Rule::unique(User::class)->ignore($userId),
-            ],
+            'email' => $this->employeeEmailRules($userId),
         ];
     }
 
@@ -49,6 +44,10 @@ new #[Title('Profile settings')] class extends Component {
     public function updateProfileInformation(): void
     {
         $user = Auth::user();
+
+        // Livewire skips the TrimStrings middleware, and Fortify looks the
+        // email up lowercased at sign-in, so it is stored the way it is sought.
+        $this->email = $this->normaliseEmail($this->email);
 
         $validated = $this->validate($this->profileRules($user->id));
 
@@ -105,7 +104,7 @@ new #[Title('Profile settings')] class extends Component {
             <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
 
             <div>
-                <flux:input wire:model="email" :label="__('Email')" type="email" required autocomplete="email" />
+                <flux:input wire:model="email" :label="__('Email')" type="email" maxlength="255" required autocomplete="email" />
 
                 @if ($this->hasUnverifiedEmail)
                     <div>

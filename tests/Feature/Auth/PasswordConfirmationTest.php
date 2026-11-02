@@ -17,5 +17,6 @@ class PasswordConfirmationTest extends TestCase
         $response = $this->actingAs($user)->get(route('password.confirm'));
 
         $response->assertOk();
+        $response->assertDontSee('Confirm with passkey');
     }
 }

@@ -4,8 +4,10 @@ namespace Tests\Feature\Storefront;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\ProductStockMovement;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Session;
@@ -39,6 +41,15 @@ class PlaceOrderTest extends TestCase
         return ProductVariant::factory()
             ->for(Product::factory()->create())
             ->create(['price' => $price, 'is_available' => true]);
+    }
+
+    /**
+     * Put units on the shelf at an outlet — this test's own unless another
+     * is given.
+     */
+    protected function shelve(ProductVariant $variant, int $units, ?Outlet $outlet = null): void
+    {
+        ProductStockMovement::factory()->for($variant)->for($outlet ?? $this->outlet)->quantity($units)->create();
     }
 
     /**
@@ -410,7 +421,7 @@ class PlaceOrderTest extends TestCase
         Session::put('cart', [$this->variant()->id => 1]);
 
         $component = Livewire::test('pages::storefront.order')
-            ->set('pickup_date', now()->toDateString());
+            ->set('pickup_when', 'today');
 
         $this->assertSame(
             ['15:00', '16:00', '17:00', '18:00', '19:00'],
@@ -424,7 +435,7 @@ class PlaceOrderTest extends TestCase
         Session::put('cart', [$this->variant()->id => 1]);
 
         Livewire::test('pages::storefront.order')
-            ->set('pickup_date', now()->toDateString())
+            ->set('pickup_when', 'today')
             ->assertSet('pickupTimes', [])
             ->assertSeeText('No pickup times are left today');
     }
@@ -437,7 +448,7 @@ class PlaceOrderTest extends TestCase
         Livewire::test('pages::storefront.order')
             ->set('pickup_date', now()->addDay()->toDateString())
             ->set('pickup_time', '09:00')
-            ->set('pickup_date', now()->toDateString())
+            ->set('pickup_when', 'today')
             ->assertSet('pickup_time', '');
     }
 
@@ -449,7 +460,7 @@ class PlaceOrderTest extends TestCase
         Livewire::test('pages::storefront.order')
             ->set('pickup_date', now()->addDay()->toDateString())
             ->set('pickup_time', '16:00')
-            ->set('pickup_date', now()->toDateString())
+            ->set('pickup_when', 'today')
             ->assertSet('pickup_time', '16:00');
     }
 
@@ -484,7 +495,7 @@ class PlaceOrderTest extends TestCase
         Session::put('cart', [$variant->id => 1]);
 
         $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
-            ->set('pickup_date', now()->toDateString())
+            ->set('pickup_when', 'today')
             ->set('pickup_time', '09:00')
             ->call('submit')
             ->assertHasNoErrors('pickup_date')
@@ -498,10 +509,11 @@ class PlaceOrderTest extends TestCase
         $this->travelTo(now()->setTime(14, 0));
 
         $variant = $this->variant();
+        $this->shelve($variant, 1);
         Session::put('cart', [$variant->id => 1]);
 
         $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
-            ->set('pickup_date', now()->toDateString())
+            ->set('pickup_when', 'today')
             ->set('pickup_time', '16:00')
             ->call('submit')
             ->assertHasNoErrors();
@@ -654,5 +666,154 @@ class PlaceOrderTest extends TestCase
             ->call('remove', $variant->id);
 
         $this->assertEmpty(session('cart', []));
+    }
+
+    public function test_buy_now_opens_a_checkout_fixed_to_today(): void
+    {
+        $this->travelTo(now()->setTime(10, 0));
+        Session::put('cart', [$this->variant()->id => 1]);
+        Session::put('cart_pickup', 'today');
+
+        Livewire::test('pages::storefront.order')
+            ->assertSet('pickup_when', 'today')
+            ->assertSet('pickup_date', now()->toDateString())
+            ->assertSeeText('Place order')
+            ->assertDontSeeText('Place pre-order');
+    }
+
+    public function test_a_cart_without_a_pickup_choice_is_a_pre_order(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->assertSet('pickup_when', 'later')
+            ->assertSet('pickup_date', '')
+            ->assertSeeText('Place pre-order');
+    }
+
+    public function test_switching_between_today_and_a_later_day_moves_the_date_and_is_remembered(): void
+    {
+        $this->travelTo(now()->setTime(10, 0));
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $component = Livewire::test('pages::storefront.order')
+            ->set('pickup_when', 'today')
+            ->assertSet('pickup_date', now()->toDateString());
+
+        $this->assertSame('today', session('cart_pickup'));
+
+        $component->set('pickup_when', 'later')->assertSet('pickup_date', '');
+
+        $this->assertSame('later', session('cart_pickup'));
+    }
+
+    public function test_a_pickup_choice_that_is_neither_is_taken_as_a_pre_order(): void
+    {
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        Livewire::test('pages::storefront.order')
+            ->set('pickup_when', 'yesterday')
+            ->assertSet('pickup_when', 'later');
+    }
+
+    public function test_a_pre_order_cannot_be_for_today(): void
+    {
+        $this->travelTo(now()->setTime(10, 0));
+        Session::put('cart', [$this->variant()->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_date', now()->toDateString())
+            ->set('pickup_time', '16:00')
+            ->call('submit')
+            ->assertHasErrors(['pickup_date' => 'after']);
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_a_pre_order_needs_nothing_on_the_shelf(): void
+    {
+        $this->placeOrder()->assertHasNoErrors();
+
+        $this->assertSame(now()->addDay()->toDateString(), Order::sole()->pickup_at->toDateString());
+    }
+
+    public function test_a_pickup_today_may_take_everything_left_today(): void
+    {
+        $this->travelTo(now()->setTime(10, 0));
+        $variant = $this->variant();
+        $this->shelve($variant, 3);
+        Session::put('cart', [$variant->id => 3]);
+        Session::put('cart_pickup', 'today');
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_time', '16:00')
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $order = Order::sole();
+
+        $this->assertSame(now()->setTime(16, 0)->toDateTimeString(), $order->pickup_at->toDateTimeString());
+        $this->assertSame(3, $order->items->sole()->quantity);
+        $this->assertNull(session('cart'));
+        $this->assertNull(session('cart_pickup'));
+    }
+
+    public function test_a_pickup_today_is_refused_past_what_is_left_today(): void
+    {
+        $this->travelTo(now()->setTime(10, 0));
+        $variant = $this->variant();
+        $this->shelve($variant, 3);
+
+        // One of the three is already claimed by an order due today.
+        OrderItem::factory()
+            ->for(Order::factory()->for($this->outlet)->state(['pickup_at' => now()->setTime(12, 0)]))
+            ->for($variant)
+            ->create(['quantity' => 1]);
+
+        Session::put('cart', [$variant->id => 3]);
+        Session::put('cart_pickup', 'today');
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_time', '16:00')
+            ->call('submit')
+            ->assertHasErrors('cart')
+            ->assertSeeText('Only 2 of '.$variant->product->name.' · '.$variant->name.' are left today at '.$this->outlet->name.'.');
+
+        $this->assertSame(1, Order::count());
+        $this->assertSame([$variant->id => 3], session('cart'));
+    }
+
+    public function test_another_outlets_shelf_does_not_count_for_a_pickup_today(): void
+    {
+        $this->travelTo(now()->setTime(10, 0));
+        $variant = $this->variant();
+        $this->shelve($variant, 5, Outlet::factory()->create());
+        Session::put('cart', [$variant->id => 1]);
+        Session::put('cart_pickup', 'today');
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->assertSeeText('Out of stock today at this outlet')
+            ->set('pickup_time', '16:00')
+            ->call('submit')
+            ->assertHasErrors('cart')
+            ->assertSeeText('is out of stock today at '.$this->outlet->name);
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_a_pickup_today_shows_what_is_left_at_the_chosen_outlet(): void
+    {
+        $this->travelTo(now()->setTime(10, 0));
+        $variant = $this->variant();
+        $this->shelve($variant, 4);
+        Session::put('cart', [$variant->id => 1]);
+        Session::put('cart_pickup', 'today');
+
+        Livewire::test('pages::storefront.order')
+            ->assertDontSeeText('left today at this outlet')
+            ->set('outlet_id', $this->outlet->id)
+            ->assertSeeText('4 left today at this outlet')
+            ->set('pickup_when', 'later')
+            ->assertDontSeeText('left today at this outlet');
     }
 }

@@ -1,8 +1,10 @@
 <?php
 
+use App\Actions\CountAvailableStock;
 use App\Actions\NotifyEmployees;
 use App\Concerns\EmailValidationRules;
 use App\Enums\OrderStatus;
+use App\Enums\PickupWhen;
 use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\ProductVariant;
@@ -42,14 +44,12 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
      */
     private const HOURLY_ADDRESS_LIMIT = 20;
 
-    /**
-     * The earliest and latest pickup times a customer may book, 8 AM to 7 PM.
-     */
-    private const PICKUP_OPENS = '08:00';
-
-    private const PICKUP_CLOSES = '19:00';
-
     public ?int $outlet_id = null;
+
+    /**
+     * Today ("Buy now") or a later day (pre-order), as a PickupWhen value.
+     */
+    public string $pickup_when = 'later';
 
     public string $customer_name = '';
 
@@ -71,6 +71,27 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     private const TRIMMED = ['customer_name', 'customer_phone', 'customer_email'];
 
     /**
+     * Pick up where the product page left off: the button pressed last chose
+     * today or a later day for the whole cart.
+     */
+    public function mount(): void
+    {
+        $this->pickup_when = PickupWhen::tryFrom((string) Session::get('cart_pickup'))?->value ?? PickupWhen::Later->value;
+
+        if ($this->forToday()) {
+            $this->pickup_date = today()->toDateString();
+        }
+    }
+
+    /**
+     * Whether this order is to be collected today.
+     */
+    public function forToday(): bool
+    {
+        return $this->pickup_when === PickupWhen::Today->value;
+    }
+
+    /**
      * The checkout rules, shared by the check as each field is left and the
      * one on submit.
      *
@@ -86,7 +107,9 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             'customer_name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\\pL\\s.'\\-]+$/u"],
             'customer_phone' => ['required', 'string', new PhilippineMobile],
             'customer_email' => $this->optionalEmailRules(),
-            'pickup_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'pickup_when' => ['required', Rule::enum(PickupWhen::class)],
+            // Buy now is collected today; a pre-order is for tomorrow or after.
+            'pickup_date' => ['required', 'date_format:Y-m-d', $this->forToday() ? 'date_equals:today' : 'after:today'],
             // Any hour of the window. One already gone today is refused on
             // submit, with a message that says so.
             'pickup_time' => ['required', Rule::in($this->pickupHours())],
@@ -102,6 +125,8 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
         return [
             'customer_name.regex' => __('Please use letters only in your name.'),
             'pickup_time.in' => __('Please choose a pickup time between 8:00 AM and 7:00 PM.'),
+            'pickup_date.after' => __('A pre-order is for tomorrow or later. To collect today, choose "Pick up today".'),
+            'pickup_date.date_equals' => __('"Pick up today" is collected today.'),
         ];
     }
 
@@ -114,7 +139,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     {
         return array_map(
             fn (int $hour): string => sprintf('%02d:00', $hour),
-            range((int) self::PICKUP_OPENS, (int) self::PICKUP_CLOSES),
+            range((int) PickupWhen::OPENS, (int) PickupWhen::CLOSES),
         );
     }
 
@@ -146,15 +171,42 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             $this->tidy($property);
         }
 
+        if ($property === 'pickup_when') {
+            $this->switchPickup();
+        }
+
         // Moving to today can take the chosen hour off the list. Clear it
         // rather than keep a time the dropdown no longer shows.
-        if ($property === 'pickup_date' && $this->pickup_time !== '' && ! array_key_exists($this->pickup_time, $this->pickupTimes)) {
+        if (in_array($property, ['pickup_date', 'pickup_when'], true) && $this->pickup_time !== '' && ! array_key_exists($this->pickup_time, $this->pickupTimes)) {
             $this->pickup_time = '';
         }
 
         if (array_key_exists($property, $this->rules())) {
             $this->validateOnly($property);
         }
+    }
+
+    /**
+     * Carry a change between today and a later day through to the cart and
+     * the date: today fixes the date, and a later day drops a date that is
+     * not later.
+     */
+    private function switchPickup(): void
+    {
+        $pickup = PickupWhen::tryFrom($this->pickup_when) ?? PickupWhen::Later;
+
+        $this->pickup_when = $pickup->value;
+
+        Session::put('cart_pickup', $pickup->value);
+
+        if ($pickup === PickupWhen::Today) {
+            $this->pickup_date = today()->toDateString();
+        } elseif ($this->pickup_date !== '' && $this->pickup_date <= today()->toDateString()) {
+            $this->pickup_date = '';
+        }
+
+        $this->resetValidation('pickup_date');
+        unset($this->pickupTimes, $this->todayStock);
     }
 
     /**
@@ -213,6 +265,26 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     }
 
     /**
+     * For a pickup today, how many of each size in the cart are left today at
+     * the chosen outlet, as variant id => units. Empty for a later day or
+     * before an outlet is chosen.
+     *
+     * @return array<int, int>
+     */
+    #[Computed]
+    public function todayStock(): array
+    {
+        if (! $this->forToday() || ! $this->outlets->contains('id', $this->outlet_id)) {
+            return [];
+        }
+
+        return array_map(
+            fn (array $outlets): int => $outlets[$this->outlet_id],
+            app(CountAvailableStock::class)->handle($this->variants->pluck('id'), collect([$this->outlet_id])),
+        );
+    }
+
+    /**
      * The cart total in pesos, from live catalogue prices.
      */
     #[Computed]
@@ -267,7 +339,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
     }
 
     /**
-     * Place the pre-order.
+     * Place the order — for today, or pre-ordered for a later day.
      */
     public function submit(): void
     {
@@ -279,6 +351,12 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
 
         foreach (self::TRIMMED as $property) {
             $this->tidy($property);
+        }
+
+        // A page left open past midnight still means today, not the day the
+        // page was opened.
+        if ($this->forToday()) {
+            $this->pickup_date = today()->toDateString();
         }
 
         $validated = $this->validate();
@@ -317,6 +395,10 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
         }
 
         $order = DB::transaction(function () use ($validated, $pickupAt, $variants, $cart): Order {
+            if ($this->forToday()) {
+                $this->ensureInStockToday((int) $validated['outlet_id'], $variants, $cart);
+            }
+
             $order = Order::create([
                 'outlet_id' => $validated['outlet_id'],
                 'customer_name' => $validated['customer_name'],
@@ -347,9 +429,45 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             RateLimiter::hit($key, 3600);
         }
 
-        Session::forget('cart');
+        Session::forget(['cart', 'cart_pickup']);
 
         $this->redirectRoute('orders.show', ['order' => $order->reference], navigate: true);
+    }
+
+    /**
+     * Refuse a pickup today that asks for more than today's stock at the
+     * outlet still holds.
+     *
+     * The outlet row is locked first, as RecordProductStockMovement does, so
+     * two customers buying the last cake at once cannot both be promised it:
+     * the second waits, then counts the first one's order as a claim.
+     *
+     * @param  Collection<int, ProductVariant>  $variants
+     * @param  array<int, int>  $cart
+     *
+     * @throws ValidationException
+     */
+    private function ensureInStockToday(int $outletId, Collection $variants, array $cart): void
+    {
+        $outlet = Outlet::query()->lockForUpdate()->findOrFail($outletId);
+
+        $left = app(CountAvailableStock::class)->handle($variants->pluck('id'), collect([$outlet->id]));
+
+        foreach ($variants as $variant) {
+            $units = $left[$variant->id][$outlet->id];
+
+            if ($cart[$variant->id] <= $units) {
+                continue;
+            }
+
+            $name = "{$variant->product->name} · {$variant->name}";
+
+            throw ValidationException::withMessages([
+                'cart' => $units < 1
+                    ? __(':name is out of stock today at :outlet. Pre-order it for a later day, or choose another outlet.', ['name' => $name, 'outlet' => $outlet->name])
+                    : __('Only :count of :name are left today at :outlet.', ['count' => $units, 'name' => $name, 'outlet' => $outlet->name]),
+            ]);
+        }
     }
 
     /**
@@ -397,7 +515,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
 <div class="flex flex-col gap-8">
     <header class="flex flex-col gap-3">
         <h1 class="text-3xl font-semibold tracking-tight">{{ __('Your order') }}</h1>
-        <p class="max-w-2xl text-snow-500">{{ __('Pre-order for pickup. No account needed — we will give you a reference to track it with.') }}</p>
+        <p class="max-w-2xl text-snow-500">{{ __('Pick up today, or pre-order for a later day. No account needed — we will give you a reference to track it with.') }}</p>
     </header>
 
     @if ($errors->hasAny(['cart', 'throttle']))
@@ -419,7 +537,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                 <li>{{ __('Check your items and how many of each you want.') }}</li>
                 <li>{{ __('Fill in your name and mobile number.') }}</li>
                 <li>{{ __('Choose the outlet, date and time you will pick up.') }}</li>
-                <li>{{ __('Press "Place pre-order". You will get an order reference.') }}</li>
+                <li>{{ __('Press ":button". You will get an order reference.', ['button' => $this->forToday() ? __('Place order') : __('Place pre-order')]) }}</li>
                 <li>{{ __('On the next page, pay the total by GCash and send us your payment details.') }}</li>
                 <li>{{ __('We check your payment and confirm your order.') }}</li>
                 <li>{{ __('Show your order reference at the outlet when you pick up.') }}</li>
@@ -436,6 +554,12 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                             <div class="flex flex-col">
                                 <span class="font-medium">{{ $variant->product->name }}</span>
                                 <span class="text-sm text-snow-500">{{ $variant->name }} &middot; &#8369;{{ number_format((float) $variant->price, 2) }}</span>
+                                @if (array_key_exists($variant->id, $this->todayStock))
+                                    @php($left = $this->todayStock[$variant->id])
+                                    <span class="text-sm {{ $left > 0 ? 'text-orchid-700' : 'text-red-600' }}" data-test="left-today">
+                                        {{ $left > 0 ? __(':count left today at this outlet', ['count' => $left]) : __('Out of stock today at this outlet') }}
+                                    </span>
+                                @endif
                             </div>
 
                             <div class="flex items-center gap-3">
@@ -512,7 +636,13 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     :description="__('Optional.')"
                 />
 
-                <flux:select wire:model="outlet_id" :label="__('Pickup outlet')" required>
+                <flux:radio.group wire:model.live="pickup_when" :label="__('When will you pick up?')" variant="segmented">
+                    @foreach (\App\Enums\PickupWhen::cases() as $when)
+                        <flux:radio :value="$when->value" :label="$when->label()" />
+                    @endforeach
+                </flux:radio.group>
+
+                <flux:select wire:model.live="outlet_id" :label="__('Pickup outlet')" required>
                     <flux:select.option value="">{{ __('Choose where to collect') }}</flux:select.option>
                     @foreach ($this->outlets as $outlet)
                         <flux:select.option :value="$outlet->id">{{ $outlet->name }}</flux:select.option>
@@ -520,12 +650,16 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                 </flux:select>
 
                 <div class="grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-1">
-                    <flux:input wire:model.blur="pickup_date" :label="__('Pickup date')" type="date" :min="today()->toDateString()" required />
+                    @if ($this->forToday())
+                        <flux:input wire:model="pickup_date" :label="__('Pickup date')" type="date" readonly :description:trailing="__('Today')" />
+                    @else
+                        <flux:input wire:model.blur="pickup_date" :label="__('Pickup date')" type="date" :min="today()->addDay()->toDateString()" required />
+                    @endif
                     <flux:select
                         wire:model.blur="pickup_time"
                         :label="__('Pickup time (From 8 AM to 7 PM)')"
                         :description:trailing="$this->pickupTimes === []
-                            ? __('No pickup times are left today — please choose another date.')
+                            ? __('No pickup times are left today — please pre-order for a later day.')
                             : null"
                         required
                     >
@@ -542,7 +676,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     {{ __('Please check your order before you place it. Once your order is confirmed, it cannot be cancelled or refunded.') }}
                 </p>
 
-                <flux:button variant="primary" type="submit">{{ __('Place pre-order') }}</flux:button>
+                <flux:button variant="primary" type="submit">{{ $this->forToday() ? __('Place order') : __('Place pre-order') }}</flux:button>
             </form>
         </div>
     @endif

@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\CountAvailableStock;
+use App\Enums\PickupWhen;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -71,7 +72,7 @@ new #[Layout('layouts::storefront')] class extends Component {
     }
 
     /**
-     * Units still available of this size at each pickup outlet.
+     * Units of this size still to be had today at each pickup outlet.
      *
      * @return array<int, int>
      */
@@ -89,16 +90,43 @@ new #[Layout('layouts::storefront')] class extends Component {
     }
 
     /**
-     * Put this size in the session cart.
+     * Why "Buy now" cannot be pressed, or null when it can.
      *
-     * The cart is only a convenience — checkout re-resolves every variant from
-     * the database, so nothing here is trusted at submit time.
+     * Buy now means collecting today, so it needs a unit left at some outlet
+     * and a pickup hour that has not gone by. A pre-order needs neither.
      */
-    public function addToOrder(): void
+    #[Computed]
+    public function cannotBuyToday(): ?string
+    {
+        if (array_sum($this->stock) < 1) {
+            return __('Out of stock today');
+        }
+
+        if (! PickupWhen::todayHasPickupsLeft()) {
+            return __('No more pickups today');
+        }
+
+        return null;
+    }
+
+    /**
+     * Put this size in the session cart, collected today or on a later day.
+     *
+     * The cart is only a convenience — checkout re-resolves every variant and
+     * recounts today's stock from the database, so nothing here is trusted at
+     * submit time. One order has one pickup, so the button pressed last sets
+     * it for the whole cart.
+     */
+    public function addToOrder(string $when): void
     {
         $variant = $this->variant;
+        $pickup = PickupWhen::tryFrom($when);
 
-        if ($variant === null || ! $variant->is_available) {
+        if ($variant === null || ! $variant->is_available || $pickup === null) {
+            return;
+        }
+
+        if ($pickup === PickupWhen::Today && $this->cannotBuyToday !== null) {
             return;
         }
 
@@ -108,6 +136,7 @@ new #[Layout('layouts::storefront')] class extends Component {
         $cart[$variant->id] = min(($cart[$variant->id] ?? 0) + 1, 99);
 
         Session::put('cart', $cart);
+        Session::put('cart_pickup', $pickup->value);
 
         $this->redirectRoute('order', navigate: true);
     }
@@ -147,13 +176,28 @@ new #[Layout('layouts::storefront')] class extends Component {
                 @if ($this->variant->is_available)
                     <x-stock-by-outlet :outlets="$this->outlets" :units="$this->stock" class="border-t border-snow-200 pt-4" />
 
-                    <button
-                        type="button"
-                        wire:click="addToOrder"
-                        class="rounded-lg bg-orchid-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orchid-700"
-                    >
-                        {{ __('Add to cart') }}
-                    </button>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <button
+                            type="button"
+                            wire:click="addToOrder('today')"
+                            @disabled($this->cannotBuyToday !== null)
+                            data-test="buy-now"
+                            class="flex flex-col items-center rounded-lg bg-orchid-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orchid-700 disabled:cursor-not-allowed disabled:bg-snow-200 disabled:text-snow-500"
+                        >
+                            {{ $this->cannotBuyToday ?? __('Buy now') }}
+                            <span class="text-xs font-normal opacity-80">{{ __('Pick up today') }}</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            wire:click="addToOrder('later')"
+                            data-test="pre-order"
+                            class="flex flex-col items-center rounded-lg border border-orchid-600 px-5 py-3 text-sm font-semibold text-orchid-700 transition hover:bg-orchid-50"
+                        >
+                            {{ __('Pre-order') }}
+                            <span class="text-xs font-normal opacity-80">{{ __('Pick up tomorrow or later') }}</span>
+                        </button>
+                    </div>
                 @else
                     <p class="flex items-center gap-3 rounded-lg bg-snow-100 p-4 text-sm text-snow-600">
                         <span class="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-snow-500">{{ __('Sold out') }}</span>

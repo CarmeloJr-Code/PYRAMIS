@@ -91,10 +91,11 @@ class ProductCatalogTest extends TestCase
         Livewire::withQueryParams(['size' => $large->id])
             ->test('pages::storefront.product', ['product' => $product])
             ->assertSet('variantId', $large->id)
-            ->call('addToOrder')
+            ->call('addToOrder', 'later')
             ->assertRedirect(route('order'));
 
         $this->assertSame([$large->id => 1], session('cart'));
+        $this->assertSame('later', session('cart_pickup'));
     }
 
     public function test_the_size_on_the_page_cannot_be_swapped_from_the_browser(): void
@@ -121,7 +122,7 @@ class ProductCatalogTest extends TestCase
             Livewire::withQueryParams(array_filter(['size' => $size]))
                 ->test('pages::storefront.product', ['product' => $product])
                 ->assertSet('variantId', $round->id)
-                ->assertSeeText('Add to cart');
+                ->assertSeeText('Pre-order');
         }
     }
 
@@ -132,8 +133,8 @@ class ProductCatalogTest extends TestCase
         Livewire::test('pages::storefront.product', ['product' => $product])
             ->assertSet('variantId', null)
             ->assertSeeText('There is nothing to order here yet.')
-            ->assertDontSeeText('Add to cart')
-            ->call('addToOrder')
+            ->assertDontSeeText('Buy now')
+            ->call('addToOrder', 'later')
             ->assertNoRedirect();
 
         $this->assertNull(session('cart'));
@@ -229,8 +230,8 @@ class ProductCatalogTest extends TestCase
             ->test('pages::storefront.product', ['product' => $product])
             ->assertSet('variantId', $tincan->id)
             ->assertSeeText('This size is sold out right now.')
-            ->assertDontSeeText('Add to cart')
-            ->call('addToOrder')
+            ->assertDontSeeText('Buy now')
+            ->call('addToOrder', 'later')
             ->assertNoRedirect();
 
         $this->assertNull(session('cart'));

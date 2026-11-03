@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PickupWhen;
 use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\ProductStockMovement;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -41,19 +43,27 @@ class BusinessTimezoneTest extends TestCase
 
     /**
      * The checkout form filled in for pickup at the given local date and time.
+     *
+     * A pickup today is "Buy now", so it gets one unit on the outlet's shelf.
      */
-    private function orderFor(string $date, string $time): Testable
+    private function orderFor(string $date, string $time, PickupWhen $when = PickupWhen::Later): Testable
     {
         $variant = ProductVariant::factory()
             ->for(Product::factory()->create())
             ->create(['is_available' => true]);
+        $outlet = Outlet::factory()->create();
+
+        if ($when === PickupWhen::Today) {
+            ProductStockMovement::factory()->for($variant)->for($outlet)->quantity(1)->create();
+        }
 
         Session::put('cart', [$variant->id => 1]);
+        Session::put('cart_pickup', $when->value);
 
         return Livewire::test('pages::storefront.order')
             ->set('customer_name', 'Ana Reyes')
             ->set('customer_phone', '09171234567')
-            ->set('outlet_id', Outlet::factory()->create()->id)
+            ->set('outlet_id', $outlet->id)
             ->set('pickup_date', $date)
             ->set('pickup_time', $time)
             ->call('submit');
@@ -64,7 +74,7 @@ class BusinessTimezoneTest extends TestCase
         // 02:00 on the 21st in Malaybalay; still the 20th in UTC.
         $this->travelToUtc('2026-10-20 18:00:00');
 
-        $this->orderFor('2026-10-21', '10:00')->assertHasNoErrors();
+        $this->orderFor('2026-10-21', '10:00', PickupWhen::Today)->assertHasNoErrors();
 
         $this->assertSame('2026-10-21 10:00:00', Order::sole()->getRawOriginal('pickup_at'));
     }
@@ -73,7 +83,7 @@ class BusinessTimezoneTest extends TestCase
     {
         $this->travelToUtc('2026-10-20 18:00:00');
 
-        $this->orderFor('2026-10-21', '01:30')
+        $this->orderFor('2026-10-21', '01:30', PickupWhen::Today)
             ->assertHasNoErrors('pickup_date')
             ->assertHasErrors('pickup_time');
 

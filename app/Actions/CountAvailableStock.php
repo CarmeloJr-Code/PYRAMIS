@@ -8,13 +8,18 @@ use App\Models\ProductStockMovement;
 use Illuminate\Support\Collection;
 
 /**
- * What a customer can still claim of each size, at each pickup outlet.
+ * What a customer can still buy of each size today, at each pickup outlet.
  *
  * The shelf at an outlet is the sum of its finished-goods movements, but an
- * open pre-order does not take its goods off that shelf until it is collected
- * and billed (RecordSaleForOrder). So what is left to promise is the shelf
- * less what open orders for that outlet already claim — floored at zero, since
- * a shelf a sale took negative still has nothing on it.
+ * order does not take its goods off that shelf until it is collected and
+ * billed (RecordSaleForOrder). So what is left to sell today is the shelf less
+ * what open orders due today, or overdue and still uncollected, already claim
+ * — floored at zero, since a shelf a sale took negative still has nothing on it.
+ *
+ * A pre-order for a later day claims nothing yet. The bakery bakes it on top
+ * of the day's retail amount, so on its pickup day it lands on the shelf and
+ * its claim cancels it out: twenty cakes for the counter and four pre-ordered
+ * put twenty-four on the shelf, and the storefront still shows twenty.
  *
  * Two grouped queries whatever the size of the menu, so the storefront's cost
  * does not grow with the catalogue or the order book. Nothing here writes.
@@ -47,7 +52,7 @@ final class CountAvailableStock
 
         $claimed = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereIn('orders.id', Order::query()->open()->whereIn('outlet_id', $outletIds)->select('id'))
+            ->whereIn('orders.id', Order::query()->open()->where('pickup_at', '<', today()->addDay())->whereIn('outlet_id', $outletIds)->select('id'))
             ->whereIn('order_items.product_variant_id', $variantIds)
             ->groupBy('order_items.product_variant_id', 'orders.outlet_id')
             ->selectRaw('order_items.product_variant_id, orders.outlet_id, sum(order_items.quantity) as units')

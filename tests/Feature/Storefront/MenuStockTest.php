@@ -10,7 +10,9 @@ use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductStockMovement;
 use App\Models\ProductVariant;
+use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -52,14 +54,27 @@ class MenuStockTest extends TestCase
     }
 
     /**
-     * A pre-order for pickup at the outlet, in the given state.
+     * An order for pickup at the outlet, in the given state — due today
+     * unless a pickup moment is given.
      */
-    protected function order(ProductVariant $variant, Outlet $outlet, int $quantity, OrderStatus $status = OrderStatus::Pending): void
+    protected function order(ProductVariant $variant, Outlet $outlet, int $quantity, OrderStatus $status = OrderStatus::Pending, ?CarbonInterface $pickupAt = null): void
     {
         OrderItem::factory()
-            ->for(Order::factory()->for($outlet)->status($status))
+            ->for(Order::factory()->for($outlet)->status($status)->state(['pickup_at' => $pickupAt ?? today()->setTime(17, 0)]))
             ->for($variant)
             ->create(['quantity' => $quantity]);
+    }
+
+    /**
+     * The product page for one size, at ten in the morning so a pickup today
+     * is still open whenever the suite runs.
+     */
+    protected function productPage(ProductVariant $variant): Testable
+    {
+        $this->travelTo(today()->setTime(10, 0));
+
+        return Livewire::withQueryParams(['size' => $variant->id])
+            ->test('pages::storefront.product', ['product' => $variant->product]);
     }
 
     public function test_each_size_shows_how_many_are_on_the_shelf_at_every_pickup_outlet(): void
@@ -70,10 +85,10 @@ class MenuStockTest extends TestCase
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Chocolate Cake', 'Round', 'Main Branch', '12 available', 'Plaza Outlet', '3 available']);
+            ->assertSeeInOrder(['Chocolate Cake', 'Round', 'Main Branch', '12 available today', 'Plaza Outlet', '3 available today']);
     }
 
-    public function test_open_pre_orders_are_taken_off_the_outlet_they_will_be_collected_from(): void
+    public function test_open_orders_due_today_are_taken_off_the_outlet_they_will_be_collected_from(): void
     {
         $round = $this->cake();
         $this->shelve($round, $this->main, 12);
@@ -84,7 +99,43 @@ class MenuStockTest extends TestCase
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Main Branch', '12 available', 'Plaza Outlet', '2 available']);
+            ->assertSeeInOrder(['Main Branch', '12 available today', 'Plaza Outlet', '2 available today']);
+    }
+
+    public function test_a_pre_order_for_a_later_day_does_not_count_against_today(): void
+    {
+        $round = $this->cake();
+        $this->shelve($round, $this->main, 20);
+
+        $this->order($round, $this->main, 4, pickupAt: today()->addDay()->setTime(9, 0));
+        $this->order($round, $this->main, 3, pickupAt: today()->addWeek()->setTime(9, 0));
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Main Branch', '20 available today']);
+    }
+
+    public function test_on_its_pickup_day_a_pre_order_takes_back_the_surplus_baked_for_it(): void
+    {
+        // Twenty baked for the counter and four on top for today's pre-orders.
+        $round = $this->cake();
+        $this->shelve($round, $this->main, 24);
+        $this->order($round, $this->main, 4, OrderStatus::Confirmed);
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Main Branch', '20 available today']);
+    }
+
+    public function test_an_order_left_uncollected_from_a_past_day_still_holds_its_goods(): void
+    {
+        $round = $this->cake();
+        $this->shelve($round, $this->main, 5);
+        $this->order($round, $this->main, 2, OrderStatus::Ready, today()->subDay()->setTime(15, 0));
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['Main Branch', '3 available today']);
     }
 
     public function test_finished_orders_no_longer_claim_anything(): void
@@ -97,10 +148,10 @@ class MenuStockTest extends TestCase
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Main Branch', '4 available']);
+            ->assertSeeInOrder(['Main Branch', '4 available today']);
     }
 
-    public function test_an_empty_or_overdrawn_shelf_shows_zero_and_stays_open_for_pre_order(): void
+    public function test_an_empty_or_overdrawn_shelf_is_out_of_stock_today_but_open_for_pre_order(): void
     {
         $round = $this->cake();
         $this->shelve($round, $this->main, 2);
@@ -109,16 +160,81 @@ class MenuStockTest extends TestCase
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Main Branch', '0 available — pre-order', 'Plaza Outlet', '0 available — pre-order'])
+            ->assertSeeInOrder(['Main Branch', 'Out of stock today', 'Plaza Outlet', 'Out of stock today'])
             ->assertDontSeeText('-3')
             ->assertDontSeeText('Sold out');
 
-        // Zero on every shelf is still a size the bakery takes orders for.
-        Livewire::test('pages::storefront.product', ['product' => $round->product])
-            ->call('addToOrder')
+        $page = $this->productPage($round)
+            ->assertSeeText('Out of stock today')
+            ->assertDontSeeText('Buy now')
+            ->call('addToOrder', 'today')
+            ->assertNoRedirect();
+
+        $this->assertNull(session('cart'));
+
+        // Zero on every shelf is still a size the bakery bakes to order.
+        $page->call('addToOrder', 'later')->assertRedirect(route('order'));
+
+        $this->assertSame([$round->id => 1], session('cart'));
+        $this->assertSame('later', session('cart_pickup'));
+    }
+
+    public function test_buy_now_puts_the_size_in_the_cart_for_pickup_today(): void
+    {
+        $round = $this->cake();
+        $this->shelve($round, $this->plaza, 1);
+
+        $this->productPage($round)
+            ->assertSeeText('Buy now')
+            ->call('addToOrder', 'today')
             ->assertRedirect(route('order'));
 
         $this->assertSame([$round->id => 1], session('cart'));
+        $this->assertSame('today', session('cart_pickup'));
+    }
+
+    public function test_the_button_pressed_last_sets_the_pickup_for_the_whole_cart(): void
+    {
+        $round = $this->cake();
+        $this->shelve($round, $this->main, 5);
+
+        $this->productPage($round)
+            ->call('addToOrder', 'today')
+            ->call('addToOrder', 'later');
+
+        $this->assertSame([$round->id => 2], session('cart'));
+        $this->assertSame('later', session('cart_pickup'));
+    }
+
+    public function test_after_the_last_pickup_hour_buy_now_waits_for_tomorrow(): void
+    {
+        $round = $this->cake();
+        $this->shelve($round, $this->main, 5);
+
+        $page = $this->productPage($round);
+        $this->travelTo(today()->setTime(19, 30));
+
+        $page->call('addToOrder', 'today')->assertNoRedirect();
+
+        $this->assertNull(session('cart'));
+
+        $this->get(route('products.show', ['product' => $round->product, 'size' => $round->id]))
+            ->assertOk()
+            ->assertSeeText('No more pickups today')
+            ->assertSeeText('5 available today');
+    }
+
+    public function test_a_pickup_choice_that_is_neither_today_nor_later_is_ignored(): void
+    {
+        $round = $this->cake();
+        $this->shelve($round, $this->main, 5);
+
+        $this->productPage($round)
+            ->call('addToOrder', 'yesterday')
+            ->assertNoRedirect();
+
+        $this->assertNull(session('cart'));
+        $this->assertNull(session('cart_pickup'));
     }
 
     public function test_a_sold_out_size_shows_no_counts(): void
@@ -148,7 +264,7 @@ class MenuStockTest extends TestCase
 
         $this->get(route('products.show', ['product' => $round->product, 'size' => $round->id]))
             ->assertOk()
-            ->assertSeeInOrder(['Round', 'Main Branch', '12 available', 'Plaza Outlet', '0 available — pre-order', 'Add to cart']);
+            ->assertSeeInOrder(['Round', 'Main Branch', '12 available today', 'Plaza Outlet', 'Out of stock today', 'Buy now', 'Pre-order']);
     }
 
     public function test_an_outlet_that_is_closed_is_not_listed(): void

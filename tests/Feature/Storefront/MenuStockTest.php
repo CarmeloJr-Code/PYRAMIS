@@ -262,6 +262,9 @@ class MenuStockTest extends TestCase
         $this->shelve($round, $this->plaza, 5);
         $this->order($round, $this->plaza, 5);
 
+        // Before the last pickup hour, or Buy now reads "No more pickups today".
+        $this->travelTo(today()->setTime(10, 0));
+
         $this->get(route('products.show', ['product' => $round->product, 'size' => $round->id]))
             ->assertOk()
             ->assertSeeInOrder(['Round', 'Main Branch', '12 available today', 'Plaza Outlet', 'Out of stock today', 'Buy now', 'Pre-order']);

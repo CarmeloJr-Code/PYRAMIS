@@ -70,7 +70,7 @@ new class extends Component {
             <flux:icon.bell variant="outline" class="size-5" />
 
             @if ($this->unreadCount > 0)
-                <span class="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white" data-test="notification-count">
+                <span class="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-orchid-600 px-1 text-[10px] font-semibold text-white" data-test="notification-count">
                     {{ $this->unreadCount > 9 ? '9+' : $this->unreadCount }}
                 </span>
             @endif
@@ -97,7 +97,7 @@ new class extends Component {
                     <div class="grid min-w-0 flex-1 gap-0.5 {{ $notification->read_at ? 'opacity-60' : '' }}">
                         <span class="flex items-center gap-1.5">
                             @if ($notification->read_at === null)
-                                <span class="size-1.5 shrink-0 rounded-full bg-red-500" aria-hidden="true"></span>
+                                <span class="size-1.5 shrink-0 rounded-full bg-orchid-600" aria-hidden="true"></span>
                                 <span class="sr-only">{{ __('Unread:') }}</span>
                             @endif
                             <span class="truncate">{{ $notification->data['title'] }}</span>

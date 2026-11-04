@@ -179,15 +179,8 @@ new class extends Component {
                 </p>
 
                 <div class="mt-3">
-                    @if (! $ingredient->is_active)
-                        <flux:badge size="sm" color="zinc">{{ __('Not stocked') }}</flux:badge>
-                    @elseif ($ingredient->isOutOfStock())
-                        <flux:badge size="sm" color="red">{{ __('Out of stock') }}</flux:badge>
-                    @elseif ($ingredient->isLowStock())
-                        <flux:badge size="sm" color="amber">{{ __('Low') }}</flux:badge>
-                    @else
-                        <flux:badge size="sm" color="green">{{ __('In stock') }}</flux:badge>
-                    @endif
+                    @php($level = $ingredient->stockLevel())
+                    <flux:badge size="sm" :color="$level->color()" :icon="$level->icon()">{{ __($level->label()) }}</flux:badge>
                 </div>
             </flux:card>
 
@@ -259,7 +252,7 @@ new class extends Component {
                                     <flux:table.row :key="$movement->id">
                                         <flux:table.cell>{{ $movement->occurred_at->format('d M Y, g:ia') }}</flux:table.cell>
                                         <flux:table.cell>{{ $movement->type->label() }}</flux:table.cell>
-                                        <flux:table.cell class="{{ $movement->isIncrease() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                        <flux:table.cell class="{{ $movement->isIncrease() ? 'text-success' : '' }}">
                                             {{ $movement->signedQuantity() }} {{ $ingredient->unit->abbreviation() }}
                                         </flux:table.cell>
                                         <flux:table.cell>{{ $movement->recordedBy->name }}</flux:table.cell>

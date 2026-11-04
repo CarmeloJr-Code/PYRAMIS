@@ -10,9 +10,9 @@
     @elseif ($week['change'] == 0)
         {{ __('Level with the week before') }}
     @else
-        <span class="{{ $week['change'] > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+        <x-change :value="$week['change']">
             {{ $week['change'] > 0 ? '↑' : '↓' }}{{ abs($week['change']) }}%
-        </span>
+        </x-change>
         {{ __('on the week before') }}
     @endif
 </p>

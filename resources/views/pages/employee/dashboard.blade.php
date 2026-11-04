@@ -452,7 +452,7 @@ new #[Title('Dashboard')] class extends Component {
 
         @can('access-inventory')
             <x-dashboard-tile :href="route('employee.inventory.index')" :label="__('Low on stock')">
-                <p class="mt-1 text-3xl font-semibold {{ $this->lowStockCount > 0 ? 'text-amber-600 dark:text-amber-400' : '' }}">
+                <p class="mt-1 text-3xl font-semibold {{ $this->lowStockCount > 0 ? 'text-warning' : '' }}">
                     {{ $this->lowStockCount }}
                 </p>
                 <p class="mt-1 text-sm text-zinc-500">{{ __('Ingredients at or below their reorder level') }}</p>
@@ -499,7 +499,7 @@ new #[Title('Dashboard')] class extends Component {
         </flux:card>
 
         <x-dashboard-tile :href="route('employee.messages.index')" :label="__('Unread messages')">
-            <p class="mt-1 text-3xl font-semibold {{ $this->unreadMessages > 0 ? 'text-purple-600 dark:text-purple-400' : '' }}">
+            <p class="mt-1 text-3xl font-semibold {{ $this->unreadMessages > 0 ? 'text-accent-content' : '' }}">
                 {{ $this->unreadMessages }}
             </p>
             <p class="mt-1 text-sm text-zinc-500">{{ __('Across every conversation you are in') }}</p>
@@ -527,7 +527,7 @@ new #[Title('Dashboard')] class extends Component {
                                     <span class="block truncate text-sm font-medium">{{ $order->pickup_at->format('g:ia') }} &middot; {{ $order->customer_name }}</span>
                                     <span class="block truncate font-mono text-xs text-zinc-500">{{ $order->reference }} &middot; {{ $order->outlet->name }}</span>
                                 </span>
-                                <flux:badge size="sm" :color="$order->status === OrderStatus::Ready ? 'green' : null">{{ $order->status->label() }}</flux:badge>
+                                <flux:badge size="sm" :color="$order->status->color()">{{ $order->status->label() }}</flux:badge>
                             </a>
                         @empty
                             <flux:text class="px-2 py-2">{{ __('No pickups due today.') }}</flux:text>
@@ -570,7 +570,7 @@ new #[Title('Dashboard')] class extends Component {
                         @forelse ($this->lowStockIngredients->take(5) as $ingredient)
                             <a wire:key="ingredient-{{ $ingredient->id }}" href="{{ route('employee.inventory.show', $ingredient) }}" wire:navigate class="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-zinc-50 dark:hover:bg-white/5">
                                 <span class="truncate text-sm font-medium">{{ $ingredient->name }}</span>
-                                <span class="shrink-0 text-sm text-amber-600 dark:text-amber-400">
+                                <span class="shrink-0 text-sm text-warning">
                                     {{ __(':stock of :level :unit', [
                                         'stock' => $ingredient->stock(),
                                         'level' => $ingredient->reorderLevel(),

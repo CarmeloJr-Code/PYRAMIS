@@ -179,7 +179,7 @@ new class extends Component {
             <flux:text>{{ __('Placed :date', ['date' => $order->created_at->format('j M Y, g:ia')]) }}</flux:text>
         </div>
 
-        <flux:badge size="lg">{{ $order->status->label() }}</flux:badge>
+        <flux:badge size="lg" :color="$order->status->color()">{{ $order->status->label() }}</flux:badge>
     </div>
 
     <flux:separator variant="subtle" />

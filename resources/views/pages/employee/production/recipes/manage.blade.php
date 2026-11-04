@@ -284,7 +284,7 @@ new class extends Component {
                         </div>
 
                         @error('items')
-                            <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+                            <flux:text class="text-danger">{{ $message }}</flux:text>
                         @enderror
 
                         @foreach ($items as $index => $item)

@@ -221,7 +221,7 @@ new #[Title('Ingredient usage')] class extends Component {
             @else
                 <form wire:submit="record" class="mt-4 flex flex-col gap-4">
                     @error('lines')
-                        <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+                        <flux:text class="text-danger">{{ $message }}</flux:text>
                     @enderror
 
                     @foreach ($lines as $index => $line)

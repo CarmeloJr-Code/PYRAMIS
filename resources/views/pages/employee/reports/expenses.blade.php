@@ -165,9 +165,9 @@ new #[Title('Expense report')] class extends Component {
                     {{ __('Nothing in the :count days before, to compare against', ['count' => $this->range->days()]) }}
                 @else
                     {{-- Spending up is not good news, so the colours run the other way from sales. --}}
-                    <span class="{{ $change > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' }}">
+                    <x-change :value="$change" :rising-is-good="false">
                         {{ $change >= 0 ? '+' : '' }}{{ number_format($change, 1) }}%
-                    </span>
+                    </x-change>
                     {{ __('against the :count days before', ['count' => $this->range->days()]) }}
                 @endif
             </p>
@@ -216,7 +216,7 @@ new #[Title('Expense report')] class extends Component {
                             <flux:table.cell>
                                 <div class="h-2 w-full rounded-full bg-zinc-100 dark:bg-zinc-700">
                                     <div
-                                        class="h-2 rounded-full bg-purple-500"
+                                        class="h-2 rounded-full bg-orchid-500"
                                         style="width: {{ $this->largestCategory > 0 ? round($row['total'] / $this->largestCategory * 100, 1) : 0 }}%"
                                     ></div>
                                 </div>

@@ -312,7 +312,7 @@ new #[Title('Record expense')] class extends Component {
                 @endif
 
                 @error('receipt')
-                    <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+                    <flux:text class="text-danger">{{ $message }}</flux:text>
                 @enderror
             </div>
 

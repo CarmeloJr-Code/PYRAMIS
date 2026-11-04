@@ -236,9 +236,9 @@ new #[Title('Sales forecast')] class extends Component {
                 @if ($demand['change'] === null)
                     <span class="text-zinc-400">{{ __('Not enough data') }}</span>
                 @else
-                    <span class="{{ $demand['change'] < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' }}">
+                    <x-change :value="$demand['change']">
                         {{ $demand['change'] >= 0 ? '+' : '' }}{{ number_format($demand['change'], 1) }}%
-                    </span>
+                    </x-change>
                 @endif
             </p>
             <p class="mt-1 text-sm text-zinc-500">
@@ -281,7 +281,7 @@ new #[Title('Sales forecast')] class extends Component {
                 <p class="mt-1 text-xl font-semibold">{{ number_format($weekday['average'], 1) }}</p>
                 <div class="mt-2 h-1.5 w-full rounded-full bg-zinc-100 dark:bg-zinc-700">
                     <div
-                        class="h-1.5 rounded-full bg-purple-500"
+                        class="h-1.5 rounded-full bg-orchid-500"
                         style="width: {{ $busiest > 0 ? round($weekday['average'] / $busiest * 100, 1) : 0 }}%"
                     ></div>
                 </div>
@@ -324,7 +324,7 @@ new #[Title('Sales forecast')] class extends Component {
                                 {{ $row['size'] }}
                                 @unless ($row['has_recipe'])
                                     {{-- Without a recipe the bakery cannot log a run for it at all. --}}
-                                    <flux:badge size="sm" color="zinc" class="ms-2">{{ __('No recipe') }}</flux:badge>
+                                    <flux:badge size="sm" color="amber" class="ms-2">{{ __('No recipe') }}</flux:badge>
                                 @endunless
                             </flux:table.cell>
                             <flux:table.cell>{{ number_format($row['units_sold']) }}</flux:table.cell>
@@ -333,14 +333,14 @@ new #[Title('Sales forecast')] class extends Component {
                                 @if ($row['change'] === null)
                                     <span class="text-zinc-400">—</span>
                                 @else
-                                    <span class="{{ $row['change'] < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' }}">
+                                    <x-change :value="$row['change']">
                                         {{ $row['change'] >= 0 ? '+' : '' }}{{ number_format($row['change'], 1) }}%
-                                    </span>
+                                    </x-change>
                                 @endif
                             </flux:table.cell>
                             <flux:table.cell>{{ number_format($row['projected_units']) }}</flux:table.cell>
                             <flux:table.cell>{{ number_format($row['stock_on_hand']) }}</flux:table.cell>
-                            <flux:table.cell class="{{ $row['shortfall'] > 0 ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-zinc-500' }}">
+                            <flux:table.cell class="{{ $row['shortfall'] > 0 ? 'font-semibold text-warning' : 'text-zinc-500' }}">
                                 {{ number_format($row['shortfall']) }}
                             </flux:table.cell>
                         </flux:table.row>
@@ -392,7 +392,7 @@ new #[Title('Sales forecast')] class extends Component {
                                 @elseif ($row['needs_attention'])
                                     <flux:badge size="sm" color="amber">{{ __('Not enough') }}</flux:badge>
                                 @else
-                                    <flux:badge size="sm" color="zinc">{{ __('Enough') }}</flux:badge>
+                                    <flux:badge size="sm" color="green">{{ __('Enough') }}</flux:badge>
                                 @endif
                             </flux:table.cell>
                         </flux:table.row>
@@ -460,7 +460,7 @@ new #[Title('Sales forecast')] class extends Component {
                 </div>
 
                 @if ($this->figuresMoved)
-                    <flux:text class="mt-2 text-sm text-amber-600 dark:text-amber-400">
+                    <flux:text class="mt-2 text-sm text-warning">
                         {{ __('New records have come in since this was written, so it may be out of date.') }}
                     </flux:text>
                 @endif

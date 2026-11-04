@@ -117,14 +117,14 @@ new class extends Component {
             @php($mine = $message->user_id === auth()->id())
 
             <div class="flex {{ $mine ? 'justify-end' : 'justify-start' }}" wire:key="message-{{ $message->id }}">
-                <div class="max-w-lg rounded-lg px-4 py-3 {{ $mine ? 'bg-purple-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800' }}">
+                <div class="max-w-lg rounded-lg px-4 py-3 {{ $mine ? 'bg-orchid-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800' }}">
                     @unless ($mine)
                         <p class="text-xs font-medium text-zinc-500 dark:text-zinc-400">{{ $message->sender->name }}</p>
                     @endunless
 
                     <p class="mt-1 whitespace-pre-line">{{ $message->body }}</p>
 
-                    <p class="mt-1 text-xs {{ $mine ? 'text-purple-200' : 'text-zinc-400' }}">
+                    <p class="mt-1 text-xs {{ $mine ? 'text-orchid-100' : 'text-zinc-400' }}">
                         {{ $message->created_at->format('d M, g:ia') }}
                     </p>
                 </div>

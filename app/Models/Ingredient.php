@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\FormatsQuantities;
 use App\Enums\IngredientUnit;
+use App\Enums\StockLevel;
 use Carbon\CarbonImmutable;
 use Database\Factories\IngredientFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -142,5 +143,19 @@ class Ingredient extends Model
         $reorderLevel = $this->reorderLevelInThousandths();
 
         return $reorderLevel > 0 && $this->stockInThousandths() <= $reorderLevel;
+    }
+
+    /**
+     * Where this ingredient's stock stands: retired first, then empty, then
+     * low, otherwise fine.
+     */
+    public function stockLevel(): StockLevel
+    {
+        return match (true) {
+            ! $this->is_active => StockLevel::NotStocked,
+            $this->isOutOfStock() => StockLevel::OutOfStock,
+            $this->isLowStock() => StockLevel::Low,
+            default => StockLevel::InStock,
+        };
     }
 }

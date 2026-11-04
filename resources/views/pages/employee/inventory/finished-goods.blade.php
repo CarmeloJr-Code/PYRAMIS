@@ -294,7 +294,7 @@ new #[Title('Finished goods')] class extends Component {
                                         <flux:table.cell>
                                             {{ $movement->productVariant->product->name }} &middot; {{ $movement->productVariant->name }}
                                         </flux:table.cell>
-                                        <flux:table.cell class="{{ $movement->isIncrease() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                        <flux:table.cell class="{{ $movement->isIncrease() ? 'text-success' : '' }}">
                                             {{ $movement->signedQuantity() }}
                                         </flux:table.cell>
                                         <flux:table.cell class="text-zinc-500">

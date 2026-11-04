@@ -12,7 +12,7 @@
 
         <span class="flex items-baseline justify-between gap-3" wire:key="stock-{{ $outlet->id }}">
             <span class="text-snow-500">{{ $outlet->name }}</span>
-            <span class="{{ $count > 0 ? 'font-medium text-orchid-700' : 'text-snow-400' }}">
+            <span class="{{ $count > 0 ? 'font-medium text-green-700' : 'text-amber-700' }}">
                 {{ $count > 0 ? __(':count available today', ['count' => $count]) : __('Out of stock today') }}
             </span>
         </span>

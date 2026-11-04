@@ -226,7 +226,7 @@ new #[Title('Sales')] class extends Component {
                             </flux:table.cell>
                             <flux:table.cell class="text-end">
                                 @if ($sale->isVoided())
-                                    <flux:badge size="sm" color="red">{{ __('Voided') }}</flux:badge>
+                                    <flux:badge size="sm" :color="$sale->status->color()">{{ __($sale->status->label()) }}</flux:badge>
                                 @else
                                     <flux:button
                                         size="sm"

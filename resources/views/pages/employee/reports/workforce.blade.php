@@ -235,7 +235,7 @@ new #[Title('Workforce report')] class extends Component {
                             <flux:table.cell class="text-zinc-500">{{ $shift->duration() }}</flux:table.cell>
                             <flux:table.cell>
                                 @if ($shift->assignments->isEmpty())
-                                    <span class="text-amber-600 dark:text-amber-400">{{ __('Nobody') }}</span>
+                                    <span class="text-warning">{{ __('Nobody') }}</span>
                                 @else
                                     {{ $shift->assignments->pluck('user.name')->join(', ') }}
                                 @endif

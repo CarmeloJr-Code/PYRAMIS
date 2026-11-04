@@ -129,7 +129,7 @@ new #[Title('Inventory report')] class extends Component {
 
         <flux:card>
             <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Need ordering') }}</span>
-            <p class="mt-1 text-3xl font-semibold {{ $this->low->isNotEmpty() ? 'text-amber-600 dark:text-amber-400' : '' }}">
+            <p class="mt-1 text-3xl font-semibold {{ $this->low->isNotEmpty() ? 'text-warning' : '' }}">
                 {{ number_format($this->low->count()) }}
             </p>
             <p class="mt-1 text-sm text-zinc-500">{{ __('At or below their reorder level') }}</p>
@@ -173,13 +173,8 @@ new #[Title('Inventory report')] class extends Component {
                                 @endif
                             </flux:table.cell>
                             <flux:table.cell>
-                                @if ($ingredient->isOutOfStock())
-                                    <flux:badge size="sm" color="red">{{ __('Out of stock') }}</flux:badge>
-                                @elseif ($ingredient->isLowStock())
-                                    <flux:badge size="sm" color="amber">{{ __('Low') }}</flux:badge>
-                                @else
-                                    <flux:badge size="sm" color="zinc">{{ __('Fine') }}</flux:badge>
-                                @endif
+                                @php($level = $ingredient->stockLevel())
+                                <flux:badge size="sm" :color="$level->color()" :icon="$level->icon()">{{ __($level->label()) }}</flux:badge>
                             </flux:table.cell>
                         </flux:table.row>
                     @endforeach
@@ -214,7 +209,7 @@ new #[Title('Inventory report')] class extends Component {
                         @php($net = $row['received'] + $row['used'] + $row['adjusted'])
                         <flux:table.row wire:key="movement-{{ $row['ingredient_id'] }}">
                             <flux:table.cell class="font-medium">{{ $row['name'] }}</flux:table.cell>
-                            <flux:table.cell class="text-emerald-600 dark:text-emerald-400">
+                            <flux:table.cell class="text-success">
                                 {{ $this->formatQuantity($row['received']) }} {{ $row['unit']->abbreviation() }}
                             </flux:table.cell>
                             {{-- Usage is stored negative; shown unsigned under a column that already says which way it went. --}}
@@ -225,7 +220,7 @@ new #[Title('Inventory report')] class extends Component {
                                 {{ $row['adjusted'] >= 0 ? '+' : '−' }}{{ $this->formatQuantity(abs($row['adjusted'])) }}
                                 {{ $row['unit']->abbreviation() }}
                             </flux:table.cell>
-                            <flux:table.cell class="{{ $net < 0 ? 'text-amber-600 dark:text-amber-400' : '' }}">
+                            <flux:table.cell class="{{ $net < 0 ? 'text-warning' : '' }}">
                                 {{ $net >= 0 ? '+' : '−' }}{{ $this->formatQuantity(abs($net)) }} {{ $row['unit']->abbreviation() }}
                             </flux:table.cell>
                             <flux:table.cell class="text-zinc-500">{{ number_format($row['entries']) }}</flux:table.cell>

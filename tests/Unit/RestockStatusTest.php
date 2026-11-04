@@ -50,4 +50,14 @@ class RestockStatusTest extends TestCase
         $this->assertFalse(RestockStatus::Requested->isTerminal());
         $this->assertFalse(RestockStatus::Preparing->isTerminal());
     }
+
+    public function test_each_status_has_a_colour_and_a_cancellation_reads_as_one_anywhere(): void
+    {
+        $this->assertSame('amber', RestockStatus::Requested->color());
+        $this->assertSame('blue', RestockStatus::Preparing->color());
+        $this->assertSame('green', RestockStatus::Delivered->color());
+
+        // Red, as a cancelled order or a voided sale is.
+        $this->assertSame('red', RestockStatus::Cancelled->color());
+    }
 }

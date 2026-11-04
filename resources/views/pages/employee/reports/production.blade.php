@@ -143,9 +143,9 @@ new #[Title('Production report')] class extends Component {
                 @if ($change === null)
                     {{ __('Nothing in the :count days before, to compare against', ['count' => $this->range->days()]) }}
                 @else
-                    <span class="{{ $change < 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400' }}">
+                    <x-change :value="$change">
                         {{ $change >= 0 ? '+' : '' }}{{ number_format($change, 1) }}%
-                    </span>
+                    </x-change>
                     {{ __('against the :count days before', ['count' => $this->range->days()]) }}
                 @endif
             </p>
@@ -190,7 +190,7 @@ new #[Title('Production report')] class extends Component {
                             <flux:table.cell>
                                 <div class="h-2 w-full rounded-full bg-zinc-100 dark:bg-zinc-700">
                                     <div
-                                        class="h-2 rounded-full bg-purple-500"
+                                        class="h-2 rounded-full bg-orchid-500"
                                         style="width: {{ $this->biggestDay > 0 ? round($row['units'] / $this->biggestDay * 100, 1) : 0 }}%"
                                     ></div>
                                 </div>

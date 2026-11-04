@@ -445,7 +445,7 @@ new #[Title('Orders')] class extends Component {
                             <flux:table.cell>{{ $order->outlet->name }}</flux:table.cell>
                             <flux:table.cell>&#8369;{{ $order->total() }}</flux:table.cell>
                             <flux:table.cell>
-                                <flux:badge size="sm">{{ $order->status->label() }}</flux:badge>
+                                <flux:badge size="sm" :color="$order->status->color()">{{ $order->status->label() }}</flux:badge>
                                 @if ($order->status === OrderStatus::Pending && $order->payment_to_check)
                                     <flux:badge size="sm" color="amber" class="ms-1">{{ __('Payment to check') }}</flux:badge>
                                 @endif

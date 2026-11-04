@@ -114,15 +114,8 @@ new #[Title('Inventory')] class extends Component {
                                 @endif
                             </flux:table.cell>
                             <flux:table.cell>
-                                @if (! $ingredient->is_active)
-                                    <flux:badge size="sm" color="zinc">{{ __('Not stocked') }}</flux:badge>
-                                @elseif ($ingredient->isOutOfStock())
-                                    <flux:badge size="sm" color="red">{{ __('Out of stock') }}</flux:badge>
-                                @elseif ($ingredient->isLowStock())
-                                    <flux:badge size="sm" color="amber">{{ __('Low') }}</flux:badge>
-                                @else
-                                    <flux:badge size="sm" color="green">{{ __('In stock') }}</flux:badge>
-                                @endif
+                                @php($level = $ingredient->stockLevel())
+                                <flux:badge size="sm" :color="$level->color()" :icon="$level->icon()">{{ __($level->label()) }}</flux:badge>
                             </flux:table.cell>
                             <flux:table.cell class="text-end">
                                 <flux:button size="sm" variant="ghost" :href="route('employee.inventory.show', $ingredient)" wire:navigate>

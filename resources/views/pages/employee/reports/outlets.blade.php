@@ -153,7 +153,7 @@ new #[Title('Outlet performance')] class extends Component {
 
         <flux:card>
             <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Takings less spending') }}</span>
-            <p class="mt-1 text-3xl font-semibold {{ $this->takings - $this->spent < 0 ? 'text-amber-600 dark:text-amber-400' : '' }}">
+            <p class="mt-1 text-3xl font-semibold {{ $this->takings - $this->spent < 0 ? 'text-warning' : '' }}">
                 &#8369;{{ number_format(($this->takings - $this->spent) / 100, 2) }}
             </p>
             {{-- Not profit: nothing here costs the ingredients or the labour in. --}}
@@ -194,7 +194,7 @@ new #[Title('Outlet performance')] class extends Component {
                             <div>&#8369;{{ number_format($row['takings'] / 100, 2) }}</div>
                             <div class="mt-1 h-1.5 w-24 rounded-full bg-zinc-100 dark:bg-zinc-700">
                                 <div
-                                    class="h-1.5 rounded-full bg-purple-500"
+                                    class="h-1.5 rounded-full bg-orchid-500"
                                     style="width: {{ $this->busiest > 0 ? round($row['takings'] / $this->busiest * 100, 1) : 0 }}%"
                                 ></div>
                             </div>
@@ -203,7 +203,7 @@ new #[Title('Outlet performance')] class extends Component {
                         <flux:table.cell class="text-zinc-500">{{ number_format($row['restocks']) }}</flux:table.cell>
                         <flux:table.cell class="text-zinc-500">{{ number_format($row['received']) }}</flux:table.cell>
                         <flux:table.cell>&#8369;{{ number_format($row['spent'] / 100, 2) }}</flux:table.cell>
-                        <flux:table.cell class="{{ $row['net'] < 0 ? 'text-amber-600 dark:text-amber-400' : '' }}">
+                        <flux:table.cell class="{{ $row['net'] < 0 ? 'text-warning' : '' }}">
                             &#8369;{{ number_format($row['net'] / 100, 2) }}
                         </flux:table.cell>
                     </flux:table.row>

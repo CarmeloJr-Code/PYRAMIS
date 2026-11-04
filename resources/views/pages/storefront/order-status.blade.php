@@ -206,7 +206,7 @@ new #[Layout('layouts::storefront')] class extends Component {
     </header>
 
     @if ($order->status === OrderStatus::Ready)
-        <p role="status" class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+        <p role="status" class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
             {{ __('Your order is ready. Show this reference at :outlet to collect it.', ['outlet' => $order->outlet->name]) }}
         </p>
     @endif
@@ -239,7 +239,7 @@ new #[Layout('layouts::storefront')] class extends Component {
             </div>
 
             @if ($this->payment?->submitted_at)
-                <p role="status" class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                <p role="status" class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
                     {{ __('Payment sent :date — we will confirm your order once we have checked it.', ['date' => $this->payment->submitted_at->format('j M Y, g:ia')]) }}
                     @if ($this->payment->gcash_reference)
                         <span class="block font-mono">{{ __('Reference :reference', ['reference' => $this->payment->gcash_reference]) }}</span>
@@ -296,7 +296,7 @@ new #[Layout('layouts::storefront')] class extends Component {
     @if ($stages === [])
         <section role="status" class="flex flex-col gap-2 rounded-2xl border border-red-200 bg-red-50 p-6">
             <div class="flex flex-wrap items-center gap-3">
-                <flux:badge size="lg" color="red">{{ $order->status->label() }}</flux:badge>
+                <flux:badge size="lg" :color="$order->status->color()">{{ $order->status->label() }}</flux:badge>
                 <span class="text-sm text-snow-500">{{ __('Placed :date', ['date' => $order->created_at->format('j M Y, g:ia')]) }}</span>
             </div>
             <p class="text-sm text-red-800">{{ __('This order was cancelled and will not be prepared.') }}</p>
@@ -304,7 +304,7 @@ new #[Layout('layouts::storefront')] class extends Component {
     @else
         <section aria-label="{{ __('Order progress') }}" class="flex flex-col gap-6 rounded-2xl border border-snow-200 bg-white p-6">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-                <p class="text-lg font-semibold text-orchid-800">{{ $order->status->label() }}</p>
+                <flux:badge size="lg" :color="$order->status->color()">{{ $order->status->label() }}</flux:badge>
                 <p class="text-sm text-snow-500">
                     {{ __('Step :step of :total', ['step' => collect($stages)->search(fn (array $stage): bool => $stage['current']) + 1, 'total' => count($stages)]) }}
                     &middot; {{ __('Placed :date', ['date' => $order->created_at->format('j M Y, g:ia')]) }}

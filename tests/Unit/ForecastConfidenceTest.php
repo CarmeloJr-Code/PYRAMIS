@@ -31,4 +31,11 @@ class ForecastConfidenceTest extends TestCase
         $this->assertSame('Fairly sure', ForecastConfidence::Medium->label());
         $this->assertSame('Quite sure', ForecastConfidence::High->label());
     }
+
+    public function test_less_confidence_is_drawn_as_a_warning(): void
+    {
+        $this->assertSame('amber', ForecastConfidence::Low->color());
+        $this->assertSame('blue', ForecastConfidence::Medium->color());
+        $this->assertSame('green', ForecastConfidence::High->color());
+    }
 }

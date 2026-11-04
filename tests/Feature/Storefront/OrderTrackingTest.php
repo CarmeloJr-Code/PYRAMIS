@@ -92,6 +92,15 @@ class OrderTrackingTest extends TestCase
         );
     }
 
+    public function test_the_stage_is_named_in_a_badge_ahead_of_the_progress_steps(): void
+    {
+        $order = $this->order(status: OrderStatus::Ready);
+
+        $this->get(route('orders.show', $order))
+            ->assertOk()
+            ->assertSeeInOrder(['aria-label="Order progress"', 'data-flux-badge', 'Ready for pickup', 'Step 4 of 5', 'aria-current="step"'], false);
+    }
+
     public function test_a_completed_order_has_every_stage_done(): void
     {
         $order = $this->order(status: OrderStatus::Completed);

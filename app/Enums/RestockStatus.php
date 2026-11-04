@@ -70,6 +70,8 @@ enum RestockStatus: string
 
     /**
      * The badge colour this status is drawn in.
+     *
+     * Cancelled is red, as a cancelled order or a voided sale is.
      */
     public function color(): string
     {
@@ -77,7 +79,7 @@ enum RestockStatus: string
             self::Requested => 'amber',
             self::Preparing => 'blue',
             self::Delivered => 'green',
-            self::Cancelled => 'zinc',
+            self::Cancelled => 'red',
         };
     }
 }

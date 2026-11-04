@@ -27,7 +27,7 @@
                     @endcan
 
                     @can('manage-orders')
-                        <flux:sidebar.item icon="clipboard-document-list" :href="route('employee.orders.index')" :current="request()->routeIs('employee.orders.*')" :badge="$attention['orders'] ?? null" badge:color="red" wire:navigate.hover>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('employee.orders.index')" :current="request()->routeIs('employee.orders.*')" :badge="$attention['orders'] ?? null" badge:color="amber" wire:navigate.hover>
                             {{ __('Orders') }}
                         </flux:sidebar.item>
                     @endcan
@@ -51,13 +51,13 @@
                     @endcan
 
                     @can('access-inventory')
-                        <flux:sidebar.item icon="beaker" :href="route('employee.inventory.index')" :current="request()->routeIs('employee.inventory.*')" :badge="$attention['inventory'] ?? null" badge:color="red" wire:navigate.hover>
+                        <flux:sidebar.item icon="beaker" :href="route('employee.inventory.index')" :current="request()->routeIs('employee.inventory.*')" :badge="$attention['inventory'] ?? null" badge:color="amber" wire:navigate.hover>
                             {{ __('Inventory') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('access-restocking')
-                        <flux:sidebar.item icon="truck" :href="route('employee.restocks.index')" :current="request()->routeIs('employee.restocks.*')" :badge="$attention['restocks'] ?? null" badge:color="red" wire:navigate.hover>
+                        <flux:sidebar.item icon="truck" :href="route('employee.restocks.index')" :current="request()->routeIs('employee.restocks.*')" :badge="$attention['restocks'] ?? null" badge:color="amber" wire:navigate.hover>
                             {{ __('Restocking') }}
                         </flux:sidebar.item>
                     @endcan
@@ -87,7 +87,7 @@
                     </flux:sidebar.item>
 
                     {{-- Internal chat, open to every role. --}}
-                    <flux:sidebar.item icon="chat-bubble-left-right" :href="route('employee.messages.index')" :current="request()->routeIs('employee.messages.*')" :badge="$attention['messages'] ?? null" badge:color="red" wire:navigate.hover>
+                    <flux:sidebar.item icon="chat-bubble-left-right" :href="route('employee.messages.index')" :current="request()->routeIs('employee.messages.*')" :badge="$attention['messages'] ?? null" badge:color="purple" wire:navigate.hover>
                         {{ __('Messages') }}
                     </flux:sidebar.item>
 

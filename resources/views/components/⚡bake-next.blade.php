@@ -80,7 +80,7 @@ new class extends Component {
                         {{ __('Expected :projected, :stock in stock', ['projected' => $product['projected_units'], 'stock' => $product['stock_on_hand']]) }}
                     </span>
                 </span>
-                <span class="shrink-0 text-sm font-semibold text-purple-600 dark:text-purple-400">
+                <span class="shrink-0 text-sm font-semibold text-warning">
                     {{ trans_choice(':count short|:count short', $product['shortfall']) }}
                 </span>
             </div>

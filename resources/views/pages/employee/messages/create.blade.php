@@ -94,7 +94,7 @@ new #[Title('New conversation')] class extends Component {
                 <flux:heading size="sm">{{ __('Who is in it') }}</flux:heading>
 
                 @error('participantIds')
-                    <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+                    <flux:text class="text-danger">{{ $message }}</flux:text>
                 @enderror
 
                 <div class="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">

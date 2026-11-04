@@ -24,4 +24,15 @@ enum SaleStatus: string
             self::Voided => 'Voided',
         };
     }
+
+    /**
+     * The badge colour this status is drawn in.
+     */
+    public function color(): string
+    {
+        return match ($this) {
+            self::Completed => 'green',
+            self::Voided => 'red',
+        };
+    }
 }

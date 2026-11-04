@@ -231,7 +231,7 @@ new #[Title('Manage product')] class extends Component {
             </div>
 
             @error('variants')
-                <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+                <flux:text class="text-danger">{{ $message }}</flux:text>
             @enderror
 
             @foreach ($variants as $index => $variant)

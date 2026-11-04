@@ -15,6 +15,6 @@
         ->implode(' ');
 @endphp
 
-<svg viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true" {{ $attributes->class('h-8 w-full text-purple-600 dark:text-purple-400') }}>
+<svg viewBox="0 0 100 24" preserveAspectRatio="none" aria-hidden="true" {{ $attributes->class('h-8 w-full text-accent-content') }}>
     <polyline points="{{ $line }}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
 </svg>

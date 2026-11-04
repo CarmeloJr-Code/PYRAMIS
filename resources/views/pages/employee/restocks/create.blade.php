@@ -198,7 +198,7 @@ new #[Title('Schedule restock')] class extends Component {
                 </div>
 
                 @error('lines')
-                    <flux:text class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
+                    <flux:text class="text-danger">{{ $message }}</flux:text>
                 @enderror
 
                 @foreach ($lines as $index => $line)

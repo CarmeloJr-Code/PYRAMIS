@@ -202,7 +202,7 @@ new #[Layout('layouts::storefront')] #[Title('Products')] class extends Componen
                             @else
                                 <span class="flex items-baseline gap-2">
                                     <span class="text-lg font-semibold text-snow-400 line-through">&#8369;{{ number_format((float) $variant->price, 2) }}</span>
-                                    <span class="rounded-full bg-snow-100 px-3 py-1 text-xs font-semibold text-snow-600">{{ __('Sold out') }}</span>
+                                    <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">{{ __('Sold out') }}</span>
                                 </span>
                             @endif
                         </span>

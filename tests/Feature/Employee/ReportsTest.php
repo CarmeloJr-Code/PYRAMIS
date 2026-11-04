@@ -236,6 +236,23 @@ class ReportsTest extends TestCase
         $this->assertSame(3, $rows->first()['entries']);
     }
 
+    public function test_the_inventory_report_names_stock_levels_as_the_inventory_screen_does(): void
+    {
+        // Alphabetical, so the rows of the stock table come in this order.
+        $flour = Ingredient::factory()->create(['name' => 'Flour', 'reorder_level' => '5']);
+        Ingredient::factory()->create(['name' => 'Salt', 'reorder_level' => '5']);
+        $sugar = Ingredient::factory()->create(['name' => 'Sugar', 'reorder_level' => '5']);
+
+        InventoryMovement::factory()->for($flour)->quantity('25.000')->create();
+        InventoryMovement::factory()->for($sugar)->quantity('2.000')->create();
+
+        $this->actingAs(User::factory()->administrator()->create())
+            ->get(route('employee.reports.inventory'))
+            ->assertOk()
+            ->assertSeeInOrder(['Flour', 'In stock', 'Salt', 'Out of stock', 'Sugar', 'Low'])
+            ->assertDontSee('Fine');
+    }
+
     public function test_production_output_is_grouped_by_day_and_by_size(): void
     {
         $recipe = Recipe::factory()->create();

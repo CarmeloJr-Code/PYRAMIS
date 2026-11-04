@@ -60,4 +60,16 @@ class OrderStatusTest extends TestCase
         $this->assertSame('Ready for pickup', OrderStatus::Ready->label());
         $this->assertSame('Cancelled', OrderStatus::Cancelled->label());
     }
+
+    public function test_each_status_is_coloured_by_what_it_asks_of_staff(): void
+    {
+        // Amber waits on someone, sky and blue are moving, green is ready to
+        // hand over, zinc is history, red was called off.
+        $this->assertSame('amber', OrderStatus::Pending->color());
+        $this->assertSame('sky', OrderStatus::Confirmed->color());
+        $this->assertSame('blue', OrderStatus::Preparing->color());
+        $this->assertSame('green', OrderStatus::Ready->color());
+        $this->assertSame('zinc', OrderStatus::Completed->color());
+        $this->assertSame('red', OrderStatus::Cancelled->color());
+    }
 }

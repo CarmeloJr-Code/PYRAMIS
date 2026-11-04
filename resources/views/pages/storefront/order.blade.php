@@ -556,7 +556,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                                 <span class="text-sm text-snow-500">{{ $variant->name }} &middot; &#8369;{{ number_format((float) $variant->price, 2) }}</span>
                                 @if (array_key_exists($variant->id, $this->todayStock))
                                     @php($left = $this->todayStock[$variant->id])
-                                    <span class="text-sm {{ $left > 0 ? 'text-orchid-700' : 'text-red-600' }}" data-test="left-today">
+                                    <span class="text-sm {{ $left > 0 ? 'text-green-700' : 'text-red-600' }}" data-test="left-today">
                                         {{ $left > 0 ? __(':count left today at this outlet', ['count' => $left]) : __('Out of stock today at this outlet') }}
                                     </span>
                                 @endif

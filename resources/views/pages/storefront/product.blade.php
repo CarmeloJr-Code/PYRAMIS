@@ -200,7 +200,7 @@ new #[Layout('layouts::storefront')] class extends Component {
                     </div>
                 @else
                     <p class="flex items-center gap-3 rounded-lg bg-snow-100 p-4 text-sm text-snow-600">
-                        <span class="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-snow-500">{{ __('Sold out') }}</span>
+                        <span class="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">{{ __('Sold out') }}</span>
                         {{ __('This size is sold out right now. Please check back soon.') }}
                     </p>
                 @endif

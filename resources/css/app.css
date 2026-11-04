@@ -23,9 +23,19 @@
     --color-zinc-900: #171717;
     --color-zinc-950: #0a0a0a;
 
-    --color-accent: var(--color-neutral-800);
-    --color-accent-content: var(--color-neutral-800);
+    /* The Flux accent is the brand orchid, in both the storefront and the workspace. */
+    --color-accent: var(--color-orchid-600);
+    --color-accent-content: var(--color-orchid-700);
     --color-accent-foreground: var(--color-white);
+
+    /*
+     * Functional colour: text that carries a state says so through these
+     * three, never a raw ramp, so light and dark stay in step. Badges take the
+     * matching Flux colour — green, amber, red — from the enum that owns the state.
+     */
+    --color-success: var(--color-green-600);
+    --color-warning: var(--color-amber-600);
+    --color-danger: var(--color-red-600);
 
     /* Velvet Orchid — the Purple Yam Malaybalay brand ramp (docs/reference/design-vibe.md). */
     --color-orchid-50: #f6ebf9;
@@ -39,6 +49,19 @@
     --color-orchid-800: #43184e;
     --color-orchid-900: #220c27;
     --color-orchid-950: #18081b;
+
+    /* Purple is the orchid, so a Flux `color="purple"` badge wears the brand. */
+    --color-purple-50: var(--color-orchid-50);
+    --color-purple-100: var(--color-orchid-100);
+    --color-purple-200: var(--color-orchid-200);
+    --color-purple-300: var(--color-orchid-300);
+    --color-purple-400: var(--color-orchid-400);
+    --color-purple-500: var(--color-orchid-500);
+    --color-purple-600: var(--color-orchid-600);
+    --color-purple-700: var(--color-orchid-700);
+    --color-purple-800: var(--color-orchid-800);
+    --color-purple-900: var(--color-orchid-900);
+    --color-purple-950: var(--color-orchid-950);
 
     /* Bright Snow — the warm neutral that keeps the violet from taking over. */
     --color-snow-50: #f8f7f8;
@@ -56,9 +79,13 @@
 
 @layer theme {
     .dark {
-        --color-accent: var(--color-white);
-        --color-accent-content: var(--color-white);
-        --color-accent-foreground: var(--color-neutral-800);
+        --color-accent: var(--color-orchid-500);
+        --color-accent-content: var(--color-orchid-300);
+        --color-accent-foreground: var(--color-white);
+
+        --color-success: var(--color-green-400);
+        --color-warning: var(--color-amber-400);
+        --color-danger: var(--color-red-400);
     }
 }
 
@@ -89,7 +116,7 @@
 input:focus[data-flux-control],
 textarea:focus[data-flux-control],
 select:focus[data-flux-control] {
-    @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-accent-foreground;
+    @apply outline-hidden ring-2 ring-accent ring-offset-2 ring-offset-white dark:ring-offset-zinc-900;
 }
 
 /* \[:where(&)\]:size-4 {

@@ -27,6 +27,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property string|null $phone
  * @property UserRole $role
  * @property bool $is_active
  * @property CarbonImmutable|null $email_verified_at
@@ -38,7 +39,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['name', 'email', 'role', 'is_active', 'password'])]
+#[Fillable(['name', 'email', 'phone', 'role', 'is_active', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -115,6 +116,14 @@ class User extends Authenticatable implements PasskeyUser
                     'total' => $sales + $runs + $movements + $expenses,
                 ];
             });
+    }
+
+    /**
+     * The number SmsChannel texts, or null for an employee who gave none.
+     */
+    public function routeNotificationForSms(): ?string
+    {
+        return $this->phone;
     }
 
     /**

@@ -4,6 +4,7 @@ use App\Actions\ProvisionEmployee;
 use App\Concerns\EmailValidationRules;
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Rules\PhilippineMobile;
 use Flux\Flux;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -20,6 +21,11 @@ new #[Title('Manage employee')] class extends Component {
     public string $name = '';
 
     public string $email = '';
+
+    /**
+     * Optional. Texts about their shifts go here; with none they aren't texted.
+     */
+    public string $phone = '';
 
     public string $role = '';
 
@@ -42,6 +48,7 @@ new #[Title('Manage employee')] class extends Component {
             $this->employeeId = $user->id;
             $this->name = $user->name;
             $this->email = $user->email;
+            $this->phone = $user->phone ?? '';
             $this->role = $user->role->value;
             $this->is_active = $user->is_active;
         }
@@ -68,11 +75,13 @@ new #[Title('Manage employee')] class extends Component {
         // otherwise be stored, and slip a duplicate email past unique.
         $this->name = trim($this->name);
         $this->email = $this->normaliseEmail($this->email);
+        $this->phone = trim($this->phone);
 
         $validated = $this->validate([
             // The same letters a customer's name is held to on the storefront.
             'name' => ['required', 'string', 'min:2', 'max:255', "regex:/^[\\pL\\s.'\\-]+$/u"],
             'email' => $this->employeeEmailRules($this->employeeId),
+            'phone' => ['nullable', 'string', new PhilippineMobile],
             'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['boolean'],
         ], [
@@ -84,6 +93,7 @@ new #[Title('Manage employee')] class extends Component {
                 $validated['name'],
                 $validated['email'],
                 UserRole::from($validated['role']),
+                $validated['phone'] ?: null,
             );
 
             $this->employeeId = $employee->id;
@@ -102,6 +112,7 @@ new #[Title('Manage employee')] class extends Component {
         $employee->update([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => $validated['phone'] ?: null,
             'role' => UserRole::from($validated['role']),
             'is_active' => $validated['is_active'],
         ]);
@@ -160,6 +171,17 @@ new #[Title('Manage employee')] class extends Component {
                 autocomplete="off"
                 x-on:input="keep($el, /\s/g)"
                 required
+            />
+
+            <flux:input
+                wire:model="phone"
+                x-on:input="keep($el, /\D/g); if ($el.value.length > 11) { $el.value = $el.value.slice(0, 11); $el.dispatchEvent(new Event('input')) }"
+                :label="__('Mobile number')"
+                type="tel"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="09171234567"
+                :description="__('Optional. Their shifts are texted to this number.')"
             />
 
             <flux:select wire:model="role" :label="__('Role')" required>

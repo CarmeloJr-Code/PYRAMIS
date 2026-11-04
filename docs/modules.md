@@ -6,11 +6,11 @@
 |---|---|
 | FR-01 Authentication & Access Control | Secure employee sign-in, role identification, role-scoped access. |
 | FR-02 Sales Management | Record and report sales transactions per location; feeds analytics/forecasting. |
-| FR-03 Customer Ordering | Account-free browsing, pre-order, pickup selection, order-status tracking. No delivery. |
+| FR-03 Customer Ordering | Account-free browsing, pre-order, pickup selection, order-status tracking, a text when the order is ready (BR-014). No delivery. |
 | FR-04 Inventory Management | Ingredient/material records, quantities, usage, restocking status, feeds forecasting. |
 | FR-05 Production Management | Production planning/logging, ingredient usage, finished-product prep, restock prep. |
 | FR-06 Outlet Management | Outlet records, outlet sales, restocking from the main branch, outlet performance. |
-| FR-07 Workforce Management | Employee records, shift scheduling/assignment/monitoring, activity reporting. |
+| FR-07 Workforce Management | Employee records, shift scheduling/assignment/monitoring, shift texts to employees (BR-014), activity reporting. |
 | FR-08 Expense Management | Record and report business expenses, tied to location/activity where relevant. |
 | FR-09 Internal Communication | Text-only internal messaging between employees. No voice/video/photo/external integration. |
 | FR-10 Reports and Analytics | Dashboards/reports across sales, inventory, production, expenses, workforce, outlets. |

@@ -25,7 +25,9 @@ class AssignShift
      */
     public function handle(Shift $shift, User $employee, User $administrator): ShiftAssignment
     {
-        return DB::transaction(function () use ($shift, $employee, $administrator): ShiftAssignment {
+        $created = false;
+
+        $assignment = DB::transaction(function () use ($shift, $employee, $administrator, &$created): ShiftAssignment {
             // Lock the employee's row rather than the shift's: the clash is a
             // fact about one person's day, and two administrators filling two
             // different shifts at once would otherwise both look before either
@@ -55,16 +57,21 @@ class AssignShift
                 ));
             }
 
-            $assignment = $shift->assignments()->create([
+            $created = true;
+
+            return $shift->assignments()->create([
                 'user_id' => $employee->id,
                 'assigned_by' => $administrator->id,
             ]);
-
-            if ($employee->isNot($administrator)) {
-                $employee->notify(new ShiftAssigned($shift));
-            }
-
-            return $assignment;
         });
+
+        // Told once the assignment is committed, and outside the transaction:
+        // the notice may text them, and a slow gateway must not hold the lock
+        // on their row.
+        if ($created && $employee->isNot($administrator)) {
+            $employee->notify(new ShiftAssigned($shift));
+        }
+
+        return $assignment;
     }
 }

@@ -5,10 +5,12 @@ use App\Actions\RecordSaleForOrder;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderPayment;
+use App\Notifications\OrderReadyForPickup;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -158,6 +160,13 @@ new class extends Component {
         }
 
         $this->order->refresh();
+
+        // The status page doesn't poll, so a customer would only find out by
+        // reloading it. The order is already Ready; the text only tells them.
+        if ($status === OrderStatus::Ready) {
+            Notification::route('sms', $this->order->customer_phone)
+                ->notify(new OrderReadyForPickup($this->order));
+        }
 
         Flux::toast(variant: 'success', text: __('Order updated to :status.', ['status' => $status->label()]));
     }

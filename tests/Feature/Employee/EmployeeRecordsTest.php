@@ -376,6 +376,73 @@ class EmployeeRecordsTest extends TestCase
         $this->assertSame('rosa.baker@purpleyam.store', $employee->fresh()->email);
     }
 
+    public function test_a_new_employee_can_be_given_a_mobile_number_for_shift_texts(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'Rosa Baker')
+            ->set('email', 'rosa@purpleyam.store')
+            ->set('phone', ' 09181112222 ')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('09181112222', User::firstWhere('email', 'rosa@purpleyam.store')->phone);
+    }
+
+    public function test_an_employee_needs_no_mobile_number(): void
+    {
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage')
+            ->set('name', 'Rosa Baker')
+            ->set('email', 'rosa@purpleyam.store')
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull(User::firstWhere('email', 'rosa@purpleyam.store')->phone);
+    }
+
+    public function test_an_administrator_changes_or_clears_an_employees_number(): void
+    {
+        $employee = User::factory()->baker()->create(['phone' => '09181112222']);
+        $admin = User::factory()->administrator()->create();
+
+        Livewire::actingAs($admin)
+            ->test('pages::employee.workforce.employees.manage', ['user' => $employee])
+            ->assertSet('phone', '09181112222')
+            ->set('phone', '09183334444')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('09183334444', $employee->fresh()->phone);
+
+        Livewire::actingAs($admin)
+            ->test('pages::employee.workforce.employees.manage', ['user' => $employee])
+            ->set('phone', '')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull($employee->fresh()->phone);
+    }
+
+    #[TestWith(['9181112222'])]
+    #[TestWith(['091811122223'])]
+    #[TestWith(['+639181112222'])]
+    #[TestWith(['0918-111-2222'])]
+    public function test_a_number_that_is_not_an_11_digit_mobile_is_refused(string $phone): void
+    {
+        $employee = User::factory()->baker()->create(['phone' => null]);
+
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.workforce.employees.manage', ['user' => $employee])
+            ->set('phone', $phone)
+            ->call('save')
+            ->assertHasErrors(['phone']);
+
+        $this->assertNull($employee->fresh()->phone);
+    }
+
     public function test_the_fields_restrict_what_can_be_typed_into_them(): void
     {
         Livewire::actingAs(User::factory()->administrator()->create())

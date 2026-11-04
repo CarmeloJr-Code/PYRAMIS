@@ -41,6 +41,44 @@ class ProfileUpdateTest extends TestCase
         $this->assertNull($user->email_verified_at);
     }
 
+    public function test_an_employee_sets_and_clears_their_own_mobile_number(): void
+    {
+        $user = User::factory()->baker()->create(['phone' => null]);
+
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->set('phone', ' 09181112222 ')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertSame('09181112222', $user->refresh()->phone);
+
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->assertSet('phone', '09181112222')
+            ->set('phone', '')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
+
+        $this->assertNull($user->refresh()->phone);
+    }
+
+    #[TestWith(['9181112222'])]
+    #[TestWith(['08181112222'])]
+    #[TestWith(['0918 111 2222'])]
+    public function test_a_mobile_number_in_the_wrong_shape_is_refused(string $phone): void
+    {
+        $user = User::factory()->create(['phone' => '09181112222']);
+
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->set('phone', $phone)
+            ->call('updateProfileInformation')
+            ->assertHasErrors(['phone']);
+
+        $this->assertSame('09181112222', $user->refresh()->phone);
+    }
+
     public function test_the_email_is_stored_trimmed_and_lowercase(): void
     {
         $user = User::factory()->create();

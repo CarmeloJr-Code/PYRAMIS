@@ -15,6 +15,7 @@ Authoritative rules that affect more than one module. If an implementation detai
 - **BR-011** — There is no door-to-door delivery.
 - **BR-012** — Customer-facing functionality must never expose employee-only operational information.
 - **BR-013** — Online pre-orders are paid by GCash up front. An order is Confirmed only after a cashier checks that the exact total was received; a short or over payment leaves it Pending. (Added at the owner's request, after the PRD.)
+- **BR-014** — Texts (SMS, through UniSMS) go out for four events only: an employee is assigned to a shift, a shift they are on changes time or outlet, they are taken off a shift, and a customer's order becomes Ready for pickup. A text only reports a change already made — a failed text never blocks or undoes it — and an employee with no mobile number on file is not texted. This is one-way notification, not the internal chat BR-010 governs. (Added at the owner's request, after the PRD.)
 
 ## Why these exist
 

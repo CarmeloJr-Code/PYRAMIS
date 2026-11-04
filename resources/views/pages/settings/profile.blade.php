@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\EmailValidationRules;
+use App\Rules\PhilippineMobile;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -15,6 +16,7 @@ new #[Title('Profile settings')] class extends Component {
 
     public string $name = '';
     public string $email = '';
+    public string $phone = '';
 
     /**
      * Get the validation rules used to validate the user's profile.
@@ -26,6 +28,7 @@ new #[Title('Profile settings')] class extends Component {
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => $this->employeeEmailRules($userId),
+            'phone' => ['nullable', 'string', new PhilippineMobile],
         ];
     }
 
@@ -36,6 +39,7 @@ new #[Title('Profile settings')] class extends Component {
     {
         $this->name = Auth::user()->name;
         $this->email = Auth::user()->email;
+        $this->phone = Auth::user()->phone ?? '';
     }
 
     /**
@@ -48,10 +52,11 @@ new #[Title('Profile settings')] class extends Component {
         // Livewire skips the TrimStrings middleware, and Fortify looks the
         // email up lowercased at sign-in, so it is stored the way it is sought.
         $this->email = $this->normaliseEmail($this->email);
+        $this->phone = trim($this->phone);
 
         $validated = $this->validate($this->profileRules($user->id));
 
-        $user->fill($validated);
+        $user->fill([...$validated, 'phone' => $validated['phone'] ?: null]);
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
@@ -99,7 +104,7 @@ new #[Title('Profile settings')] class extends Component {
 
     <flux:heading level="2" class="sr-only">{{ __('Profile settings') }}</flux:heading>
 
-    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
+    <x-pages::settings.layout :heading="__('Profile')" :subheading="__('Update your name, email address and mobile number')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
             <flux:input wire:model="name" :label="__('Name')" type="text" required autofocus autocomplete="name" />
 
@@ -124,6 +129,17 @@ new #[Title('Profile settings')] class extends Component {
                     </div>
                 @endif
             </div>
+
+            <flux:input
+                wire:model="phone"
+                :label="__('Mobile number')"
+                type="tel"
+                inputmode="numeric"
+                maxlength="11"
+                autocomplete="tel"
+                placeholder="09171234567"
+                :description="__('Optional. Your shifts are texted to this number.')"
+            />
 
             <div class="flex items-center gap-4">
                 <div class="flex items-center justify-end">

@@ -3,6 +3,7 @@
 use App\Actions\AssignShift;
 use App\Models\Shift;
 use App\Models\User;
+use App\Notifications\ShiftUnassigned;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -95,7 +96,15 @@ new class extends Component {
 
         // Only assignments this shift owns may be removed — an id belonging to
         // another shift is not this screen's to touch.
-        $this->shift->assignments()->whereKey($assignmentId)->delete();
+        $assignment = $this->shift->assignments()->with('user')->whereKey($assignmentId)->first();
+
+        if ($assignment !== null) {
+            $assignment->delete();
+
+            if ($assignment->user->isNot(Auth::user())) {
+                $assignment->user->notify(new ShiftUnassigned($this->shift));
+            }
+        }
 
         $this->refreshShift();
 

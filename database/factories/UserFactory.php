@@ -70,6 +70,16 @@ class UserFactory extends Factory
     }
 
     /**
+     * Indicate that the employee has a mobile number on file, so is texted.
+     */
+    public function withPhone(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'phone' => fake()->numerify('09#########'),
+        ]);
+    }
+
+    /**
      * Indicate that the model's email address should be unverified.
      */
     public function unverified(): static

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\StockLevel;
 use App\Models\Ingredient;
 use PHPUnit\Framework\TestCase;
 
@@ -47,12 +48,37 @@ class IngredientTest extends TestCase
         $this->assertFalse($this->ingredient('0', '0')->isLowStock());
     }
 
+    public function test_a_retired_ingredient_reads_as_not_stocked_whatever_it_holds(): void
+    {
+        $this->assertSame(StockLevel::NotStocked, $this->ingredient('5', '0', active: false)->stockLevel());
+        $this->assertSame(StockLevel::NotStocked, $this->ingredient('5', '20', active: false)->stockLevel());
+    }
+
+    public function test_nothing_left_outranks_being_low(): void
+    {
+        $this->assertSame(StockLevel::OutOfStock, $this->ingredient('5', '0')->stockLevel());
+        $this->assertSame(StockLevel::OutOfStock, $this->ingredient('0', '-2')->stockLevel());
+    }
+
+    public function test_stock_at_the_reorder_level_is_low_and_above_it_is_in_stock(): void
+    {
+        $this->assertSame(StockLevel::Low, $this->ingredient('5', '5')->stockLevel());
+        $this->assertSame(StockLevel::InStock, $this->ingredient('5', '5.001')->stockLevel());
+    }
+
+    public function test_with_no_reorder_level_set_any_stock_is_in_stock(): void
+    {
+        $this->assertSame(StockLevel::InStock, $this->ingredient('0', '0.001')->stockLevel());
+    }
+
     /**
      * An ingredient carrying the stock aggregate a listing would have selected.
      */
-    private function ingredient(string $reorderLevel, ?string $stock): Ingredient
+    private function ingredient(string $reorderLevel, ?string $stock, bool $active = true): Ingredient
     {
         $ingredient = new Ingredient(['reorder_level' => $reorderLevel]);
+
+        $ingredient->setAttribute('is_active', $active);
 
         $ingredient->setAttribute('stock_sum', $stock);
 

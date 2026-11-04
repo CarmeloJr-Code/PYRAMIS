@@ -97,4 +97,23 @@ enum OrderStatus: string
             self::Cancelled => 'Cancelled',
         };
     }
+
+    /**
+     * The badge colour this status is drawn in, on both the storefront and
+     * the workspace.
+     *
+     * Amber while it waits on staff, sky and blue while it moves, green once
+     * it is ready to hand over, zinc once it is history, red if it was called off.
+     */
+    public function color(): string
+    {
+        return match ($this) {
+            self::Pending => 'amber',
+            self::Confirmed => 'sky',
+            self::Preparing => 'blue',
+            self::Ready => 'green',
+            self::Completed => 'zinc',
+            self::Cancelled => 'red',
+        };
+    }
 }

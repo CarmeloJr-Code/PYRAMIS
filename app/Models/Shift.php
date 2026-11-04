@@ -152,6 +152,25 @@ class Shift extends Model
     }
 
     /**
+     * The shift in one line of plain text, for an SMS: what, when and where.
+     *
+     * A hyphen, not the en dash the screens use — a text gateway carries plain
+     * characters, and anything outside them costs extra or is refused.
+     */
+    public function textLine(): string
+    {
+        $this->loadMissing('outlet');
+
+        return sprintf(
+            '%s, %s-%s at %s',
+            $this->name,
+            $this->starts_at->format('D d M, g:ia'),
+            $this->ends_at->format('g:ia'),
+            $this->outlet->name,
+        );
+    }
+
+    /**
      * A stretch of minutes as hours and minutes.
      */
     public static function formatMinutes(int $minutes): string

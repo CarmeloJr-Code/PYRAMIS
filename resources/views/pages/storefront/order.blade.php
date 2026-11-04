@@ -623,7 +623,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     inputmode="numeric"
                     autocomplete="tel"
                     placeholder="09171234567"
-                    :description="__('11-digit mobile number.')"
+                    :description="__('11-digit mobile number. We\'ll text it when your order is ready.')"
                     required
                 />
                 <flux:input

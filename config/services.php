@@ -28,6 +28,19 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+    | Texts to employees about their shifts and to customers when an order is
+    | ready (App\Notifications\Channels\SmsChannel). With no key the texts are
+    | written to the log instead of sent.
+    */
+    'unisms' => [
+        'key' => env('UNISMS_SECRET_KEY'),
+        // Blank falls back to the gateway's default sender until a custom one
+        // is approved by the telcos.
+        'sender_id' => env('UNISMS_SENDER_ID') ?: 'UniSMS',
+        'url' => env('UNISMS_URL', 'https://unismsapi.com/api/sms'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

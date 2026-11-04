@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\Shift;
 use App\Models\User;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -18,7 +19,12 @@ class ShiftAssigned extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', SmsChannel::class];
+    }
+
+    public function toSms(object $notifiable): string
+    {
+        return __('Purple Yam: You are on :shift.', ['shift' => $this->shift->textLine()]);
     }
 
     /**

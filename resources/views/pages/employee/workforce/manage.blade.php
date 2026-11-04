@@ -2,6 +2,8 @@
 
 use App\Models\Outlet;
 use App\Models\Shift;
+use App\Models\User;
+use App\Notifications\ShiftChanged;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -101,7 +103,23 @@ new #[Title('Manage shift')] class extends Component {
             'starts_at' => "{$validated['date']} {$validated['starts_at']}:00",
             'ends_at' => "{$validated['date']} {$validated['ends_at']}:00",
             'notes' => $validated['notes'] ?: null,
-        ])->save();
+        ]);
+
+        // Only a change to when or where the work is happens to the people on
+        // it; a renamed shift or a new note is not worth a text.
+        $moved = $shift->exists && $shift->isDirty(['starts_at', 'ends_at', 'outlet_id']);
+
+        $shift->save();
+
+        if ($moved) {
+            $shift->load('outlet');
+
+            $shift->employees()
+                ->active()
+                ->whereKeyNot(Auth::id())
+                ->get()
+                ->each(fn (User $employee) => $employee->notify(new ShiftChanged($shift)));
+        }
 
         Flux::toast(variant: 'success', text: __('Shift saved.'));
 

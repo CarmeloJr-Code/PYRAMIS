@@ -29,7 +29,7 @@ class ProvisionEmployee
      * @throws RuntimeException when no password meeting the configured rules
      *                          could be generated
      */
-    public function handle(string $name, string $email, UserRole $role): array
+    public function handle(string $name, string $email, UserRole $role, ?string $phone = null): array
     {
         $password = $this->generatePassword();
 
@@ -40,6 +40,7 @@ class ProvisionEmployee
         $employee = new User([
             'name' => $name,
             'email' => $email,
+            'phone' => $phone,
             'role' => $role,
             'is_active' => true,
             'password' => $password,

@@ -185,10 +185,7 @@ new #[Layout('layouts::storefront')] #[Title('Products')] class extends Componen
                     <span class="flex flex-1 flex-col gap-3 p-6">
                         <span class="text-xs font-medium tracking-[0.15em] text-snow-400 uppercase">{{ $variant->product->category->name }}</span>
 
-                        <span class="flex flex-col gap-1">
-                            <span class="text-lg font-semibold text-orchid-800">{{ $variant->product->name }}</span>
-                            <span class="text-sm font-medium text-snow-600">{{ $variant->name }}</span>
-                        </span>
+                        <span class="text-lg font-semibold text-orchid-800">{{ $variant->menuName() }}</span>
 
                         @if ($variant->product->description)
                             <span class="line-clamp-2 text-sm text-snow-500">{{ $variant->product->description }}</span>

@@ -66,7 +66,7 @@ class Product extends Model
      * The artwork ships with the app under public/images/products, named by
      * slug. A photograph is preferred to a drawing, and a size whose shape was
      * photographed on its own — the heart, the tincan — gets that photograph,
-     * at "{slug}-{shape}.jpg". A product nobody has photographed or drawn yet
+     * at "{slug}-{shape}.webp". A product nobody has photographed or drawn yet
      * (one added after the art was made, or renamed so its slug moved)
      * borrows its category's, and failing that a generic one — so the card
      * never shows a broken image.
@@ -74,8 +74,8 @@ class Product extends Model
     public function imageUrl(?ProductVariant $size = null): string
     {
         $names = array_filter([
-            ($shape = $size?->shape()) !== null ? "{$this->slug}-{$shape}.jpg" : null,
-            "{$this->slug}.jpg",
+            ($shape = $size?->shape()) !== null ? "{$this->slug}-{$shape}.webp" : null,
+            "{$this->slug}.webp",
             "{$this->slug}.svg",
         ]);
 

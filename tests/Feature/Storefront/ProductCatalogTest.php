@@ -229,12 +229,12 @@ class ProductCatalogTest extends TestCase
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSee(asset('images/products/ube-custard-cake.jpg'), false)
+            ->assertSee(asset('images/products/ube-custard-cake.webp'), false)
             ->assertDontSee('images/products/ube-custard-cake.svg', false);
 
         $this->get(route('products.show', $product))
             ->assertOk()
-            ->assertSee(asset('images/products/ube-custard-cake.jpg'), false);
+            ->assertSee(asset('images/products/ube-custard-cake.webp'), false);
     }
 
     public function test_the_pistacio_bar_added_after_the_menu_board_is_photographed(): void
@@ -243,7 +243,7 @@ class ProductCatalogTest extends TestCase
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSee(asset('images/products/pistacio-bar.jpg'), false)
+            ->assertSee(asset('images/products/pistacio-bar.webp'), false)
             ->assertDontSee('images/products/pistacio-bar.svg', false);
     }
 
@@ -256,19 +256,19 @@ class ProductCatalogTest extends TestCase
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSee(asset('images/products/ube-cake-heart.jpg'), false)
-            ->assertSee(asset('images/products/ube-cake-messy-cup.jpg'), false)
+            ->assertSee(asset('images/products/ube-cake-heart.webp'), false)
+            ->assertSee(asset('images/products/ube-cake-messy-cup.webp'), false)
             // The round has no photograph of its own, so it takes the product's.
-            ->assertSee(asset('images/products/ube-cake.jpg'), false);
+            ->assertSee(asset('images/products/ube-cake.webp'), false);
 
         $this->get(route('products.show', ['product' => $product, 'size' => $heart->id]))
             ->assertOk()
-            ->assertSee(asset('images/products/ube-cake-heart.jpg'), false);
+            ->assertSee(asset('images/products/ube-cake-heart.webp'), false);
 
         $this->get(route('products.show', ['product' => $product, 'size' => $round->id]))
             ->assertOk()
-            ->assertSee(asset('images/products/ube-cake.jpg'), false)
-            ->assertDontSee('images/products/ube-cake-heart.jpg', false);
+            ->assertSee(asset('images/products/ube-cake.webp'), false)
+            ->assertDontSee('images/products/ube-cake-heart.webp', false);
     }
 
     public function test_a_product_without_its_own_illustration_borrows_its_categorys(): void
@@ -312,8 +312,22 @@ class ProductCatalogTest extends TestCase
 
             $size->product->slug === 'tote-bag'
                 ? $this->assertSame(asset('images/products/tote-bag.svg'), $url, $size->menuName())
-                : $this->assertStringEndsWith('.jpg', $url, $size->menuName());
+                : $this->assertStringEndsWith('.webp', $url, $size->menuName());
         });
+    }
+
+    public function test_each_shape_of_the_layered_cakes_on_the_menu_board_has_a_photograph_of_its_own(): void
+    {
+        $this->seed(CatalogSeeder::class);
+
+        foreach (['ube-cake', 'chocolate-cake', 'ube-custard-cake'] as $slug) {
+            $product = Product::with('variants')->where('slug', $slug)->sole();
+
+            $photos = $product->variants->map(fn (ProductVariant $size): string => $product->imageUrl($size));
+
+            // Only the two messy cups, 12 oz and 8 oz, share a photograph.
+            $this->assertCount($product->variants->count() - ($slug === 'ube-custard-cake' ? 0 : 1), $photos->unique(), $slug);
+        }
     }
 
     public function test_a_sold_out_size_cannot_be_put_in_the_cart(): void

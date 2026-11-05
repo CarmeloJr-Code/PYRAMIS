@@ -14,16 +14,17 @@ class ProductVariantTest extends TestCase
     public static function shapeProvider(): array
     {
         return [
-            'a sheet, large' => ['Large (10x14)', 'rectangular'],
-            'a sheet, medium' => ['Medium (7x10)', 'rectangular'],
+            'a sheet, large' => ['Large (10x14)', 'large'],
+            'a sheet, medium' => ['Medium (7x10)', 'medium'],
             'a round' => ['Round (7x3)', 'round'],
             'a heart' => ['Heart (6" dia)', 'heart'],
-            // A tincan is a tincan whatever it is shaped like inside.
-            'a round tincan' => ['Tincan Round', 'tincan'],
-            'a heart tincan' => ['Tincan Heart', 'tincan'],
+            // A tincan is named before the cake shape it holds.
+            'a round tincan' => ['Tincan Round', 'tincan-round'],
+            'a heart tincan' => ['Tincan Heart', 'tincan-heart'],
             'a messy cup' => ['Messy Cup (12 oz)', 'messy-cup'],
             'written in any case' => ['messy cup (8 OZ)', 'messy-cup'],
-            'a slice' => ['Slice', null],
+            'a slice' => ['Slice', 'slice'],
+            'a tincan of no stated shape' => ['Tincan/Tub', 'tincan-round'],
             'a layer' => ['Layer', null],
             'a cup size alone' => ['8 oz', null],
         ];

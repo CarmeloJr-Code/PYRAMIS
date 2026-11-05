@@ -69,19 +69,22 @@ class ProductVariant extends Model
 
     /**
      * The shape this size comes in, read off its name, for picking its
-     * photograph: a tincan, a messy cup, a heart, a round, or a rectangular
-     * sheet (Large and Medium). Null for a size named any other way.
+     * photograph: a heart or round tincan (a tincan is round unless it says
+     * otherwise), a messy cup, a heart, a round, a large or medium sheet, or
+     * a slice. Null for a size named any other way.
      */
     public function shape(): ?string
     {
         $name = Str::lower($this->name);
 
         return match (true) {
-            str_contains($name, 'tincan') => 'tincan',
+            str_contains($name, 'tincan') => str_contains($name, 'heart') ? 'tincan-heart' : 'tincan-round',
             str_contains($name, 'messy cup') => 'messy-cup',
             str_contains($name, 'heart') => 'heart',
             str_contains($name, 'round') => 'round',
-            str_contains($name, 'large'), str_contains($name, 'medium') => 'rectangular',
+            str_contains($name, 'large') => 'large',
+            str_contains($name, 'medium') => 'medium',
+            str_contains($name, 'slice') => 'slice',
             default => null,
         };
     }

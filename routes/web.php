@@ -3,9 +3,15 @@
 use App\Http\Controllers\Employee\ExpenseReceiptController;
 use App\Http\Controllers\Employee\OrderReceiptController;
 use App\Http\Controllers\Employee\SummaryReportController;
+use App\Http\Controllers\ProductPhotoController;
 use App\Http\Middleware\EnsureEmployeeIsActive;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 // Each half answers only on its own host once both are configured; unset, the
 // domain is null and the routes answer anywhere (config/app.php).
@@ -22,6 +28,19 @@ Route::domain($storefront)->group(function () {
     Route::livewire('track', 'pages::storefront.track')->name('orders.track');
     Route::livewire('orders/{order:reference}', 'pages::storefront.order-status')->name('orders.show');
 });
+
+// Menu-card photos managers upload. On no particular host: the storefront
+// shows them on the menu and the workspace while they are being managed. No
+// session, so the answer is the same for everyone and can be cached as such.
+Route::get('product-photos/{productPhoto}', ProductPhotoController::class)
+    ->withoutMiddleware([
+        EncryptCookies::class,
+        AddQueuedCookiesToResponse::class,
+        StartSession::class,
+        ShareErrorsFromSession::class,
+        PreventRequestForgery::class,
+    ])
+    ->name('product-photos.show');
 
 // The workspace host served the storefront too until the two were split, so
 // its root opens the workspace and the old storefront addresses — a customer's

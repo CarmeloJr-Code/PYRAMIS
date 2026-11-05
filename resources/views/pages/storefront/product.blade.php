@@ -61,6 +61,19 @@ new #[Layout('layouts::storefront')] class extends Component {
     }
 
     /**
+     * The picture for the size this page is about. The uploaded photos are
+     * loaded here rather than trusted to survive a round trip: Livewire brings
+     * the product back with its sizes but not their photos.
+     */
+    #[Computed]
+    public function imageUrl(): string
+    {
+        $this->product->loadMissing(['photo', 'variants.photo']);
+
+        return $this->product->imageUrl($this->variant);
+    }
+
+    /**
      * The outlets a customer can collect from — the same list checkout offers.
      *
      * @return Collection<int, Outlet>
@@ -153,7 +166,7 @@ new #[Layout('layouts::storefront')] class extends Component {
 
     <div class="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
         <div class="flex flex-col gap-4">
-            <img src="{{ $product->imageUrl($this->variant) }}" alt="" width="400" height="300" class="aspect-4/3 w-full rounded-2xl border border-snow-200 object-cover">
+            <img src="{{ $this->imageUrl }}" alt="" width="400" height="300" class="aspect-4/3 w-full rounded-2xl border border-snow-200 object-cover">
 
             <h1 class="text-3xl font-semibold tracking-tight text-orchid-800">{{ $product->name }}</h1>
 

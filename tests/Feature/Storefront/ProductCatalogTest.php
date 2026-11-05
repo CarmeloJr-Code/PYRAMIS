@@ -298,7 +298,7 @@ class ProductCatalogTest extends TestCase
     {
         $this->seed(CatalogSeeder::class);
 
-        Product::with('category')->get()->each(function (Product $product): void {
+        Product::with(['category', 'photo'])->get()->each(function (Product $product): void {
             $this->assertStringStartsWith(asset("images/products/{$product->slug}"), $product->imageUrl(), $product->name);
         });
     }
@@ -307,7 +307,7 @@ class ProductCatalogTest extends TestCase
     {
         $this->seed(CatalogSeeder::class);
 
-        ProductVariant::with('product.category')->get()->each(function (ProductVariant $size): void {
+        ProductVariant::with(['product.category', 'product.photo', 'photo'])->get()->each(function (ProductVariant $size): void {
             $url = $size->product->imageUrl($size);
 
             $size->product->slug === 'tote-bag'
@@ -321,7 +321,7 @@ class ProductCatalogTest extends TestCase
         $this->seed(CatalogSeeder::class);
 
         foreach (['ube-cake', 'chocolate-cake', 'ube-custard-cake'] as $slug) {
-            $product = Product::with('variants')->where('slug', $slug)->sole();
+            $product = Product::with(['category', 'photo', 'variants.photo'])->where('slug', $slug)->sole();
 
             $photos = $product->variants->map(fn (ProductVariant $size): string => $product->imageUrl($size));
 

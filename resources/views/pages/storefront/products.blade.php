@@ -80,7 +80,7 @@ new #[Layout('layouts::storefront')] #[Title('Products')] class extends Componen
                             ->orWhereHas('category', fn (Builder $category) => $category->whereLike('name', "%{$term}%"))));
                 }
             })
-            ->with('product.category')
+            ->with(['product.category', 'product.photo', 'photo'])
             ->get()
             ->sortBy([
                 fn (ProductVariant $a, ProductVariant $b): int => strcmp($a->product->name, $b->product->name),

@@ -212,15 +212,63 @@ class ProductCatalogTest extends TestCase
 
     public function test_a_product_shows_its_own_illustration(): void
     {
-        $product = $this->product('Ube Cake');
+        $product = $this->product('Tote Bag');
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSee(asset('images/products/ube-cake.svg'), false);
+            ->assertSee(asset('images/products/tote-bag.svg'), false);
 
         $this->get(route('products.show', $product))
             ->assertOk()
-            ->assertSeeInOrder([asset('images/products/ube-cake.svg'), '<h1 class=', 'Ube Cake</h1>'], false);
+            ->assertSeeInOrder([asset('images/products/tote-bag.svg'), '<h1 class=', 'Tote Bag</h1>'], false);
+    }
+
+    public function test_a_photographed_product_shows_its_photograph_over_its_drawing(): void
+    {
+        $product = $this->product('Ube Custard Cake');
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSee(asset('images/products/ube-custard-cake.jpg'), false)
+            ->assertDontSee('images/products/ube-custard-cake.svg', false);
+
+        $this->get(route('products.show', $product))
+            ->assertOk()
+            ->assertSee(asset('images/products/ube-custard-cake.jpg'), false);
+    }
+
+    public function test_the_pistacio_bar_added_after_the_menu_board_is_photographed(): void
+    {
+        $this->product('Pistacio Bar', Category::factory()->create(['name' => 'Bars', 'slug' => 'bars']));
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSee(asset('images/products/pistacio-bar.jpg'), false)
+            ->assertDontSee('images/products/pistacio-bar.svg', false);
+    }
+
+    public function test_a_size_photographed_on_its_own_shows_its_own_photograph(): void
+    {
+        $product = Product::factory()->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
+        $heart = ProductVariant::factory()->for($product)->create(['name' => 'Heart (6" dia)']);
+        ProductVariant::factory()->for($product)->create(['name' => 'Messy Cup (8 oz)']);
+        $round = ProductVariant::factory()->for($product)->create(['name' => 'Round (7x3)']);
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSee(asset('images/products/ube-cake-heart.jpg'), false)
+            ->assertSee(asset('images/products/ube-cake-messy-cup.jpg'), false)
+            // The round has no photograph of its own, so it takes the product's.
+            ->assertSee(asset('images/products/ube-cake.jpg'), false);
+
+        $this->get(route('products.show', ['product' => $product, 'size' => $heart->id]))
+            ->assertOk()
+            ->assertSee(asset('images/products/ube-cake-heart.jpg'), false);
+
+        $this->get(route('products.show', ['product' => $product, 'size' => $round->id]))
+            ->assertOk()
+            ->assertSee(asset('images/products/ube-cake.jpg'), false)
+            ->assertDontSee('images/products/ube-cake-heart.jpg', false);
     }
 
     public function test_a_product_without_its_own_illustration_borrows_its_categorys(): void
@@ -251,7 +299,20 @@ class ProductCatalogTest extends TestCase
         $this->seed(CatalogSeeder::class);
 
         Product::with('category')->get()->each(function (Product $product): void {
-            $this->assertSame(asset("images/products/{$product->slug}.svg"), $product->imageUrl(), $product->name);
+            $this->assertStringStartsWith(asset("images/products/{$product->slug}"), $product->imageUrl(), $product->name);
+        });
+    }
+
+    public function test_every_size_on_the_menu_board_but_the_tote_bags_is_photographed(): void
+    {
+        $this->seed(CatalogSeeder::class);
+
+        ProductVariant::with('product.category')->get()->each(function (ProductVariant $size): void {
+            $url = $size->product->imageUrl($size);
+
+            $size->product->slug === 'tote-bag'
+                ? $this->assertSame(asset('images/products/tote-bag.svg'), $url, $size->menuName())
+                : $this->assertStringEndsWith('.jpg', $url, $size->menuName());
         });
     }
 

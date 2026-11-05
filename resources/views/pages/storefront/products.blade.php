@@ -180,7 +180,7 @@ new #[Layout('layouts::storefront')] #[Title('Products')] class extends Componen
                     wire:key="variant-{{ $variant->id }}"
                     wire:navigate
                 >
-                    <img src="{{ $variant->product->imageUrl() }}" alt="" width="400" height="300" loading="lazy" class="aspect-4/3 w-full border-b border-snow-200 object-cover">
+                    <img src="{{ $variant->product->imageUrl($variant) }}" alt="" width="400" height="300" loading="lazy" class="aspect-4/3 w-full border-b border-snow-200 object-cover">
 
                     <span class="flex flex-1 flex-col gap-3 p-6">
                         <span class="text-xs font-medium tracking-[0.15em] text-snow-400 uppercase">{{ $variant->product->category->name }}</span>

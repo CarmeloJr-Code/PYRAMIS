@@ -85,7 +85,7 @@ class MenuStockTest extends TestCase
 
         $this->get(route('products.index'))
             ->assertOk()
-            ->assertSeeInOrder(['Chocolate Cake', 'Round', 'Main Branch', '12 available today', 'Plaza Outlet', '3 available today']);
+            ->assertSeeInOrder(['Round Chocolate Cake', 'Main Branch', '12 available today', 'Plaza Outlet', '3 available today']);
     }
 
     public function test_open_orders_due_today_are_taken_off_the_outlet_they_will_be_collected_from(): void

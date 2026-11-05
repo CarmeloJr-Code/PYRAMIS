@@ -54,11 +54,30 @@ class ProductCatalogTest extends TestCase
         $this->get(route('products.index'))
             ->assertOk()
             ->assertSeeHtmlInOrder([
-                'href="'.route('products.show', ['product' => $product, 'size' => $tincan->id]).'"', 'Chocolate Cake', 'Tincan', '120.00', 'Sold out',
-                'href="'.route('products.show', ['product' => $product, 'size' => $small->id]).'"', 'Chocolate Cake', 'Small', '350.00',
-                'href="'.route('products.show', ['product' => $product, 'size' => $large->id]).'"', 'Chocolate Cake', 'Large', '900.00',
+                'href="'.route('products.show', ['product' => $product, 'size' => $tincan->id]).'"', 'Tincan Chocolate Cake', '120.00', 'Sold out',
+                'href="'.route('products.show', ['product' => $product, 'size' => $small->id]).'"', 'Small Chocolate Cake', '350.00',
+                'href="'.route('products.show', ['product' => $product, 'size' => $large->id]).'"', 'Large Chocolate Cake', '900.00',
             ])
             ->assertDontSeeText('from');
+    }
+
+    public function test_a_menu_card_names_the_size_and_product_on_one_line(): void
+    {
+        $cakes = Category::factory()->create(['name' => 'Chocolate Cakes', 'slug' => 'chocolate-cakes']);
+        $merchandise = Category::factory()->create(['name' => 'Merchandise', 'slug' => 'merchandise']);
+        $cake = Product::factory()->for($cakes)->create(['name' => 'Chocolate Cake', 'slug' => 'chocolate-cake']);
+        $bag = Product::factory()->for($merchandise)->create(['name' => 'Tote Bag', 'slug' => 'tote-bag']);
+
+        ProductVariant::factory()->for($cake)->create(['name' => 'Heart (6" dia)']);
+        ProductVariant::factory()->for($cake)->create(['name' => 'Messy Cup (12 oz)']);
+        ProductVariant::factory()->for($bag)->create(['name' => 'Large (1 large cake)']);
+
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertSeeText('Heart (6") Chocolate Cake')
+            ->assertSeeText('Messy Cup (12 oz) Chocolate Cake')
+            ->assertSeeText('Tote Bag Large (1 large cake)')
+            ->assertDontSeeText('6" dia');
     }
 
     public function test_a_size_card_opens_a_page_about_that_size_alone(): void
@@ -151,6 +170,23 @@ class ProductCatalogTest extends TestCase
             ->assertOk()
             ->assertSeeText('Ube Cakes')
             ->assertDontSeeText('Empty Shelf');
+    }
+
+    public function test_the_home_page_counts_every_size_on_the_menu(): void
+    {
+        $cakes = Category::factory()->create(['name' => 'Ube Cakes']);
+        $ube = Product::factory()->for($cakes)->create(['name' => 'Ube Cake', 'slug' => 'ube-cake']);
+        $chobe = Product::factory()->for($cakes)->create(['name' => 'Chobe Cake', 'slug' => 'chobe-cake']);
+        $withdrawn = Product::factory()->for($cakes)->create(['name' => 'Old Cake', 'slug' => 'old-cake', 'is_active' => false]);
+
+        ProductVariant::factory()->for($ube)->count(2)->create();
+        ProductVariant::factory()->for($ube)->unavailable()->create();
+        ProductVariant::factory()->for($chobe)->create();
+        ProductVariant::factory()->for($withdrawn)->count(5)->create();
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSeeText('4 products');
     }
 
     public function test_the_home_page_shows_each_categorys_illustration(): void

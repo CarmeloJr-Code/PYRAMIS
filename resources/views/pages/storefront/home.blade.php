@@ -9,7 +9,8 @@ use Livewire\Component;
 
 new #[Layout('layouts::storefront')] #[Title('Purple Yam Malaybalay')] class extends Component {
     /**
-     * Categories that have something to show.
+     * Categories that have something to show, each with how many cards it
+     * puts on the menu — one per size, sold out or not, of its active products.
      *
      * @return Collection<int, Category>
      */
@@ -18,7 +19,7 @@ new #[Layout('layouts::storefront')] #[Title('Purple Yam Malaybalay')] class ext
     {
         return Category::query()
             ->whereHas('products', fn ($query) => $query->where('is_active', true))
-            ->withCount(['products' => fn ($query) => $query->where('is_active', true)])
+            ->withCount(['variants' => fn ($query) => $query->where('products.is_active', true)])
             ->orderBy('name')
             ->get();
     }
@@ -76,7 +77,7 @@ new #[Layout('layouts::storefront')] #[Title('Purple Yam Malaybalay')] class ext
                         <span class="flex flex-col gap-2 p-6">
                             <span class="font-semibold text-orchid-700">{{ $category->name }}</span>
                             <span class="text-sm text-snow-500">
-                                {{ trans_choice('{1} :count product|[2,*] :count products', $category->products_count, ['count' => $category->products_count]) }}
+                                {{ trans_choice('{1} :count product|[2,*] :count products', $category->variants_count, ['count' => $category->variants_count]) }}
                             </span>
                         </span>
                     </a>

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * @property int $id
@@ -30,6 +31,16 @@ class Category extends Model
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
+    }
+
+    /**
+     * Every size of every product filed under this category.
+     *
+     * @return HasManyThrough<ProductVariant, Product, $this>
+     */
+    public function variants(): HasManyThrough
+    {
+        return $this->hasManyThrough(ProductVariant::class, Product::class);
     }
 
     /**

@@ -52,6 +52,21 @@ class ProductVariant extends Model
     }
 
     /**
+     * The size and its product as one name for a menu card, the way the
+     * counter says it: "Heart (6") Chocolate Cake". Merchandise reads the
+     * other way round — "Tote Bag Large (1 large cake)" — and the "dia" a
+     * menu board writes after a diameter is left off.
+     */
+    public function menuName(): string
+    {
+        $size = trim((string) preg_replace('/\s+dia\b/i', '', $this->name));
+
+        return $this->product->category?->slug === 'merchandise'
+            ? "{$this->product->name} {$size}"
+            : "{$size} {$this->product->name}";
+    }
+
+    /**
      * What this size is made of, once the business has written it down.
      *
      * @return HasOne<Recipe, $this>

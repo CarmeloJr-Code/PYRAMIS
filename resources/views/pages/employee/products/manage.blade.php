@@ -2,21 +2,35 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductPhoto;
 use App\Models\ProductVariant;
 use Flux\Flux;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 new #[Title('Manage product')] class extends Component {
+    use WithFileUploads;
+
     #[Locked]
     public ?int $productId = null;
+
+    /**
+     * A menu-card photo on its way up, before savePhoto() decides whether it
+     * meets the specification.
+     *
+     * @var TemporaryUploadedFile|null
+     */
+    public $upload = null;
 
     public string $name = '';
 
@@ -191,6 +205,128 @@ new #[Title('Manage product')] class extends Component {
 
         return $slug;
     }
+
+    /**
+     * The product and each of its saved sizes, with the picture each card
+     * shows now and where it comes from: uploaded for it, built into the app,
+     * or — for a size with neither of its own — the product's.
+     *
+     * @return list<array{key: string, variantId: int|null, label: string, url: string, uploaded: bool, source: string}>
+     */
+    #[Computed]
+    public function photos(): array
+    {
+        if ($this->productId === null) {
+            return [];
+        }
+
+        $product = Product::with(['category', 'photo', 'variants.photo'])->findOrFail($this->productId);
+        $productUrl = $product->imageUrl();
+
+        return [
+            [
+                'key' => 'product',
+                'variantId' => null,
+                'label' => __('The product'),
+                'url' => $productUrl,
+                'uploaded' => $product->photo !== null,
+                'source' => $product->photo !== null ? __('Uploaded') : __('Built-in'),
+            ],
+            ...$product->variants->sortBy('id')->map(function (ProductVariant $size) use ($product, $productUrl): array {
+                $url = $product->imageUrl($size);
+
+                return [
+                    'key' => (string) $size->id,
+                    'variantId' => $size->id,
+                    'label' => $size->name,
+                    'url' => $url,
+                    'uploaded' => $size->photo !== null,
+                    'source' => match (true) {
+                        $size->photo !== null => __('Uploaded'),
+                        $url === $productUrl => __('Product\'s photo'),
+                        default => __('Built-in'),
+                    },
+                ];
+            })->values()->all(),
+        ];
+    }
+
+    /**
+     * Make the photo just uploaded the product's own, or one size's.
+     *
+     * It must meet the specification on ProductPhoto, or nothing changes and
+     * the row says why. It replaces any photo uploaded there before.
+     */
+    public function savePhoto(?int $variantId = null): void
+    {
+        Gate::authorize('manage-products');
+
+        $product = $this->photographedProduct($variantId);
+
+        $this->resetErrorBag();
+
+        $validator = Validator::make(
+            ['upload' => $this->upload],
+            ['upload' => ProductPhoto::rules()],
+            ProductPhoto::messages('upload'),
+        );
+
+        if ($validator->fails()) {
+            $this->reset('upload');
+            $this->addError('photo.'.($variantId ?? 'product'), $validator->errors()->first('upload'));
+
+            return;
+        }
+
+        DB::transaction(function () use ($product, $variantId): void {
+            // Locked, so two uploads at once cannot both land.
+            Product::whereKey($product->id)->lockForUpdate()->first();
+
+            ProductPhoto::where('product_id', $product->id)->where('product_variant_id', $variantId)->delete();
+
+            ProductPhoto::create([
+                'product_id' => $product->id,
+                'product_variant_id' => $variantId,
+                'mime' => ProductPhoto::detectedMime($this->upload),
+                'data' => base64_encode($this->upload->get()),
+            ]);
+        });
+
+        $this->reset('upload');
+        unset($this->photos);
+
+        Flux::toast(variant: 'success', text: __('Photo uploaded.'));
+    }
+
+    /**
+     * Take an uploaded photo down, so the card goes back to the picture that
+     * ships with the app.
+     */
+    public function removePhoto(?int $variantId = null): void
+    {
+        Gate::authorize('manage-products');
+
+        $product = $this->photographedProduct($variantId);
+
+        ProductPhoto::where('product_id', $product->id)->where('product_variant_id', $variantId)->delete();
+
+        $this->resetErrorBag();
+        unset($this->photos);
+
+        Flux::toast(variant: 'success', text: __('Photo removed.'));
+    }
+
+    /**
+     * The product being edited, refusing a size that is not one of its own.
+     */
+    protected function photographedProduct(?int $variantId): Product
+    {
+        $product = Product::findOrFail($this->productId);
+
+        abort_if($variantId !== null && ! $product->variants()->whereKey($variantId)->exists(), 404);
+
+        return $product;
+    }
 }; ?>
 
 <section class="w-full">
@@ -278,4 +414,90 @@ new #[Title('Manage product')] class extends Component {
             <flux:button variant="ghost" :href="route('employee.products.index')" wire:navigate>{{ __('Cancel') }}</flux:button>
         </div>
     </form>
+
+    <flux:separator variant="subtle" class="my-8" />
+
+    <div class="flex max-w-3xl flex-col gap-4" data-test="product-photos">
+        <div class="flex flex-col gap-1">
+            <flux:heading size="lg">{{ __('Menu photos') }}</flux:heading>
+            <flux:text>
+                {{ __('The picture on each menu card. A size without a photo of its own shows the product\'s.') }}
+            </flux:text>
+            <flux:text class="text-sm font-medium">{{ \App\Models\ProductPhoto::specification() }}</flux:text>
+        </div>
+
+        @if ($productId === null)
+            <flux:text class="rounded-lg bg-zinc-100 p-4 text-sm dark:bg-zinc-800">
+                {{ __('Save the product first, then add its photos.') }}
+            </flux:text>
+        @else
+            @error('upload')
+                <flux:text class="text-danger">{{ $message }}</flux:text>
+            @enderror
+
+            @foreach ($this->photos as $row)
+                <div
+                    class="flex flex-col gap-4 rounded-lg border border-zinc-200 p-4 md:flex-row md:items-start dark:border-zinc-700"
+                    wire:key="photo-{{ $row['key'] }}"
+                    x-data="{ uploading: false }"
+                >
+                    <img
+                        src="{{ $row['url'] }}"
+                        alt="{{ __('The menu card picture for :label', ['label' => $row['label']]) }}"
+                        width="240"
+                        height="180"
+                        loading="lazy"
+                        class="aspect-4/3 w-full rounded-md border border-zinc-200 bg-white object-cover md:w-40 dark:border-zinc-700"
+                    >
+
+                    <div class="flex flex-1 flex-col gap-2">
+                        <div class="flex items-center gap-2">
+                            <flux:heading>{{ $row['label'] }}</flux:heading>
+                            <flux:badge size="sm" :color="$row['uploaded'] ? 'green' : 'zinc'">
+                                {{ $row['source'] }}
+                            </flux:badge>
+                        </div>
+
+                        {{-- Uploads as soon as one is picked; savePhoto() holds it to
+                             the specification and says why if it falls short. --}}
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/webp"
+                            aria-label="{{ __('Upload a photo for :label', ['label' => $row['label']]) }}"
+                            x-on:change="
+                                const file = $event.target.files[0];
+                                $event.target.value = '';
+                                if (! file) return;
+                                uploading = true;
+                                $wire.upload('upload', file,
+                                    () => $wire.savePhoto({{ $row['variantId'] ?? 'null' }}).finally(() => uploading = false),
+                                    () => uploading = false,
+                                );
+                            "
+                            class="text-sm text-zinc-600 file:me-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-700 hover:file:bg-zinc-200 dark:text-zinc-300 dark:file:bg-zinc-700 dark:file:text-zinc-100"
+                        >
+                        {{-- Hidden as served, so a re-render never leaves it showing. --}}
+                        <p x-show="uploading" style="display: none" class="text-xs text-zinc-500">{{ __('Uploading…') }}</p>
+
+                        @error('photo.'.$row['key'])
+                            <flux:text class="text-danger">{{ $message }}</flux:text>
+                        @enderror
+
+                        @if ($row['uploaded'])
+                            <flux:button
+                                size="sm"
+                                variant="ghost"
+                                icon="trash"
+                                class="self-start"
+                                wire:click="removePhoto({{ $row['variantId'] ?? 'null' }})"
+                                wire:confirm="{{ __('Remove this photo? The card goes back to its built-in picture.') }}"
+                            >
+                                {{ __('Remove photo') }}
+                            </flux:button>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+        @endif
+    </div>
 </section>

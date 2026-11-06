@@ -90,6 +90,17 @@ class ProductVariant extends Model
     }
 
     /**
+     * The photo a manager uploaded for this size, without its bytes — enough
+     * to say whether there is one and where it is served.
+     *
+     * @return HasOne<ProductPhoto, $this>
+     */
+    public function photo(): HasOne
+    {
+        return $this->hasOne(ProductPhoto::class)->select(ProductPhoto::SUMMARY_COLUMNS);
+    }
+
+    /**
      * What this size is made of, once the business has written it down.
      *
      * @return HasOne<Recipe, $this>

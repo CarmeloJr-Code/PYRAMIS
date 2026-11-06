@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property int $id
@@ -61,31 +62,56 @@ class Product extends Model
     }
 
     /**
+     * The photo a manager uploaded for the product as a whole, without its
+     * bytes — enough to say whether there is one and where it is served.
+     *
+     * @return HasOne<ProductPhoto, $this>
+     */
+    public function photo(): HasOne
+    {
+        return $this->hasOne(ProductPhoto::class)
+            ->whereNull('product_variant_id')
+            ->select(ProductPhoto::SUMMARY_COLUMNS);
+    }
+
+    /**
      * The storefront picture for this product, or for one size of it.
      *
-     * The artwork ships with the app under public/images/products, named by
-     * slug. A photograph is preferred to a drawing, and a size whose shape was
-     * photographed on its own — the heart, the tincan — gets that photograph,
-     * at "{slug}-{shape}.webp". A product nobody has photographed or drawn yet
-     * (one added after the art was made, or renamed so its slug moved)
-     * borrows its category's, and failing that a generic one — so the card
-     * never shows a broken image.
+     * The most particular picture wins: a photo of the size itself, then one
+     * of the product, then a drawing. At each step a photo a manager uploaded
+     * comes before the one that ships with the app under public/images/products
+     * — "{slug}-{shape}.webp" for a size whose shape was photographed on its
+     * own (the heart, the tincan), "{slug}.webp" for the product. A product
+     * nobody has photographed or drawn yet borrows its category's drawing, and
+     * failing that a generic one — so the card never shows a broken image.
+     *
+     * Needs the product's photo, and the size's, loaded.
      */
     public function imageUrl(?ProductVariant $size = null): string
     {
-        $names = array_filter([
-            ($shape = $size?->shape()) !== null ? "{$this->slug}-{$shape}.webp" : null,
-            "{$this->slug}.webp",
-            "{$this->slug}.svg",
-        ]);
-
-        foreach ($names as $name) {
-            if (is_file(public_path($path = "images/products/{$name}"))) {
-                return asset($path);
-            }
+        if ($size?->photo !== null) {
+            return $size->photo->url();
         }
 
-        return $this->category->imageUrl();
+        if (($shape = $size?->shape()) !== null && ($url = $this->shippedImageUrl("{$this->slug}-{$shape}.webp")) !== null) {
+            return $url;
+        }
+
+        if ($this->photo !== null) {
+            return $this->photo->url();
+        }
+
+        return $this->shippedImageUrl("{$this->slug}.webp")
+            ?? $this->shippedImageUrl("{$this->slug}.svg")
+            ?? $this->category->imageUrl();
+    }
+
+    /**
+     * The address of a picture that ships with the app, if it does.
+     */
+    protected function shippedImageUrl(string $name): ?string
+    {
+        return is_file(public_path($path = "images/products/{$name}")) ? asset($path) : null;
     }
 
     /**

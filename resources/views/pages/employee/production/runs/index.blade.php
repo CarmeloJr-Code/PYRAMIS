@@ -53,7 +53,7 @@ new #[Title('Production runs')] class extends Component {
     {
         return ProductVariant::query()
             ->whereHas('recipe.items')
-            ->with(['product', 'recipe.items'])
+            ->with(['product', 'recipe.items.ingredient'])
             ->get()
             ->sortBy(fn (ProductVariant $variant): string => $variant->product->name.' '.$variant->name)
             ->values();
@@ -85,7 +85,13 @@ new #[Title('Production runs')] class extends Component {
             return collect();
         }
 
-        $requirements = $variant->recipe->requirementsInThousandths($this->quantity);
+        try {
+            $requirements = $variant->recipe->requirementsInThousandths($this->quantity);
+        } catch (\RuntimeException) {
+            // A line whose conversion has gone missing: show nothing to cover
+            // rather than a broken page; logging the run names the line.
+            return collect();
+        }
 
         $ingredients = Ingredient::query()
             ->withStock()

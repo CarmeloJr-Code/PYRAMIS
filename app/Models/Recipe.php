@@ -66,20 +66,26 @@ class Recipe extends Model
      * What producing the given number of units takes, in thousandths, keyed by
      * ingredient id.
      *
-     * Scaled from the batch and rounded to the thousandth the ledger holds, so
-     * a requirement and the movement that satisfies it are the same figure. A
-     * part batch is allowed: bakers routinely make half of one.
+     * Each line is converted to its ingredient's stocked unit — a cup of flour
+     * becomes a fraction of a kilogram — then scaled from the batch and rounded
+     * once to the thousandth the ledger holds, so a requirement and the
+     * movement that satisfies it are the same figure. A part batch is allowed:
+     * bakers routinely make half of one.
      *
      * @return array<int, int>
+     *
+     * @throws \RuntimeException when a line's ingredient has no conversion for its measure
      */
     public function requirementsInThousandths(int $units): array
     {
+        $this->loadMissing('items.ingredient');
+
         $requirements = [];
 
         foreach ($this->items as $item) {
             /** @var RecipeItem $item */
             $requirements[$item->ingredient_id] = (int) round(
-                $item->quantityInThousandths() * $units / $this->yield_quantity,
+                $item->stockThousandthsPerBatch() * $units / $this->yield_quantity,
             );
         }
 

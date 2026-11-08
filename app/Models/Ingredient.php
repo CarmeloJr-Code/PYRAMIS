@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\FormatsQuantities;
 use App\Enums\IngredientUnit;
+use App\Enums\RecipeMeasure;
 use App\Enums\StockLevel;
 use Carbon\CarbonImmutable;
 use Database\Factories\IngredientFactory;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use RuntimeException;
 
 /**
  * A raw material the bakery holds stock of.
@@ -24,12 +26,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property string $name
  * @property IngredientUnit $unit
+ * @property string|null $content_per_unit
+ * @property IngredientUnit|null $content_measure
+ * @property string|null $cup_weight
  * @property string $reorder_level
  * @property bool $is_active
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['name', 'unit', 'reorder_level', 'is_active'])]
+#[Fillable(['name', 'unit', 'content_per_unit', 'content_measure', 'cup_weight', 'reorder_level', 'is_active'])]
 class Ingredient extends Model
 {
     /** @use HasFactory<IngredientFactory> */
@@ -44,6 +49,9 @@ class Ingredient extends Model
     {
         return [
             'unit' => IngredientUnit::class,
+            'content_per_unit' => 'decimal:3',
+            'content_measure' => IngredientUnit::class,
+            'cup_weight' => 'decimal:3',
             'reorder_level' => 'decimal:3',
             'is_active' => 'boolean',
         ];
@@ -122,6 +130,114 @@ class Ingredient extends Model
     public function reorderLevel(): string
     {
         return static::formatQuantity($this->reorderLevelInThousandths());
+    }
+
+    /**
+     * Whether stock is weighed in grams or poured in milliliters, or null when a
+     * pack, can or piece has not been told what it holds.
+     */
+    public function baseMeasure(): ?IngredientUnit
+    {
+        return $this->unit->baseMeasure() ?? $this->content_measure;
+    }
+
+    /**
+     * How many thousandths of a gram or milliliter one stocked unit holds, or
+     * null when that is not known.
+     */
+    public function baseThousandthsPerUnit(): ?int
+    {
+        $factor = $this->unit->baseFactor();
+
+        if ($factor !== null) {
+            return $factor * 1000;
+        }
+
+        if ($this->content_measure === null || $this->content_per_unit === null) {
+            return null;
+        }
+
+        $content = static::quantityToThousandths($this->content_per_unit);
+
+        return $content > 0 ? $content : null;
+    }
+
+    /**
+     * What one level cup weighs, in thousandths of the base measure, or null
+     * when it has not been set.
+     */
+    public function cupWeightInThousandths(): ?int
+    {
+        if ($this->cup_weight === null) {
+            return null;
+        }
+
+        $weight = static::quantityToThousandths($this->cup_weight);
+
+        return $weight > 0 ? $weight : null;
+    }
+
+    /**
+     * The measures a recipe may write this ingredient in.
+     *
+     * The stocked unit always works. Grams or milliliters need to know what one
+     * unit holds; cups and spoons need that and the weight of a cup.
+     *
+     * @return array<int, RecipeMeasure>
+     */
+    public function measuresAvailable(): array
+    {
+        $measures = [RecipeMeasure::Unit];
+
+        if ($this->baseThousandthsPerUnit() === null) {
+            return $measures;
+        }
+
+        $measures[] = RecipeMeasure::Base;
+
+        if ($this->cupWeightInThousandths() !== null) {
+            array_push($measures, RecipeMeasure::Cup, RecipeMeasure::Tablespoon, RecipeMeasure::Teaspoon);
+        }
+
+        return $measures;
+    }
+
+    /**
+     * Whether a recipe may write this ingredient in the given measure.
+     */
+    public function allowsMeasure(RecipeMeasure $measure): bool
+    {
+        return in_array($measure, $this->measuresAvailable(), strict: true);
+    }
+
+    /**
+     * Convert a quantity written in a recipe measure to thousandths of the
+     * stocked unit, unrounded.
+     *
+     * Unrounded so a recipe can scale it before the single rounding to the
+     * ledger's thousandth; rounding a teaspoon first and then multiplying would
+     * compound the error.
+     *
+     * @throws RuntimeException when this ingredient cannot be written in that measure
+     */
+    public function toStockThousandths(int $quantityInThousandths, RecipeMeasure $measure): float
+    {
+        if ($measure === RecipeMeasure::Unit) {
+            return (float) $quantityInThousandths;
+        }
+
+        if (! $this->allowsMeasure($measure)) {
+            throw new RuntimeException(
+                "{$this->name} has no conversion for {$measure->abbreviation($this)} — set it on the ingredient first.",
+            );
+        }
+
+        // Thousandths of a gram or milliliter.
+        $base = $measure === RecipeMeasure::Base
+            ? (float) $quantityInThousandths
+            : $quantityInThousandths * $this->cupWeightInThousandths() / 1000 / $measure->perCup();
+
+        return $base * 1000 / $this->baseThousandthsPerUnit();
     }
 
     /**

@@ -5,10 +5,11 @@ namespace App\Enums;
 /**
  * The units an ingredient is stocked in.
  *
- * Deliberately purchasing units, not cooking measures: the supplied recipes
- * call for cups, tablespoons and teaspoons, but nothing is ever bought,
- * received or counted that way. Stock is held in what arrives from the
- * supplier.
+ * Deliberately purchasing units, not cooking measures: nothing is ever bought,
+ * received or counted in cups or spoons, so stock is held in what arrives from
+ * the supplier. A recipe may still be written in cups, spoons or grams — see
+ * App\Enums\RecipeMeasure — and is converted back to this unit before it
+ * draws on stock.
  */
 enum IngredientUnit: string
 {
@@ -56,5 +57,39 @@ enum IngredientUnit: string
             self::Pack => 'packs',
             self::Can => 'cans',
         };
+    }
+
+    /**
+     * The gram or milliliter this unit is a multiple of, or null when it is a
+     * container whose contents have to be told.
+     */
+    public function baseMeasure(): ?self
+    {
+        return match ($this) {
+            self::Gram, self::Kilogram => self::Gram,
+            self::Milliliter, self::Liter => self::Milliliter,
+            self::Piece, self::Pack, self::Can => null,
+        };
+    }
+
+    /**
+     * How many grams or milliliters one of this unit is, or null when the unit
+     * does not say.
+     */
+    public function baseFactor(): ?int
+    {
+        return match ($this) {
+            self::Gram, self::Milliliter => 1,
+            self::Kilogram, self::Liter => 1000,
+            self::Piece, self::Pack, self::Can => null,
+        };
+    }
+
+    /**
+     * Whether the business has to say how much one of this unit holds.
+     */
+    public function needsContent(): bool
+    {
+        return $this->baseMeasure() === null;
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\RecipeMeasure;
 use App\Models\Ingredient;
 use App\Models\ProductVariant;
 use App\Models\Recipe;
@@ -9,6 +10,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -27,7 +29,7 @@ new class extends Component {
     /**
      * The editable ingredient rows, per batch.
      *
-     * @var array<int, array{id: int|null, ingredient_id: int|null, quantity: string}>
+     * @var array<int, array{id: int|null, ingredient_id: int|null, quantity: string, measure: string}>
      */
     public array $items = [];
 
@@ -58,6 +60,7 @@ new class extends Component {
                     'id' => $item->id,
                     'ingredient_id' => $item->ingredient_id,
                     'quantity' => $item->amount(),
+                    'measure' => $item->measure->value,
                 ])
                 ->all();
         }
@@ -107,7 +110,7 @@ new class extends Component {
     {
         $recipe = $this->recipeId === null
             ? null
-            : Recipe::with('items')->find($this->recipeId);
+            : Recipe::with('items.ingredient')->find($this->recipeId);
 
         // Past what one run may log, the plan would describe nothing the
         // bakery could record, and the thousandths arithmetic could overflow.
@@ -117,7 +120,15 @@ new class extends Component {
 
         $ingredients = $this->ingredients->keyBy('id');
 
-        return collect($recipe->requirementsInThousandths($this->plannedUnits))
+        try {
+            $requirements = $recipe->requirementsInThousandths($this->plannedUnits);
+        } catch (\RuntimeException) {
+            // A conversion the saved recipe relies on has gone missing; saving
+            // the form again names the line.
+            return collect();
+        }
+
+        return collect($requirements)
             ->map(function (int $required, int $ingredientId) use ($ingredients): ?array {
                 $ingredient = $ingredients->get($ingredientId);
 
@@ -137,11 +148,68 @@ new class extends Component {
     }
 
     /**
+     * The measures a row may be written in, for the ingredient it calls for.
+     *
+     * @return array<int, RecipeMeasure>
+     */
+    public function measuresFor(mixed $ingredientId): array
+    {
+        $ingredient = $this->ingredients->firstWhere('id', (int) $ingredientId);
+
+        return $ingredient?->measuresAvailable() ?? [RecipeMeasure::Unit];
+    }
+
+    /**
+     * What a row as entered would draw from stock, formatted with its unit, or
+     * null when it is already written in the stocked unit or is not complete.
+     *
+     * @param  array{ingredient_id: int|string|null, quantity: string, measure: string}  $row
+     */
+    public function drawFor(array $row): ?string
+    {
+        $ingredient = $this->ingredients->firstWhere('id', (int) $row['ingredient_id']);
+        $measure = RecipeMeasure::tryFrom($row['measure'] ?? '');
+
+        if ($ingredient === null || $measure === null || $measure === RecipeMeasure::Unit
+            || ! is_numeric($row['quantity']) || (float) $row['quantity'] <= 0 || (float) $row['quantity'] > 999999999
+            || ! $ingredient->allowsMeasure($measure)) {
+            return null;
+        }
+
+        $thousandths = (int) round($ingredient->toStockThousandths(
+            Ingredient::quantityToThousandths($row['quantity']),
+            $measure,
+        ));
+
+        return Ingredient::formatQuantity($thousandths).' '.$ingredient->unit->abbreviation();
+    }
+
+    /**
+     * Keep a row's measure one its ingredient can be written in.
+     */
+    public function updatedItems(mixed $value, ?string $key = null): void
+    {
+        // Only a change of ingredient can strand a measure; a whole new set of
+        // rows (no key) is left to save() to judge.
+        [$index, $field] = array_pad(explode('.', (string) $key, 2), 2, null);
+
+        if ($field !== 'ingredient_id' || ! isset($this->items[(int) $index])) {
+            return;
+        }
+
+        $measure = RecipeMeasure::tryFrom($this->items[(int) $index]['measure'] ?? '');
+
+        if ($measure === null || ! in_array($measure, $this->measuresFor($value), strict: true)) {
+            $this->items[(int) $index]['measure'] = RecipeMeasure::Unit->value;
+        }
+    }
+
+    /**
      * Append an empty ingredient row.
      */
     public function addItem(): void
     {
-        $this->items[] = ['id' => null, 'ingredient_id' => null, 'quantity' => ''];
+        $this->items[] = ['id' => null, 'ingredient_id' => null, 'quantity' => '', 'measure' => RecipeMeasure::Unit->value];
     }
 
     /**
@@ -175,6 +243,7 @@ new class extends Component {
             'items.*.id' => ['nullable', 'integer'],
             'items.*.ingredient_id' => ['required', 'integer', 'distinct'],
             'items.*.quantity' => ['required', 'numeric', 'decimal:0,3', 'min:0.001', 'max:999999999'],
+            'items.*.measure' => ['required', Rule::enum(RecipeMeasure::class)],
         ]);
 
         // The form is client state, so every ingredient is re-resolved and
@@ -185,12 +254,31 @@ new class extends Component {
         $ingredients = Ingredient::query()
             ->active()
             ->whereIn('id', $ingredientIds)
-            ->pluck('id')
-            ->all();
+            ->get()
+            ->keyBy('id');
 
-        if (count($ingredients) !== count($ingredientIds)) {
+        if ($ingredients->count() !== count($ingredientIds)) {
             $this->addError('items', __('Something on this recipe is no longer stocked. Please check the ingredients.'));
 
+            return;
+        }
+
+        // The measure list on the form is a convenience; whether this
+        // ingredient can actually be converted from that measure is decided
+        // here, from what the stockroom has recorded about it.
+        foreach ($validated['items'] as $index => $row) {
+            $ingredient = $ingredients->get($row['ingredient_id']);
+            $measure = RecipeMeasure::from($row['measure']);
+
+            if (! $ingredient->allowsMeasure($measure)) {
+                $this->addError("items.{$index}.measure", __(':ingredient can\'t be measured in :measure yet. Set its conversion under Inventory first.', [
+                    'ingredient' => $ingredient->name,
+                    'measure' => $measure->abbreviation($ingredient),
+                ]));
+            }
+        }
+
+        if ($this->getErrorBag()->isNotEmpty()) {
             return;
         }
 
@@ -214,6 +302,7 @@ new class extends Component {
                 $attributes = [
                     'ingredient_id' => $row['ingredient_id'],
                     'quantity' => $row['quantity'],
+                    'measure' => $row['measure'],
                 ];
 
                 $item = in_array($row['id'] ?? null, $ownedIds, strict: true)
@@ -289,7 +378,7 @@ new class extends Component {
 
                         @foreach ($items as $index => $item)
                             <div class="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 md:flex-row md:items-start dark:border-zinc-700" wire:key="item-{{ $index }}">
-                                <flux:select wire:model="items.{{ $index }}.ingredient_id" :label="__('Ingredient')" class="flex-1">
+                                <flux:select wire:model.live="items.{{ $index }}.ingredient_id" :label="__('Ingredient')" class="flex-1">
                                     <flux:select.option value="">{{ __('Choose an ingredient') }}</flux:select.option>
                                     @foreach ($this->ingredients as $ingredient)
                                         <flux:select.option :value="$ingredient->id">
@@ -299,7 +388,7 @@ new class extends Component {
                                 </flux:select>
 
                                 <flux:input
-                                    wire:model="items.{{ $index }}.quantity"
+                                    wire:model.live.blur="items.{{ $index }}.quantity"
                                     :label="__('Quantity')"
                                     type="number"
                                     step="0.001"
@@ -310,6 +399,22 @@ new class extends Component {
                                     x-on:input="if ($el.value > 999999999) { $el.value = 999999999; $el.dispatchEvent(new Event('input')) }"
                                     class="md:w-32"
                                 />
+
+                                <div class="flex flex-col gap-1 md:w-28">
+                                    @php($chosen = $this->ingredients->firstWhere('id', (int) $item['ingredient_id']))
+
+                                    <flux:select wire:model.live="items.{{ $index }}.measure" :label="__('Measure')">
+                                        @foreach ($this->measuresFor($item['ingredient_id']) as $measureOption)
+                                            <flux:select.option :value="$measureOption->value">
+                                                {{ $chosen === null ? __('unit') : $measureOption->abbreviation($chosen) }}
+                                            </flux:select.option>
+                                        @endforeach
+                                    </flux:select>
+
+                                    @if ($draw = $this->drawFor($item))
+                                        <flux:text class="text-xs">{{ __('→ :draw', ['draw' => $draw]) }}</flux:text>
+                                    @endif
+                                </div>
 
                                 <div class="md:pt-7">
                                     <flux:button
@@ -342,7 +447,7 @@ new class extends Component {
 
             <div class="lg:col-span-2">
                 <flux:heading size="lg">{{ __('Ingredients required') }}</flux:heading>
-                <flux:text class="mt-1">{{ __('Scaled from the saved recipe and checked against stock.') }}</flux:text>
+                <flux:text class="mt-1">{{ __('Scaled from the saved recipe, converted to each stocked unit, and checked against stock. Amounts round to the nearest thousandth of a unit.') }}</flux:text>
 
                 <flux:input
                     wire:model.live="plannedUnits"

@@ -2,9 +2,12 @@
 
 namespace Tests\Unit;
 
+use App\Enums\IngredientUnit;
+use App\Enums\RecipeMeasure;
 use App\Enums\StockLevel;
 use App\Models\Ingredient;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class IngredientTest extends TestCase
 {
@@ -83,5 +86,55 @@ class IngredientTest extends TestCase
         $ingredient->setAttribute('stock_sum', $stock);
 
         return $ingredient;
+    }
+
+    public function test_a_weight_or_volume_unit_already_says_what_it_holds(): void
+    {
+        $this->assertSame(1000000, (new Ingredient(['unit' => IngredientUnit::Kilogram]))->baseThousandthsPerUnit());
+        $this->assertSame(1000, (new Ingredient(['unit' => IngredientUnit::Gram]))->baseThousandthsPerUnit());
+        $this->assertSame(1000000, (new Ingredient(['unit' => IngredientUnit::Liter]))->baseThousandthsPerUnit());
+        $this->assertSame(IngredientUnit::Milliliter, (new Ingredient(['unit' => IngredientUnit::Liter]))->baseMeasure());
+    }
+
+    public function test_a_pack_holds_only_what_it_has_been_told(): void
+    {
+        $untold = new Ingredient(['unit' => IngredientUnit::Pack]);
+
+        $this->assertNull($untold->baseThousandthsPerUnit());
+        $this->assertSame([RecipeMeasure::Unit], $untold->measuresAvailable());
+
+        $told = new Ingredient([
+            'unit' => IngredientUnit::Pack,
+            'content_per_unit' => '500',
+            'content_measure' => IngredientUnit::Milliliter,
+        ]);
+
+        $this->assertSame(500000, $told->baseThousandthsPerUnit());
+        $this->assertSame(IngredientUnit::Milliliter, $told->baseMeasure());
+        $this->assertSame([RecipeMeasure::Unit, RecipeMeasure::Base], $told->measuresAvailable());
+    }
+
+    public function test_cups_and_spoons_need_a_cup_weight(): void
+    {
+        $flour = new Ingredient(['unit' => IngredientUnit::Kilogram, 'cup_weight' => '120']);
+
+        $this->assertSame(RecipeMeasure::cases(), $flour->measuresAvailable());
+
+        // A cup is 120 g, a tablespoon a sixteenth of that, a teaspoon a
+        // forty-eighth — each as thousandths of a kilogram.
+        $this->assertEqualsWithDelta(120.0, $flour->toStockThousandths(1000, RecipeMeasure::Cup), 0.0001);
+        $this->assertEqualsWithDelta(7.5, $flour->toStockThousandths(1000, RecipeMeasure::Tablespoon), 0.0001);
+        $this->assertEqualsWithDelta(2.5, $flour->toStockThousandths(1000, RecipeMeasure::Teaspoon), 0.0001);
+        $this->assertEqualsWithDelta(250.0, $flour->toStockThousandths(250000, RecipeMeasure::Base), 0.0001);
+        $this->assertEqualsWithDelta(3000.0, $flour->toStockThousandths(3000, RecipeMeasure::Unit), 0.0001);
+    }
+
+    public function test_a_measure_with_no_conversion_is_refused(): void
+    {
+        $eggs = new Ingredient(['name' => 'Eggs', 'unit' => IngredientUnit::Piece]);
+
+        $this->expectException(RuntimeException::class);
+
+        $eggs->toStockThousandths(1000, RecipeMeasure::Cup);
     }
 }

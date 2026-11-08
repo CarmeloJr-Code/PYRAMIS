@@ -44,7 +44,7 @@ class RecordProductionRun
         return DB::transaction(function () use ($productVariant, $baker, $quantity, $notes): ProductionRun {
             /** @var Recipe|null $recipe */
             $recipe = Recipe::query()
-                ->with('items')
+                ->with('items.ingredient')
                 ->where('product_variant_id', $productVariant->id)
                 ->first();
 

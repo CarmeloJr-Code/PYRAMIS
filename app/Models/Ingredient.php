@@ -138,7 +138,7 @@ class Ingredient extends Model
 
     /**
      * Whether stock is weighed in grams or poured in milliliters, or null when a
-     * pack, can or piece has not been told what it holds.
+     * container (pack, can, sack…) has not been told what it holds.
      */
     public function baseMeasure(): ?IngredientUnit
     {

@@ -541,4 +541,21 @@ class InventoryTest extends TestCase
             ->test('pages::employee.inventory.show', ['ingredient' => $sugar])
             ->assertSee('≈ 3.3 sacks');
     }
+
+    public function test_an_ingredient_can_be_stocked_by_the_sack(): void
+    {
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'Cornstarch')
+            ->set('unit', IngredientUnit::Sack->value)
+            ->set('content_per_unit', '25000')
+            ->set('content_measure', IngredientUnit::Gram->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $cornstarch = Ingredient::firstWhere('name', 'Cornstarch');
+
+        $this->assertSame(IngredientUnit::Sack, $cornstarch->unit);
+        $this->assertSame(25000000, $cornstarch->baseThousandthsPerUnit());
+    }
 }

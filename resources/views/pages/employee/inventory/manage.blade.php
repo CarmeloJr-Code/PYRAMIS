@@ -28,7 +28,7 @@ new #[Title('Manage ingredient')] class extends Component {
     public string $reorder_level = '0';
 
     /**
-     * How much one pack, can or piece holds, in the measure below.
+     * How much one container (pack, can, sack…) holds, in the measure below.
      */
     public string $content_per_unit = '';
 
@@ -157,7 +157,7 @@ new #[Title('Manage ingredient')] class extends Component {
             ? $ingredient->unit
             : IngredientUnit::from($validated['unit']);
 
-        // What one unit holds only means anything for a pack, can or piece; a
+        // What one unit holds only means anything for a container; a
         // kilogram already says it is a thousand grams.
         $holdsContent = $unit->needsContent() && filled($validated['content_per_unit']);
 

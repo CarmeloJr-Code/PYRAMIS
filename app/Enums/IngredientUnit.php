@@ -27,6 +27,22 @@ enum IngredientUnit: string
 
     case Can = 'can';
 
+    case Box = 'box';
+
+    case Block = 'block';
+
+    case Bottle = 'bottle';
+
+    case Bucket = 'bucket';
+
+    case Sack = 'sack';
+
+    /**
+     * Sold by the bakery's oil supplier as a "gallon" that holds about 16.3 L,
+     * so it is a container with told contents, not the 3.785 L measure.
+     */
+    case Gallon = 'gallon';
+
     /**
      * The full name, for a picker.
      */
@@ -40,6 +56,12 @@ enum IngredientUnit: string
             self::Piece => 'Pieces',
             self::Pack => 'Packs',
             self::Can => 'Cans',
+            self::Box => 'Boxes',
+            self::Block => 'Blocks',
+            self::Bottle => 'Bottles',
+            self::Bucket => 'Buckets',
+            self::Sack => 'Sacks',
+            self::Gallon => 'Gallons',
         };
     }
 
@@ -56,6 +78,12 @@ enum IngredientUnit: string
             self::Piece => 'pcs',
             self::Pack => 'packs',
             self::Can => 'cans',
+            self::Box => 'boxes',
+            self::Block => 'blocks',
+            self::Bottle => 'bottles',
+            self::Bucket => 'buckets',
+            self::Sack => 'sacks',
+            self::Gallon => 'gallons',
         };
     }
 
@@ -68,7 +96,7 @@ enum IngredientUnit: string
         return match ($this) {
             self::Gram, self::Kilogram => self::Gram,
             self::Milliliter, self::Liter => self::Milliliter,
-            self::Piece, self::Pack, self::Can => null,
+            default => null,
         };
     }
 
@@ -81,7 +109,7 @@ enum IngredientUnit: string
         return match ($this) {
             self::Gram, self::Milliliter => 1,
             self::Kilogram, self::Liter => 1000,
-            self::Piece, self::Pack, self::Can => null,
+            default => null,
         };
     }
 

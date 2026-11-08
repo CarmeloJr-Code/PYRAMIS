@@ -165,4 +165,21 @@ class IngredientTest extends TestCase
         $this->assertNull((new Ingredient(['unit' => IngredientUnit::Gram, 'package_size' => '1000']))->packageSizeInThousandths());
         $this->assertNull((new Ingredient(['unit' => IngredientUnit::Gram, 'package_name' => 'pack']))->packageSizeInThousandths());
     }
+
+    public function test_a_supplier_container_converts_through_what_it_holds(): void
+    {
+        $sugar = new Ingredient([
+            'unit' => IngredientUnit::Sack,
+            'content_per_unit' => '50000',
+            'content_measure' => IngredientUnit::Gram,
+            'cup_weight' => '200',
+        ]);
+
+        $this->assertTrue(IngredientUnit::Sack->needsContent());
+        $this->assertSame(50000000, $sugar->baseThousandthsPerUnit());
+
+        // A 200 g cup of a 50 kg sack is 0.004 of the sack.
+        $this->assertEqualsWithDelta(4.0, $sugar->toStockThousandths(1000, RecipeMeasure::Cup), 0.0001);
+        $this->assertSame('sacks', IngredientUnit::Sack->abbreviation());
+    }
 }

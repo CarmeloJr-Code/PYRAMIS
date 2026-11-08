@@ -39,6 +39,27 @@ class IngredientFactory extends Factory
     }
 
     /**
+     * Say how much one pack, can or piece of the ingredient holds.
+     */
+    public function holding(string $amount, IngredientUnit $measure = IngredientUnit::Gram): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'content_per_unit' => $amount,
+            'content_measure' => $measure,
+        ]);
+    }
+
+    /**
+     * Say what one level cup of the ingredient weighs, in its grams or milliliters.
+     */
+    public function cupWeighs(string $weight): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'cup_weight' => $weight,
+        ]);
+    }
+
+    /**
      * Give the ingredient a level below which it counts as low.
      */
     public function reorderAt(string $level): static

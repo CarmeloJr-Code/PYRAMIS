@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\RecipeMeasure;
 use App\Models\Ingredient;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
@@ -23,7 +24,18 @@ class RecipeItemFactory extends Factory
             'recipe_id' => Recipe::factory(),
             'ingredient_id' => Ingredient::factory(),
             'quantity' => fake()->randomFloat(3, 1, 50),
+            'measure' => RecipeMeasure::Unit,
         ];
+    }
+
+    /**
+     * A line written in a cooking measure rather than the stocked unit.
+     */
+    public function in(RecipeMeasure $measure): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'measure' => $measure,
+        ]);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\FormatsQuantities;
+use App\Enums\RecipeMeasure;
 use Carbon\CarbonImmutable;
 use Database\Factories\RecipeItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,10 +18,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $recipe_id
  * @property int $ingredient_id
  * @property string $quantity
+ * @property RecipeMeasure $measure
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['ingredient_id', 'quantity'])]
+#[Fillable(['ingredient_id', 'quantity', 'measure'])]
 class RecipeItem extends Model
 {
     /** @use HasFactory<RecipeItemFactory> */
@@ -35,6 +37,7 @@ class RecipeItem extends Model
     {
         return [
             'quantity' => 'decimal:3',
+            'measure' => RecipeMeasure::class,
         ];
     }
 
@@ -59,7 +62,7 @@ class RecipeItem extends Model
     }
 
     /**
-     * The per-batch quantity, in thousandths.
+     * The per-batch quantity as written, in thousandths of its own measure.
      */
     public function quantityInThousandths(): int
     {
@@ -67,10 +70,21 @@ class RecipeItem extends Model
     }
 
     /**
-     * The per-batch quantity, formatted.
+     * The per-batch quantity as written, formatted.
      */
     public function amount(): string
     {
         return static::formatQuantity($this->quantityInThousandths());
+    }
+
+    /**
+     * What one batch draws from stock, in thousandths of the ingredient's
+     * stocked unit, before rounding.
+     *
+     * @throws \RuntimeException when the ingredient has no conversion for this line's measure
+     */
+    public function stockThousandthsPerBatch(): float
+    {
+        return $this->ingredient->toStockThousandths($this->quantityInThousandths(), $this->measure);
     }
 }

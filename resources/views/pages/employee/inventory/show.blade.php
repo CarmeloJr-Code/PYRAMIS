@@ -151,6 +151,12 @@ new class extends Component {
             <flux:heading size="xl" level="1">{{ $ingredient->name }}</flux:heading>
             <flux:text class="mt-2">
                 {{ __('Stocked in :unit.', ['unit' => $ingredient->unit->label()]) }}
+                @if ($ingredient->unit->needsContent() && $ingredient->baseThousandthsPerUnit() !== null)
+                    {{ __('Each holds :amount :base.', ['amount' => $ingredient->formatQuantity($ingredient->baseThousandthsPerUnit()), 'base' => $ingredient->baseMeasure()->abbreviation()]) }}
+                @endif
+                @if ($ingredient->cupWeightInThousandths() !== null)
+                    {{ __('1 cup = :amount :base.', ['amount' => $ingredient->formatQuantity($ingredient->cupWeightInThousandths()), 'base' => $ingredient->baseMeasure()->abbreviation()]) }}
+                @endif
                 @if ($ingredient->reorderLevelInThousandths() > 0)
                     {{ __('Low at :level :unit.', ['level' => $ingredient->reorderLevel(), 'unit' => $ingredient->unit->abbreviation()]) }}
                 @endif

@@ -4,9 +4,11 @@ namespace Tests\Feature\Employee;
 
 use App\Enums\IngredientUnit;
 use App\Enums\InventoryMovementType;
+use App\Enums\RecipeMeasure;
 use App\Enums\UserRole;
 use App\Models\Ingredient;
 use App\Models\InventoryMovement;
+use App\Models\RecipeItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -346,5 +348,104 @@ class InventoryTest extends TestCase
             ->assertHasErrors(['name' => 'unique']);
 
         $this->assertSame(1, Ingredient::count());
+    }
+
+    public function test_a_pack_records_what_it_holds_and_what_a_cup_weighs(): void
+    {
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'Baking Powder')
+            ->set('unit', IngredientUnit::Pack->value)
+            ->set('content_per_unit', '1000')
+            ->set('content_measure', IngredientUnit::Gram->value)
+            ->set('cup_weight', '192')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $ingredient = Ingredient::firstWhere('name', 'Baking Powder');
+
+        $this->assertSame('1000.000', $ingredient->content_per_unit);
+        $this->assertSame(IngredientUnit::Gram, $ingredient->content_measure);
+        $this->assertSame('192.000', $ingredient->cup_weight);
+    }
+
+    public function test_a_weighed_unit_keeps_no_content_and_an_untold_pack_keeps_no_cup_weight(): void
+    {
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'All-Purpose Flour')
+            ->set('unit', IngredientUnit::Kilogram->value)
+            ->set('content_per_unit', '500')
+            ->set('cup_weight', '120')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $flour = Ingredient::firstWhere('name', 'All-Purpose Flour');
+
+        // A kilogram already says it is a thousand grams.
+        $this->assertNull($flour->content_per_unit);
+        $this->assertNull($flour->content_measure);
+        $this->assertSame('120.000', $flour->cup_weight);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'Wet Premix')
+            ->set('unit', IngredientUnit::Pack->value)
+            ->set('cup_weight', '200')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        // With no idea what a pack holds, a cup weight in grams means nothing.
+        $this->assertNull(Ingredient::firstWhere('name', 'Wet Premix')->cup_weight);
+    }
+
+    public function test_conversions_must_be_more_than_nothing(): void
+    {
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'Baking Powder')
+            ->set('unit', IngredientUnit::Pack->value)
+            ->set('content_per_unit', '0')
+            ->set('content_measure', 'ounce')
+            ->set('cup_weight', '-1')
+            ->call('save')
+            ->assertHasErrors(['content_per_unit', 'content_measure', 'cup_weight']);
+
+        $this->assertSame(0, Ingredient::count());
+    }
+
+    public function test_a_conversion_a_recipe_relies_on_cannot_be_taken_away(): void
+    {
+        $flour = Ingredient::factory()->cupWeighs('120')->create(['name' => 'All-Purpose Flour', 'unit' => IngredientUnit::Kilogram]);
+        $milk = Ingredient::factory()->holding('370', IngredientUnit::Milliliter)->create(['name' => 'Evaporated Milk', 'unit' => IngredientUnit::Can]);
+
+        RecipeItem::factory()->in(RecipeMeasure::Cup)->create(['ingredient_id' => $flour->id]);
+        RecipeItem::factory()->in(RecipeMeasure::Base)->create(['ingredient_id' => $milk->id]);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage', ['ingredient' => $flour])
+            ->set('cup_weight', '')
+            ->call('save')
+            ->assertHasErrors('conversions');
+
+        $this->assertSame('120.000', $flour->fresh()->cup_weight);
+
+        // Grams to milliliters would change what "185" means on the recipe.
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage', ['ingredient' => $milk])
+            ->set('content_measure', IngredientUnit::Gram->value)
+            ->call('save')
+            ->assertHasErrors('conversions');
+
+        $this->assertSame(IngredientUnit::Milliliter, $milk->fresh()->content_measure);
+
+        // Refining the figure itself is fine: the recipe still converts.
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage', ['ingredient' => $flour])
+            ->set('cup_weight', '125')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('125.000', $flour->fresh()->cup_weight);
     }
 }

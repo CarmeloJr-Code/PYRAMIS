@@ -5,6 +5,7 @@ namespace Tests\Feature\Employee;
 use App\Actions\RecordProductionRun;
 use App\Enums\IngredientUnit;
 use App\Enums\InventoryMovementType;
+use App\Enums\RecipeMeasure;
 use App\Enums\UserRole;
 use App\Models\Ingredient;
 use App\Models\InventoryMovement;
@@ -315,5 +316,44 @@ class ProductionRunTest extends TestCase
             ->test('pages::employee.production.runs.index')
             ->assertSeeHtml('inputmode="numeric"')
             ->assertSeeHtml('max="100000"');
+    }
+
+    public function test_a_run_written_in_cups_draws_the_converted_amount(): void
+    {
+        $flour = Ingredient::factory()->cupWeighs('120')->create(['name' => 'All-Purpose Flour', 'unit' => IngredientUnit::Kilogram]);
+        InventoryMovement::factory()->for($flour)->quantity('1.000')->create();
+
+        $variant = ProductVariant::factory()
+            ->for(Product::factory()->create(['name' => 'Ube Cake']))
+            ->create(['name' => 'Round']);
+        $recipe = Recipe::factory()->for($variant, 'productVariant')->yielding(1)->create();
+        RecipeItem::factory()->for($recipe)->in(RecipeMeasure::Cup)->quantity('2.000')->create(['ingredient_id' => $flour->id]);
+
+        $baker = User::factory()->baker()->create();
+
+        // Five cakes need ten cups — 1.2 kg — against 1 kg on the shelf.
+        Livewire::actingAs($baker)
+            ->test('pages::employee.production.runs.index')
+            ->set('product_variant_id', $variant->id)
+            ->set('quantity', 5)
+            ->assertSet('canCover', false)
+            ->call('record')
+            ->assertHasErrors('quantity');
+
+        $this->assertSame(1000, $flour->fresh()->stockInThousandths());
+
+        Livewire::actingAs($baker)
+            ->test('pages::employee.production.runs.index')
+            ->set('product_variant_id', $variant->id)
+            ->set('quantity', 4)
+            ->call('record')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('inventory_movements', [
+            'ingredient_id' => $flour->id,
+            'type' => InventoryMovementType::Usage->value,
+            'quantity' => '-0.960',
+        ]);
+        $this->assertSame(40, $flour->fresh()->stockInThousandths());
     }
 }

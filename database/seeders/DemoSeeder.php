@@ -444,7 +444,7 @@ class DemoSeeder extends Seeder
      */
     private function setReorderLevels(): void
     {
-        $recipes = Recipe::query()->with('items')->whereIn('product_variant_id', $this->variants->keys())->get();
+        $recipes = Recipe::query()->with('items.ingredient')->whereIn('product_variant_id', $this->variants->keys())->get();
 
         foreach ($recipes as $recipe) {
             foreach ($recipe->requirementsInThousandths(1) as $ingredientId => $perUnit) {

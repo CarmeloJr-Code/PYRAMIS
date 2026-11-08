@@ -3,6 +3,7 @@
 namespace Tests\Feature\Employee;
 
 use App\Enums\IngredientUnit;
+use App\Enums\RecipeMeasure;
 use App\Enums\UserRole;
 use App\Models\Ingredient;
 use App\Models\InventoryMovement;
@@ -12,6 +13,7 @@ use App\Models\Recipe;
 use App\Models\RecipeItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -74,8 +76,8 @@ class RecipeTest extends TestCase
             ->set('yield_quantity', 7)
             ->set('notes', 'Steam bake, one hour.')
             ->set('items', [
-                ['id' => null, 'ingredient_id' => $eggs->id, 'quantity' => '21'],
-                ['id' => null, 'ingredient_id' => $premix->id, 'quantity' => '450'],
+                ['id' => null, 'ingredient_id' => $eggs->id, 'quantity' => '21', 'measure' => 'unit'],
+                ['id' => null, 'ingredient_id' => $premix->id, 'quantity' => '450', 'measure' => 'unit'],
             ])
             ->call('save')
             ->assertHasNoErrors();
@@ -105,8 +107,8 @@ class RecipeTest extends TestCase
             ->test('pages::employee.production.recipes.manage', ['productVariant' => $recipe->productVariant])
             ->set('yield_quantity', 6)
             ->set('items', [
-                ['id' => $kept->id, 'ingredient_id' => $kept->ingredient_id, 'quantity' => '12.5'],
-                ['id' => null, 'ingredient_id' => $added->id, 'quantity' => '3'],
+                ['id' => $kept->id, 'ingredient_id' => $kept->ingredient_id, 'quantity' => '12.5', 'measure' => 'unit'],
+                ['id' => null, 'ingredient_id' => $added->id, 'quantity' => '3', 'measure' => 'unit'],
             ])
             ->call('save')
             ->assertHasNoErrors();
@@ -127,8 +129,8 @@ class RecipeTest extends TestCase
             ->test('pages::employee.production.recipes.manage', ['productVariant' => $variant])
             ->set('yield_quantity', 0)
             ->set('items', [
-                ['id' => null, 'ingredient_id' => $ingredient->id, 'quantity' => '1'],
-                ['id' => null, 'ingredient_id' => $ingredient->id, 'quantity' => ''],
+                ['id' => null, 'ingredient_id' => $ingredient->id, 'quantity' => '1', 'measure' => 'unit'],
+                ['id' => null, 'ingredient_id' => $ingredient->id, 'quantity' => '', 'measure' => 'unit'],
             ])
             ->call('save')
             ->assertHasErrors(['yield_quantity', 'items.0.ingredient_id', 'items.1.quantity']);
@@ -144,7 +146,7 @@ class RecipeTest extends TestCase
         Livewire::actingAs(User::factory()->baker()->create())
             ->test('pages::employee.production.recipes.manage', ['productVariant' => $variant])
             ->set('yield_quantity', 1)
-            ->set('items', [['id' => null, 'ingredient_id' => $retired->id, 'quantity' => '1']])
+            ->set('items', [['id' => null, 'ingredient_id' => $retired->id, 'quantity' => '1', 'measure' => 'unit']])
             ->call('save')
             ->assertHasErrors('items');
 
@@ -161,7 +163,7 @@ class RecipeTest extends TestCase
         Livewire::actingAs(User::factory()->baker()->create())
             ->test('pages::employee.production.recipes.manage', ['productVariant' => $mine->productVariant])
             ->set('yield_quantity', 1)
-            ->set('items', [['id' => $theirLine->id, 'ingredient_id' => $ingredient->id, 'quantity' => '9']])
+            ->set('items', [['id' => $theirLine->id, 'ingredient_id' => $ingredient->id, 'quantity' => '9', 'measure' => 'unit']])
             ->call('save')
             ->assertHasNoErrors();
 
@@ -259,7 +261,7 @@ class RecipeTest extends TestCase
         Livewire::actingAs(User::factory()->baker()->create())
             ->test('pages::employee.production.recipes.manage', ['productVariant' => $variant])
             ->set('yield_quantity', 1)
-            ->set('items', [['id' => null, 'ingredient_id' => $ingredient->id, 'quantity' => '1.0005']])
+            ->set('items', [['id' => null, 'ingredient_id' => $ingredient->id, 'quantity' => '1.0005', 'measure' => 'unit']])
             ->call('save')
             ->assertHasErrors(['items.0.quantity' => 'decimal']);
 
@@ -277,5 +279,104 @@ class RecipeTest extends TestCase
 
         $this->assertCount(1, $component->set('plannedUnits', 100000)->instance()->plan());
         $this->assertCount(0, $component->set('plannedUnits', 100001)->instance()->plan());
+    }
+
+    public function test_a_line_can_be_written_in_cups_spoons_or_grams(): void
+    {
+        $variant = ProductVariant::factory()->create();
+        $flour = Ingredient::factory()->cupWeighs('120')->create(['unit' => IngredientUnit::Kilogram]);
+        $powder = Ingredient::factory()->holding('1000')->cupWeighs('192')->create(['unit' => IngredientUnit::Pack]);
+        $premix = Ingredient::factory()->holding('500')->create(['unit' => IngredientUnit::Pack]);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.recipes.manage', ['productVariant' => $variant])
+            ->set('yield_quantity', 1)
+            ->set('items', [
+                ['id' => null, 'ingredient_id' => $flour->id, 'quantity' => '2', 'measure' => 'cup'],
+                ['id' => null, 'ingredient_id' => $powder->id, 'quantity' => '1.5', 'measure' => 'teaspoon'],
+                ['id' => null, 'ingredient_id' => $premix->id, 'quantity' => '250', 'measure' => 'base'],
+            ])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('recipe_items', ['ingredient_id' => $flour->id, 'quantity' => '2.000', 'measure' => 'cup']);
+        $this->assertDatabaseHas('recipe_items', ['ingredient_id' => $powder->id, 'quantity' => '1.500', 'measure' => 'teaspoon']);
+        $this->assertDatabaseHas('recipe_items', ['ingredient_id' => $premix->id, 'quantity' => '250.000', 'measure' => 'base']);
+    }
+
+    public function test_a_measure_the_ingredient_cannot_convert_is_refused(): void
+    {
+        $variant = ProductVariant::factory()->create();
+        $eggs = Ingredient::factory()->create(['unit' => IngredientUnit::Piece]);
+        $sugar = Ingredient::factory()->create(['unit' => IngredientUnit::Kilogram]);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.recipes.manage', ['productVariant' => $variant])
+            ->set('yield_quantity', 1)
+            ->set('items', [
+                // Eggs have no weight per piece, sugar no cup weight, and the
+                // third is not a measure at all.
+                ['id' => null, 'ingredient_id' => $eggs->id, 'quantity' => '100', 'measure' => 'base'],
+                ['id' => null, 'ingredient_id' => $sugar->id, 'quantity' => '1', 'measure' => 'cup'],
+            ])
+            ->call('save')
+            ->assertHasErrors(['items.0.measure', 'items.1.measure'])
+            ->set('items', [['id' => null, 'ingredient_id' => $sugar->id, 'quantity' => '1', 'measure' => 'gallon']])
+            ->call('save')
+            ->assertHasErrors(['items.0.measure']);
+
+        $this->assertNull($variant->fresh()->recipe);
+    }
+
+    public function test_changing_a_lines_ingredient_drops_a_measure_it_cannot_take(): void
+    {
+        $variant = ProductVariant::factory()->create();
+        $flour = Ingredient::factory()->cupWeighs('120')->create(['unit' => IngredientUnit::Kilogram]);
+        $eggs = Ingredient::factory()->create(['unit' => IngredientUnit::Piece]);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.recipes.manage', ['productVariant' => $variant])
+            ->set('items.0.ingredient_id', $flour->id)
+            ->set('items.0.measure', 'cup')
+            ->set('items.0.quantity', '2')
+            ->assertSee('→ 0.24 kg')
+            ->set('items.0.ingredient_id', $eggs->id)
+            ->assertSet('items.0.measure', 'unit');
+    }
+
+    public function test_requirements_convert_to_the_stocked_unit_and_round_once(): void
+    {
+        $recipe = Recipe::factory()->yielding(1)->create();
+        $flour = Ingredient::factory()->cupWeighs('120')->create(['unit' => IngredientUnit::Kilogram]);
+        $powder = Ingredient::factory()->holding('1000')->cupWeighs('120')->create(['unit' => IngredientUnit::Pack]);
+        $milk = Ingredient::factory()->holding('370', IngredientUnit::Milliliter)->create(['unit' => IngredientUnit::Can]);
+
+        RecipeItem::factory()->for($recipe)->in(RecipeMeasure::Cup)->quantity('2.000')->create(['ingredient_id' => $flour->id]);
+        RecipeItem::factory()->for($recipe)->in(RecipeMeasure::Teaspoon)->quantity('1.000')->create(['ingredient_id' => $powder->id]);
+        RecipeItem::factory()->for($recipe)->in(RecipeMeasure::Base)->quantity('185.000')->create(['ingredient_id' => $milk->id]);
+
+        // Two cups at 120 g is 0.24 kg; a teaspoon is 2.5 g of a 1000 g pack,
+        // which the ledger rounds to 0.003; 185 mL is half a 370 mL can.
+        $this->assertSame(
+            [$flour->id => 240, $powder->id => 3, $milk->id => 500],
+            $recipe->fresh()->requirementsInThousandths(1),
+        );
+
+        // Two batches round the doubled 5 thousandths once, not 3 twice.
+        $this->assertSame(5, $recipe->fresh()->requirementsInThousandths(2)[$powder->id]);
+    }
+
+    public function test_lines_written_before_measures_existed_stay_in_the_stocked_unit(): void
+    {
+        $recipe = Recipe::factory()->create();
+        $ingredient = Ingredient::factory()->create();
+
+        DB::table('recipe_items')->insert([
+            'recipe_id' => $recipe->id,
+            'ingredient_id' => $ingredient->id,
+            'quantity' => '4.000',
+        ]);
+
+        $this->assertSame(RecipeMeasure::Unit, RecipeItem::firstWhere('recipe_id', $recipe->id)->measure);
     }
 }

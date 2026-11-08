@@ -448,4 +448,97 @@ class InventoryTest extends TestCase
 
         $this->assertSame('125.000', $flour->fresh()->cup_weight);
     }
+
+    public function test_an_ingredient_records_what_it_is_bought_in(): void
+    {
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'White Sugar')
+            ->set('unit', IngredientUnit::Gram->value)
+            ->set('package_name', ' sack ')
+            ->set('package_size', '50000')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $sugar = Ingredient::firstWhere('name', 'White Sugar');
+
+        $this->assertSame('sack', $sugar->package_name);
+        $this->assertSame('50000.000', $sugar->package_size);
+    }
+
+    public function test_a_package_needs_both_a_name_and_a_size_above_nothing(): void
+    {
+        $component = Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.manage')
+            ->set('name', 'White Sugar')
+            ->set('unit', IngredientUnit::Gram->value);
+
+        $component->set('package_name', 'sack')->set('package_size', '')
+            ->call('save')->assertHasErrors(['package_size' => 'required_with']);
+
+        $component->set('package_name', '')->set('package_size', '50000')
+            ->call('save')->assertHasErrors(['package_name' => 'required_with']);
+
+        $component->set('package_name', 'sack')->set('package_size', '0')
+            ->call('save')->assertHasErrors(['package_size' => 'min']);
+
+        $this->assertSame(0, Ingredient::count());
+    }
+
+    public function test_a_delivery_can_be_counted_in_packages(): void
+    {
+        $sugar = Ingredient::factory()->boughtIn('sack', '50000')->create(['name' => 'White Sugar', 'unit' => IngredientUnit::Gram]);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.show', ['ingredient' => $sugar])
+            ->set('countIn', 'package')
+            ->set('quantity', '2')
+            ->assertSee('2 sacks = 100,000 g')
+            ->call('record')
+            ->assertHasNoErrors()
+            ->set('countIn', 'package')
+            ->set('quantity', '0.5')
+            ->call('record')
+            ->assertHasNoErrors();
+
+        // The ledger still speaks grams.
+        $this->assertDatabaseHas('inventory_movements', [
+            'ingredient_id' => $sugar->id,
+            'type' => InventoryMovementType::Received->value,
+            'quantity' => '100000.000',
+        ]);
+        $this->assertSame(125000000, $sugar->fresh()->stockInThousandths());
+    }
+
+    public function test_an_ingredient_with_no_package_cannot_be_counted_in_one(): void
+    {
+        $flour = Ingredient::factory()->create(['unit' => IngredientUnit::Kilogram]);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.inventory.show', ['ingredient' => $flour])
+            ->assertDontSee('Count in')
+            // Sent anyway, as a crafted request would.
+            ->set('countIn', 'package')
+            ->set('quantity', '2')
+            ->call('record')
+            ->assertHasErrors('countIn');
+
+        $this->assertSame(0, $flour->movements()->count());
+    }
+
+    public function test_stock_is_also_shown_in_packages(): void
+    {
+        $sugar = Ingredient::factory()->boughtIn('sack', '50000')->create(['name' => 'White Sugar', 'unit' => IngredientUnit::Gram]);
+        InventoryMovement::factory()->for($sugar)->quantity('167000.000')->create();
+
+        $baker = User::factory()->baker()->create();
+
+        Livewire::actingAs($baker)
+            ->test('pages::employee.inventory.index')
+            ->assertSee('≈ 3.3 sacks');
+
+        Livewire::actingAs($baker)
+            ->test('pages::employee.inventory.show', ['ingredient' => $sugar])
+            ->assertSee('≈ 3.3 sacks');
+    }
 }

@@ -299,6 +299,10 @@ new #[Title('Production runs')] class extends Component {
                                                 @else
                                                     {{ $row['ingredient']->stock() }} {{ $row['ingredient']->unit->abbreviation() }}
                                                 @endif
+
+                                                @if ($packages = $row['ingredient']->stockInPackages())
+                                                    <span class="block text-xs text-zinc-500">{{ $packages }}</span>
+                                                @endif
                                             </flux:table.cell>
                                         </flux:table.row>
                                     @endforeach

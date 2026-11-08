@@ -105,6 +105,10 @@ new #[Title('Inventory')] class extends Component {
                             <flux:table.cell class="font-medium">{{ $ingredient->name }}</flux:table.cell>
                             <flux:table.cell>
                                 {{ $ingredient->stock() }} {{ $ingredient->unit->abbreviation() }}
+
+                                @if ($packages = $ingredient->stockInPackages())
+                                    <span class="block text-xs text-zinc-500">{{ $packages }}</span>
+                                @endif
                             </flux:table.cell>
                             <flux:table.cell>
                                 @if ($ingredient->reorderLevelInThousandths() > 0)

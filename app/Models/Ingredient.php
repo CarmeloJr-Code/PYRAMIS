@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -29,12 +30,14 @@ use RuntimeException;
  * @property string|null $content_per_unit
  * @property IngredientUnit|null $content_measure
  * @property string|null $cup_weight
+ * @property string|null $package_name
+ * @property string|null $package_size
  * @property string $reorder_level
  * @property bool $is_active
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['name', 'unit', 'content_per_unit', 'content_measure', 'cup_weight', 'reorder_level', 'is_active'])]
+#[Fillable(['name', 'unit', 'content_per_unit', 'content_measure', 'cup_weight', 'package_name', 'package_size', 'reorder_level', 'is_active'])]
 class Ingredient extends Model
 {
     /** @use HasFactory<IngredientFactory> */
@@ -52,6 +55,7 @@ class Ingredient extends Model
             'content_per_unit' => 'decimal:3',
             'content_measure' => IngredientUnit::class,
             'cup_weight' => 'decimal:3',
+            'package_size' => 'decimal:3',
             'reorder_level' => 'decimal:3',
             'is_active' => 'boolean',
         ];
@@ -238,6 +242,50 @@ class Ingredient extends Model
             : $quantityInThousandths * $this->cupWeightInThousandths() / 1000 / $measure->perCup();
 
         return $base * 1000 / $this->baseThousandthsPerUnit();
+    }
+
+    /**
+     * How many thousandths of the stocked unit one supplier package holds, or
+     * null when no package has been set.
+     */
+    public function packageSizeInThousandths(): ?int
+    {
+        if (blank($this->package_name) || $this->package_size === null) {
+            return null;
+        }
+
+        $size = static::quantityToThousandths($this->package_size);
+
+        return $size > 0 ? $size : null;
+    }
+
+    /**
+     * The package's name, made plural to agree with the count.
+     */
+    public function packageLabel(float|int $count): string
+    {
+        return Str::plural((string) $this->package_name, abs($count) == 1 ? 1 : 2);
+    }
+
+    /**
+     * Current stock counted in packages, e.g. "≈ 3.3 sacks", or null when no
+     * package has been set.
+     *
+     * Approximate on purpose: an opened sack is still stock, and one decimal is
+     * all a baker needs to judge what is left.
+     */
+    public function stockInPackages(): ?string
+    {
+        $size = $this->packageSizeInThousandths();
+
+        if ($size === null) {
+            return null;
+        }
+
+        $count = round($this->stockInThousandths() / $size, 1);
+        $formatted = rtrim(rtrim(number_format($count, 1), '0'), '.');
+
+        return '≈ '.$formatted.' '.$this->packageLabel($count);
     }
 
     /**

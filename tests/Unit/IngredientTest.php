@@ -137,4 +137,32 @@ class IngredientTest extends TestCase
 
         $eggs->toStockThousandths(1000, RecipeMeasure::Cup);
     }
+
+    public function test_stock_reads_in_packages_once_a_package_is_set(): void
+    {
+        $sugar = new Ingredient(['unit' => IngredientUnit::Gram, 'package_name' => 'sack', 'package_size' => '50000']);
+        $sugar->setAttribute('stock_sum', '167000');
+
+        $this->assertSame(50000000, $sugar->packageSizeInThousandths());
+        $this->assertSame('≈ 3.3 sacks', $sugar->stockInPackages());
+
+        $sugar->setAttribute('stock_sum', '50000');
+        $this->assertSame('≈ 1 sack', $sugar->stockInPackages());
+
+        $sugar->setAttribute('stock_sum', '0');
+        $this->assertSame('≈ 0 sacks', $sugar->stockInPackages());
+    }
+
+    public function test_an_ingredient_with_no_package_reads_only_in_its_unit(): void
+    {
+        $flour = new Ingredient(['unit' => IngredientUnit::Kilogram]);
+        $flour->setAttribute('stock_sum', '10');
+
+        $this->assertNull($flour->packageSizeInThousandths());
+        $this->assertNull($flour->stockInPackages());
+
+        // A size with no name, or a name with no size, is not a package.
+        $this->assertNull((new Ingredient(['unit' => IngredientUnit::Gram, 'package_size' => '1000']))->packageSizeInThousandths());
+        $this->assertNull((new Ingredient(['unit' => IngredientUnit::Gram, 'package_name' => 'pack']))->packageSizeInThousandths());
+    }
 }

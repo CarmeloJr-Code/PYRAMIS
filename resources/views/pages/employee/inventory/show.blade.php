@@ -30,6 +30,12 @@ new class extends Component {
     public string $note = '';
 
     /**
+     * Whether the quantity is counted in the stocked unit or in the packages
+     * the ingredient arrives in.
+     */
+    public string $countIn = 'unit';
+
+    /**
      * Authorize every entry into the component, not just the route.
      */
     public function mount(Ingredient $ingredient): void
@@ -92,6 +98,30 @@ new class extends Component {
     }
 
     /**
+     * What the quantity as entered comes to in the stocked unit, when it is
+     * being counted in packages — "2 sacks = 100,000 g" — or null otherwise.
+     */
+    public function packageHint(): ?string
+    {
+        $size = $this->ingredient->packageSizeInThousandths();
+
+        if ($this->countIn !== 'package' || $size === null
+            || ! is_numeric($this->quantity) || (float) $this->quantity <= 0 || (float) $this->quantity > 999999999) {
+            return null;
+        }
+
+        $count = (float) $this->quantity;
+        $thousandths = (int) round(Ingredient::quantityToThousandths($this->quantity) * $size / 1000);
+
+        return __(':count :package = :amount :unit', [
+            'count' => Ingredient::formatQuantity(Ingredient::quantityToThousandths($this->quantity)),
+            'package' => $this->ingredient->packageLabel($count),
+            'amount' => Ingredient::formatQuantity($thousandths),
+            'unit' => $this->ingredient->unit->abbreviation(),
+        ]);
+    }
+
+    /**
      * Record a stock movement against this ingredient.
      */
     public function record(): void
@@ -105,6 +135,7 @@ new class extends Component {
             'type' => ['required', Rule::enum(InventoryMovementType::class)],
             'quantity' => ['required', 'numeric', 'decimal:0,3', 'min:0.001', 'max:999999999'],
             'direction' => ['required', Rule::in(['in', 'out'])],
+            'countIn' => ['required', Rule::in(['unit', 'package'])],
             'note' => [
                 Rule::requiredIf(fn (): bool => $this->chosenType->requiresNote()),
                 'nullable', 'string', 'max:255',
@@ -120,7 +151,30 @@ new class extends Component {
         $direction = $type->fixedDirection()
             ?? ($validated['direction'] === 'out' ? -1 : 1);
 
-        $thousandths = $direction * Ingredient::quantityToThousandths($validated['quantity']);
+        $thousandths = Ingredient::quantityToThousandths($validated['quantity']);
+
+        // Counting in packages is only a way of entering the figure: it is
+        // converted here and the ledger records the stocked unit as always.
+        if ($validated['countIn'] === 'package') {
+            $size = $this->ingredient->packageSizeInThousandths();
+
+            if ($size === null) {
+                $this->addError('countIn', __('Set what :name is bought in before counting in packages.', ['name' => $this->ingredient->name]));
+
+                return;
+            }
+
+            $thousandths = (int) round($thousandths * $size / 1000);
+
+            // decimal(12,3): the most a single ledger entry can hold.
+            if ($thousandths > 999999999999) {
+                $this->addError('quantity', __('That is more than one entry can record.'));
+
+                return;
+            }
+        }
+
+        $thousandths *= $direction;
 
         try {
             app(RecordInventoryMovement::class)->handle(
@@ -184,6 +238,10 @@ new class extends Component {
                     <span class="text-lg font-normal text-zinc-500">{{ $ingredient->unit->abbreviation() }}</span>
                 </p>
 
+                @if ($packages = $ingredient->stockInPackages())
+                    <flux:text class="mt-1">{{ $packages }}</flux:text>
+                @endif
+
                 <div class="mt-3">
                     @php($level = $ingredient->stockLevel())
                     <flux:badge size="sm" :color="$level->color()" :icon="$level->icon()">{{ __($level->label()) }}</flux:badge>
@@ -207,9 +265,23 @@ new class extends Component {
                         </flux:radio.group>
                     @endif
 
+                    @if ($ingredient->packageSizeInThousandths() !== null)
+                        <flux:radio.group wire:model.live="countIn" :label="__('Count in')" variant="segmented">
+                            <flux:radio value="unit" :label="$ingredient->unit->abbreviation()" />
+                            <flux:radio value="package" :label="$ingredient->packageLabel(2)" />
+                        </flux:radio.group>
+                    @endif
+
+                    @error('countIn')
+                        <flux:text class="text-danger">{{ $message }}</flux:text>
+                    @enderror
+
                     <flux:input
-                        wire:model="quantity"
-                        :label="__('Quantity in :unit', ['unit' => $ingredient->unit->abbreviation()])"
+                        wire:model.live.blur="quantity"
+                        :label="$countIn === 'package' && $ingredient->packageSizeInThousandths() !== null
+                            ? __('Quantity in :unit', ['unit' => $ingredient->packageLabel(2)])
+                            : __('Quantity in :unit', ['unit' => $ingredient->unit->abbreviation()])"
+                        :description="$this->packageHint()"
                         type="number"
                         step="0.001"
                         min="0.001"

@@ -60,6 +60,17 @@ class IngredientFactory extends Factory
     }
 
     /**
+     * Say what the ingredient arrives in and how many stocked units that is.
+     */
+    public function boughtIn(string $name, string $size): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'package_name' => $name,
+            'package_size' => $size,
+        ]);
+    }
+
+    /**
      * Give the ingredient a level below which it counts as low.
      */
     public function reorderAt(string $level): static

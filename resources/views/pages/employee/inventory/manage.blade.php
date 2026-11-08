@@ -39,6 +39,16 @@ new #[Title('Manage ingredient')] class extends Component {
      */
     public string $cup_weight = '';
 
+    /**
+     * What the ingredient arrives in from the supplier, e.g. "sack".
+     */
+    public string $package_name = '';
+
+    /**
+     * How many stocked units one of those packages is.
+     */
+    public string $package_size = '';
+
     public bool $is_active = true;
 
     /**
@@ -60,6 +70,10 @@ new #[Title('Manage ingredient')] class extends Component {
             $this->cup_weight = $ingredient->cup_weight === null
                 ? ''
                 : Ingredient::quantityFromThousandths(Ingredient::quantityToThousandths($ingredient->cup_weight));
+            $this->package_name = $ingredient->package_name ?? '';
+            $this->package_size = $ingredient->package_size === null
+                ? ''
+                : Ingredient::quantityFromThousandths(Ingredient::quantityToThousandths($ingredient->package_size));
             $this->is_active = $ingredient->is_active;
 
             // Every movement is a quantity in the unit that was set when it was
@@ -115,6 +129,8 @@ new #[Title('Manage ingredient')] class extends Component {
         $this->name = trim($this->name);
         $this->content_per_unit = trim($this->content_per_unit);
         $this->cup_weight = trim($this->cup_weight);
+        $this->package_name = trim($this->package_name);
+        $this->package_size = trim($this->package_size);
 
         $validated = $this->validate([
             'name' => [
@@ -126,6 +142,8 @@ new #[Title('Manage ingredient')] class extends Component {
             'content_per_unit' => ['nullable', 'numeric', 'decimal:0,3', 'min:0.001', 'max:999999999'],
             'content_measure' => ['required', Rule::in([IngredientUnit::Gram->value, IngredientUnit::Milliliter->value])],
             'cup_weight' => ['nullable', 'numeric', 'decimal:0,3', 'min:0.001', 'max:999999999'],
+            'package_name' => ['nullable', 'required_with:package_size', 'string', 'max:30'],
+            'package_size' => ['nullable', 'required_with:package_name', 'numeric', 'decimal:0,3', 'min:0.001', 'max:999999999'],
             'is_active' => ['boolean'],
         ]);
 
@@ -155,6 +173,8 @@ new #[Title('Manage ingredient')] class extends Component {
             'cup_weight' => filled($validated['cup_weight']) && ($unit->baseMeasure() !== null || $holdsContent)
                 ? $validated['cup_weight']
                 : null,
+            'package_name' => filled($validated['package_name']) ? $validated['package_name'] : null,
+            'package_size' => filled($validated['package_size']) ? $validated['package_size'] : null,
             'reorder_level' => $validated['reorder_level'],
             'is_active' => $validated['is_active'],
         ]);
@@ -283,6 +303,36 @@ new #[Title('Manage ingredient')] class extends Component {
         @error('conversions')
             <flux:callout variant="danger" icon="exclamation-triangle" :heading="$message" />
         @enderror
+
+        @if ($chosenUnit !== null)
+            <div class="flex flex-col gap-2">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <flux:input
+                        wire:model="package_name"
+                        :label="__('Bought in')"
+                        :placeholder="__('e.g. sack, tray, bottle')"
+                        maxlength="30"
+                        class="flex-1"
+                    />
+
+                    <flux:input
+                        wire:model="package_size"
+                        :label="__('Each holds (:unit)', ['unit' => $chosenUnit->abbreviation()])"
+                        type="number"
+                        step="0.001"
+                        min="0.001"
+                        max="999999999"
+                        inputmode="decimal"
+                        x-on:keydown="['e', 'E', '+', '-', ','].includes($event.key) && $event.preventDefault()"
+                        class="sm:w-48"
+                    />
+                </div>
+
+                <flux:text class="text-sm">
+                    {{ __('Optional. Lets deliveries be recorded as, say, 2 sacks, and shows stock in sacks as well.') }}
+                </flux:text>
+            </div>
+        @endif
 
         <flux:input
             wire:model="reorder_level"

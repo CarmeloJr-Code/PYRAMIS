@@ -91,16 +91,50 @@ class SaleStockTest extends TestCase
         $this->assertSame(1, $sale->stockMovements()->count());
     }
 
-    public function test_a_sale_may_take_the_shelf_negative(): void
+    public function test_a_sale_past_the_shelf_count_waits_for_the_cashier_to_say_so(): void
     {
-        // Nothing recorded on the shelf, but the cake went over the counter.
-        // Refusing would lose the takings rather than fix the count.
         $variant = $this->stocked(1);
 
         Livewire::actingAs(User::factory()->cashier()->create())
             ->test('pages::employee.sales.create')
             ->set('outlet_id', $this->outlet->id)
             ->set('lines', [['product_variant_id' => $variant->id, 'quantity' => 4]])
+            ->call('save')
+            ->assertHasErrors('lines')
+            ->assertSet('short', true);
+
+        $this->assertSame(1, $variant->stockAt($this->outlet));
+        $this->assertSame(0, Sale::count());
+    }
+
+    public function test_changing_the_sale_takes_the_cashiers_say_so_back(): void
+    {
+        $variant = $this->stocked(1);
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.create')
+            ->set('outlet_id', $this->outlet->id)
+            ->set('sellAnyway', true)
+            ->set('lines', [['product_variant_id' => $variant->id, 'quantity' => 4]])
+            ->assertSet('sellAnyway', false)
+            ->call('save')
+            ->assertHasErrors('lines');
+
+        $this->assertSame(0, Sale::count());
+    }
+
+    public function test_a_sale_may_take_the_shelf_negative(): void
+    {
+        // Nothing recorded on the shelf, but the cake went over the counter.
+        // Refusing would lose the takings rather than fix the count — so the
+        // cashier says the goods are there, and it goes through.
+        $variant = $this->stocked(1);
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.create')
+            ->set('outlet_id', $this->outlet->id)
+            ->set('lines', [['product_variant_id' => $variant->id, 'quantity' => 4]])
+            ->set('sellAnyway', true)
             ->call('save')
             ->assertHasNoErrors();
 
@@ -146,6 +180,7 @@ class SaleStockTest extends TestCase
 
         Livewire::actingAs($cashier)
             ->test('pages::employee.sales.index')
+            ->set('voidReason', 'Rang up twice')
             ->call('void', $sale->id);
 
         $this->assertTrue($sale->fresh()->isVoided());

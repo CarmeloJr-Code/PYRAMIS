@@ -143,7 +143,7 @@ new #[Title('Manage product')] class extends Component {
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.id' => ['nullable', 'integer'],
             'variants.*.name' => ['required', 'string', 'max:255', 'distinct'],
-            'variants.*.price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999.99'],
+            'variants.*.price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999.99'],
             'variants.*.is_available' => ['boolean'],
         ]);
 

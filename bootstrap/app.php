@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\UseClientAddressHeader;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,12 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
         //
         // Trusting every address is what the platform asks for: Render
         // publishes no stable inbound range, and Laravel already does the same
-        // by default for its own Cloud, Forge and Vapor hosts. What makes it
-        // safe rather than merely convenient is that Render sets the first
-        // entry of X-Forwarded-For to the real client itself instead of
-        // appending to whatever arrived, and Symfony reads exactly that entry
-        // when the whole chain is trusted. The address a limiter counts is
-        // therefore not one the caller gets to choose.
+        // by default for its own Cloud, Forge and Vapor hosts. It is not, on
+        // its own, safe for the address: neither Cloudflare nor Render clears
+        // an X-Forwarded-For the caller sent, so its first entry — the one
+        // Symfony reads when the whole chain is trusted — is the caller's to
+        // choose. UseClientAddressHeader, below, is what closes that: where
+        // the edge's own header is configured it becomes the address and the
+        // chain is dropped. The chain stays trusted only as the fallback for
+        // a deployment with no such header.
         //
         // The forwarded host is deliberately left out. It is client-settable in
         // the general case — which is why Laravel strips it on Forge and Vapor
@@ -41,6 +44,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
+
+        // Ahead of everything, the trusted-proxy middleware included, so the
+        // address is settled before anything reads it.
+        $middleware->prepend(UseClientAddressHeader::class);
 
         // Appended rather than prepended, so the headers are set on whatever
         // response comes back — the error pages the exception handler renders

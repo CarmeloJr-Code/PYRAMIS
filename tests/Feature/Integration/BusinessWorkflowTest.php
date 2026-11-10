@@ -432,6 +432,7 @@ class BusinessWorkflowTest extends TestCase
 
         Livewire::actingAs($this->cashier)
             ->test('pages::employee.sales.index')
+            ->set('voidReason', 'Rang up twice')
             ->call('void', $sale->id);
 
         $this->assertSame(SaleStatus::Voided, $sale->fresh()->status);

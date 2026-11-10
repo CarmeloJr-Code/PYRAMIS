@@ -155,7 +155,8 @@ class MenuStockTest extends TestCase
     {
         $round = $this->cake();
         $this->shelve($round, $this->main, 2);
-        $this->order($round, $this->main, 5);
+        // Paid for, so the claim does not depend on the clock the page is read at.
+        $this->order($round, $this->main, 5, OrderStatus::Confirmed);
         $this->shelve($round, $this->plaza, -3);
 
         $this->get(route('products.index'))
@@ -260,7 +261,7 @@ class MenuStockTest extends TestCase
         $round = $this->cake();
         $this->shelve($round, $this->main, 12);
         $this->shelve($round, $this->plaza, 5);
-        $this->order($round, $this->plaza, 5);
+        $this->order($round, $this->plaza, 5, OrderStatus::Confirmed);
 
         // Before the last pickup hour, or Buy now reads "No more pickups today".
         $this->travelTo(today()->setTime(10, 0));
@@ -313,5 +314,29 @@ class MenuStockTest extends TestCase
         $this->assertDatabaseCount('product_stock_movements', 1);
         $this->assertDatabaseHas('orders', ['status' => OrderStatus::Pending->value]);
         $this->assertSame([], app(CountAvailableStock::class)->handle(collect(), collect([$this->main->id])));
+    }
+
+    public function test_an_unpaid_order_gives_its_goods_back_once_the_time_to_pay_has_passed(): void
+    {
+        $cake = $this->cake();
+        $this->shelve($cake, $this->main, 5);
+        $this->order($cake, $this->main, 5);
+
+        $this->assertSame(0, app(CountAvailableStock::class)->handle(collect([$cake->id]), collect([$this->main->id]))[$cake->id][$this->main->id]);
+
+        $this->travel(Order::UNPAID_HOLD_MINUTES + 1)->minutes();
+
+        $this->assertSame(5, app(CountAvailableStock::class)->handle(collect([$cake->id]), collect([$this->main->id]))[$cake->id][$this->main->id]);
+    }
+
+    public function test_an_order_whose_payment_was_checked_holds_its_goods_however_long_ago_it_was_placed(): void
+    {
+        $cake = $this->cake();
+        $this->shelve($cake, $this->main, 5);
+        $this->order($cake, $this->main, 2, OrderStatus::Confirmed);
+
+        $this->travel(Order::UNPAID_HOLD_MINUTES + 1)->minutes();
+
+        $this->assertSame(3, app(CountAvailableStock::class)->handle(collect([$cake->id]), collect([$this->main->id]))[$cake->id][$this->main->id]);
     }
 }

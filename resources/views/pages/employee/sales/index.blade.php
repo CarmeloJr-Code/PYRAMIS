@@ -3,6 +3,7 @@
 use App\Actions\VoidSale;
 use App\Concerns\ReportRange;
 use App\Models\Sale;
+use Flux\Flux;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,13 @@ new #[Title('Sales')] class extends Component {
 
     #[Url(as: 'period', except: 'day')]
     public string $period = 'day';
+
+    /**
+     * The sale the void dialog is open on, and the reason typed into it.
+     */
+    public ?int $voidingId = null;
+
+    public string $voidReason = '';
 
     /**
      * Authorize every entry into the component, not just the route.
@@ -124,9 +132,41 @@ new #[Title('Sales')] class extends Component {
     {
         Gate::authorize('access-sales');
 
-        app(VoidSale::class)->handle(Sale::findOrFail($saleId), Auth::user());
+        $sale = Sale::findOrFail($saleId);
+
+        // Narrower than the screen: a Cashier takes back only their own sale
+        // from today. Anything else goes to a manager.
+        Gate::authorize('void-sale', $sale);
+
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->voidReason = trim($this->voidReason);
+
+        $validated = $this->validate([
+            'voidReason' => ['required', 'string', 'min:3', 'max:255'],
+        ], [
+            'voidReason.required' => __('Say why this sale is being voided.'),
+        ]);
+
+        app(VoidSale::class)->handle($sale, Auth::user(), $validated['voidReason']);
+
+        $this->reset('voidingId', 'voidReason');
+
+        Flux::modal('void-sale')->close();
 
         unset($this->sales, $this->total, $this->completedCount);
+    }
+
+    /**
+     * Open the void dialog on a sale.
+     */
+    public function startVoid(int $saleId): void
+    {
+        $this->voidingId = $saleId;
+        $this->voidReason = '';
+
+        $this->resetValidation('voidReason');
+
+        Flux::modal('void-sale')->show();
     }
 
     /**
@@ -227,13 +267,11 @@ new #[Title('Sales')] class extends Component {
                             <flux:table.cell class="text-end">
                                 @if ($sale->isVoided())
                                     <flux:badge size="sm" :color="$sale->status->color()">{{ __($sale->status->label()) }}</flux:badge>
-                                @else
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="void({{ $sale->id }})"
-                                        wire:confirm="{{ __('Void this sale? It stays on record but stops counting towards takings.') }}"
-                                    >
+                                    @if ($sale->void_reason)
+                                        <div class="mt-1 text-xs text-zinc-500">{{ $sale->void_reason }}</div>
+                                    @endif
+                                @elseif (auth()->user()->can('void-sale', $sale))
+                                    <flux:button size="sm" variant="ghost" wire:click="startVoid({{ $sale->id }})">
                                         {{ __('Void') }}
                                     </flux:button>
                                 @endif
@@ -244,4 +282,23 @@ new #[Title('Sales')] class extends Component {
             </flux:table>
         </div>
     @endif
+
+    <flux:modal name="void-sale" class="max-w-lg">
+        <form wire:submit="void($wire.voidingId)" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Void this sale?') }}</flux:heading>
+                <flux:subheading>{{ __('It stays on record, with your name and the reason, but stops counting towards takings.') }}</flux:subheading>
+            </div>
+
+            <flux:input wire:model="voidReason" :label="__('Reason')" maxlength="255" required />
+
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="filled">{{ __('Keep the sale') }}</flux:button>
+                </flux:modal.close>
+
+                <flux:button variant="danger" type="submit">{{ __('Void sale') }}</flux:button>
+            </div>
+        </form>
+    </flux:modal>
 </section>

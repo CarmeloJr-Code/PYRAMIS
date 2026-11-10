@@ -147,4 +147,46 @@ class AuthenticationTest extends TestCase
 
         $this->assertGuest();
     }
+
+    public function test_sign_in_is_refused_after_five_wrong_passwords_from_one_address(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (range(1, 5) as $attempt) {
+            $this->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password']);
+        }
+
+        $this->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])
+            ->assertTooManyRequests();
+
+        $this->assertGuest();
+    }
+
+    public function test_sign_in_is_refused_after_ten_wrong_passwords_however_many_addresses_they_came_from(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (range(1, 10) as $attempt) {
+            $this->withServerVariables(['REMOTE_ADDR' => "203.0.113.{$attempt}"])
+                ->post(route('login.store'), ['email' => $user->email, 'password' => 'wrong-password'])
+                ->assertSessionHasErrors('email');
+        }
+
+        $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.200'])
+            ->post(route('login.store'), ['email' => $user->email, 'password' => 'password'])
+            ->assertTooManyRequests();
+
+        $this->assertGuest();
+    }
+
+    public function test_a_password_reset_is_offered_only_where_its_email_would_arrive(): void
+    {
+        config(['mail.default' => 'log']);
+
+        $this->get(route('login'))->assertOk()->assertDontSeeText('Forgot your password?');
+
+        config(['mail.default' => 'smtp']);
+
+        $this->get(route('login'))->assertOk()->assertSeeText('Forgot your password?');
+    }
 }

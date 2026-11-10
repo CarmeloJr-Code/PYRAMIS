@@ -25,6 +25,10 @@ services:
         value: pyramis.onrender.com
       - key: STOREFRONT_DOMAIN
         sync: false          # www.purpleyam.store, the storefront's custom domain
+      # The header Cloudflare writes the caller's address into (config/app.php).
+      # Without it the rate limiters count an address the caller can forge.
+      - key: CLIENT_ADDRESS_HEADER
+        value: CF-Connecting-IP
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL
@@ -112,6 +116,10 @@ services:
       # moves permanently to STOREFRONT_DOMAIN.
       - key: STOREFRONT_ALIASES
         value: purpleyam-malaybalay.onrender.com
+      # The header Cloudflare writes the caller's address into (config/app.php).
+      # Without it the rate limiters count an address the caller can forge.
+      - key: CLIENT_ADDRESS_HEADER
+        value: CF-Connecting-IP
       - key: LOG_CHANNEL
         value: stderr
       - key: LOG_LEVEL

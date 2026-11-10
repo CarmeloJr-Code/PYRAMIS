@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\EmailValidationRules;
+use App\Models\User;
 use App\Rules\PhilippineMobile;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Flux\Flux;
@@ -58,7 +59,11 @@ new #[Title('Profile settings')] class extends Component {
 
         $user->fill([...$validated, 'phone' => $validated['phone'] ?: null]);
 
-        if ($user->isDirty('email')) {
+        // A new address is unproven, but proving it takes an email. Where
+        // none can be delivered the link would never come, and the employee
+        // would be shut out behind the `verified` gate by their own edit — so
+        // there the address stands as it does when an Administrator sets it.
+        if ($user->isDirty('email') && User::mailIsDelivered()) {
             $user->email_verified_at = null;
         }
 
@@ -89,13 +94,6 @@ new #[Title('Profile settings')] class extends Component {
     public function hasUnverifiedEmail(): bool
     {
         return Auth::user() instanceof MustVerifyEmail && ! Auth::user()->hasVerifiedEmail();
-    }
-
-    #[Computed]
-    public function showDeleteUser(): bool
-    {
-        return ! Auth::user() instanceof MustVerifyEmail
-            || (Auth::user() instanceof MustVerifyEmail && Auth::user()->hasVerifiedEmail());
     }
 }; ?>
 
@@ -150,9 +148,5 @@ new #[Title('Profile settings')] class extends Component {
 
             </div>
         </form>
-
-        @if ($this->showDeleteUser)
-            <livewire:pages::settings.delete-user-form />
-        @endif
     </x-pages::settings.layout>
 </section>

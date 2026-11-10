@@ -188,18 +188,79 @@ class SalesTest extends TestCase
 
     public function test_a_cashier_can_void_a_sale_and_it_is_never_deleted(): void
     {
-        $sale = Sale::factory()->create(['sold_at' => now()]);
+        $cashier = User::factory()->cashier()->create();
+        $sale = Sale::factory()->create(['sold_at' => now(), 'recorded_by' => $cashier->id]);
         SaleItem::factory()->for($sale)->create(['quantity' => 1, 'unit_price' => '450.00']);
 
-        Livewire::actingAs(User::factory()->cashier()->create())
+        Livewire::actingAs($cashier)
             ->test('pages::employee.sales.index')
+            ->set('voidReason', 'Rang up twice')
             ->call('void', $sale->id);
 
         $sale->refresh();
 
         $this->assertSame(SaleStatus::Voided, $sale->status);
         $this->assertNotNull($sale->voided_at);
+        $this->assertSame($cashier->id, $sale->voided_by);
+        $this->assertSame('Rang up twice', $sale->void_reason);
         $this->assertDatabaseCount('sales', 1);
+    }
+
+    public function test_a_void_needs_a_reason(): void
+    {
+        $cashier = User::factory()->cashier()->create();
+        $sale = Sale::factory()->create(['sold_at' => now(), 'recorded_by' => $cashier->id]);
+
+        Livewire::actingAs($cashier)
+            ->test('pages::employee.sales.index')
+            ->set('voidReason', '  ')
+            ->call('void', $sale->id)
+            ->assertHasErrors('voidReason');
+
+        $this->assertSame(SaleStatus::Completed, $sale->fresh()->status);
+    }
+
+    public function test_a_cashier_cannot_void_a_sale_somebody_else_recorded(): void
+    {
+        $sale = Sale::factory()->create(['sold_at' => now()]);
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.index')
+            ->assertDontSeeHtml('startVoid(')
+            ->set('voidReason', 'Rang up twice')
+            ->call('void', $sale->id)
+            ->assertForbidden();
+
+        $this->assertSame(SaleStatus::Completed, $sale->fresh()->status);
+    }
+
+    public function test_a_cashier_cannot_void_their_own_sale_from_an_earlier_day(): void
+    {
+        $cashier = User::factory()->cashier()->create();
+        $sale = Sale::factory()->create(['sold_at' => now()->subDay(), 'recorded_by' => $cashier->id]);
+
+        Livewire::actingAs($cashier)
+            ->test('pages::employee.sales.index')
+            ->set('voidReason', 'Rang up twice')
+            ->call('void', $sale->id)
+            ->assertForbidden();
+
+        $this->assertSame(SaleStatus::Completed, $sale->fresh()->status);
+    }
+
+    public function test_an_administrator_can_void_any_sale(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+        $sale = Sale::factory()->create(['sold_at' => now()->subWeek()]);
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.sales.index')
+            ->set('voidReason', 'Refunded at the counter')
+            ->call('void', $sale->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame(SaleStatus::Voided, $sale->fresh()->status);
+        $this->assertSame($administrator->id, $sale->fresh()->voided_by);
     }
 
     public function test_voiding_twice_leaves_the_first_void_intact(): void

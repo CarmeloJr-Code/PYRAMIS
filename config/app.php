@@ -79,6 +79,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Client Address Header
+    |--------------------------------------------------------------------------
+    |
+    | The header the platform's edge writes the caller's address into, and
+    | overwrites if the caller sent one — CF-Connecting-IP on Render, which
+    | Cloudflare fronts. Where it is set and present it is the address every
+    | rate limiter counts, in place of the X-Forwarded-For chain a caller can
+    | start themselves. Leave unset anywhere the edge does not own the header:
+    | there it would be the caller's to choose.
+    |
+    */
+
+    'client_address_header' => env('CLIENT_ADDRESS_HEADER'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

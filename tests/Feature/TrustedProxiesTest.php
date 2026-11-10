@@ -45,8 +45,9 @@ class TrustedProxiesTest extends TestCase
 
     public function test_the_caller_is_the_first_address_in_the_forwarded_chain(): void
     {
-        // Render sets the first entry itself, so this is the customer and the
-        // one after it is the hop that carried them.
+        // The fallback, for a deployment with no edge header configured: the
+        // first entry is read, which is only the customer where the platform
+        // writes it. On Render it is not — see the client address tests below.
         $request = $this->forwarded(['X-Forwarded-For' => '203.0.113.9, 172.16.0.4']);
 
         $this->assertSame('203.0.113.9', $request->ip());
@@ -88,5 +89,45 @@ class TrustedProxiesTest extends TestCase
         ]);
 
         $this->assertSame('pyramis.test', $request->getHost());
+    }
+
+    public function test_the_edge_header_is_the_caller_whatever_the_forwarded_chain_claims(): void
+    {
+        // What an attacker sends to step around a limiter: a chain of their
+        // own, which the hops append to rather than replace.
+        config(['app.client_address_header' => 'CF-Connecting-IP']);
+
+        $this->get('/', [
+            'X-Forwarded-For' => '198.51.100.77, 203.0.113.9',
+            'CF-Connecting-IP' => '203.0.113.9',
+        ])->assertOk();
+
+        $this->assertSame('203.0.113.9', request()->ip());
+    }
+
+    public function test_an_edge_header_that_is_not_an_address_is_ignored(): void
+    {
+        config(['app.client_address_header' => 'CF-Connecting-IP']);
+
+        $this->get('/', [
+            'X-Forwarded-For' => '203.0.113.9',
+            'CF-Connecting-IP' => 'not-an-address',
+        ])->assertOk();
+
+        $this->assertSame('203.0.113.9', request()->ip());
+    }
+
+    public function test_the_edge_header_is_not_read_where_none_is_configured(): void
+    {
+        // Unconfigured, nothing owns the header, so it would be the caller's
+        // to choose.
+        config(['app.client_address_header' => null]);
+
+        $this->get('/', [
+            'X-Forwarded-For' => '203.0.113.9',
+            'CF-Connecting-IP' => '198.51.100.77',
+        ])->assertOk();
+
+        $this->assertSame('203.0.113.9', request()->ip());
     }
 }

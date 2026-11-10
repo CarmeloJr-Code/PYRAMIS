@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Enums\UserRole;
+use App\Http\Middleware\EnsureEmployeeIsActive;
+use App\Models\Sale;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,6 +32,11 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureAuthorization();
+
+        // A Livewire action is a request to Livewire's own endpoint, which
+        // re-runs only the route middleware named here. Without this a page
+        // left open keeps working after its employee's account is closed.
+        Livewire::addPersistentMiddleware([EnsureEmployeeIsActive::class]);
     }
 
     /**
@@ -44,6 +52,10 @@ class AppServiceProvider extends ServiceProvider
             UserRole::Administrator,
             UserRole::Cashier,
         ));
+
+        // Taking a sale back is narrower than recording one: any of them for
+        // the Administrator, a Cashier's own from today and nothing else.
+        Gate::define('void-sale', fn (User $user, Sale $sale): bool => $sale->mayBeVoidedBy($user));
 
         Gate::define('access-production', fn (User $user): bool => $user->hasRole(
             UserRole::Administrator,

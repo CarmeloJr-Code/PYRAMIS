@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\GeneratesReference;
 use App\Enums\SaleStatus;
+use App\Enums\UserRole;
 use Carbon\CarbonImmutable;
 use Database\Factories\SaleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,6 +27,8 @@ use Illuminate\Support\Facades\DB;
  * @property SaleStatus $status
  * @property CarbonImmutable $sold_at
  * @property CarbonImmutable|null $voided_at
+ * @property int|null $voided_by
+ * @property string|null $void_reason
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
@@ -290,13 +293,36 @@ class Sale extends Model
     }
 
     /**
-     * Void the sale rather than deleting it, so the record stays auditable.
+     * Whether the employee may void this sale.
+     *
+     * An Administrator may void any. A Cashier may take back only what they
+     * rang up themselves, and only on the day they rang it up: a slip of the
+     * finger is theirs to correct, but reaching into another till or another
+     * day is oversight, which BR-007 puts with the Administrator.
      */
-    public function void(): void
+    public function mayBeVoidedBy(User $employee): bool
+    {
+        if ($employee->hasRole(UserRole::Administrator)) {
+            return true;
+        }
+
+        return $employee->hasRole(UserRole::Cashier)
+            && $this->recorded_by === $employee->id
+            && $this->sold_at->isSameDay(today());
+    }
+
+    /**
+     * Void the sale rather than deleting it, so the record stays auditable —
+     * and says who took it back and why, where that is known.
+     */
+    public function void(?User $by = null, ?string $reason = null): void
     {
         if ($this->isVoided()) {
             return;
         }
+
+        $this->voided_by = $by?->id;
+        $this->void_reason = $reason;
 
         // Set directly rather than via update(): voided_at is deliberately not
         // mass-assignable, because void() is the only thing that may set it.

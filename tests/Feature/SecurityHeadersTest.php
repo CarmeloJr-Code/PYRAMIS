@@ -55,4 +55,16 @@ class SecurityHeadersTest extends TestCase
             ->assertNotFound()
             ->assertHeader($header, $value);
     }
+
+    public function test_a_secure_response_tells_the_browser_to_stay_on_https(): void
+    {
+        $this->get('https://localhost/')
+            ->assertHeader('Strict-Transport-Security', 'max-age=31536000');
+    }
+
+    public function test_a_plain_http_response_makes_no_promise_about_https(): void
+    {
+        $this->get('http://localhost/')
+            ->assertHeaderMissing('Strict-Transport-Security');
+    }
 }

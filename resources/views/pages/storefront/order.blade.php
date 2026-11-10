@@ -44,6 +44,15 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
      */
     private const HOURLY_ADDRESS_LIMIT = 20;
 
+    /**
+     * How far ahead a pre-order may be booked, in days.
+     *
+     * Two months covers a birthday or a wedding planned in advance. Past that
+     * a date is a typing slip or a nuisance, and either way an order that
+     * sits open in the cashier's queue for good.
+     */
+    public const MAX_DAYS_AHEAD = 60;
+
     public ?int $outlet_id = null;
 
     /**
@@ -109,7 +118,11 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             'customer_email' => $this->optionalEmailRules(),
             'pickup_when' => ['required', Rule::enum(PickupWhen::class)],
             // Buy now is collected today; a pre-order is for tomorrow or after.
-            'pickup_date' => ['required', 'date_format:Y-m-d', $this->forToday() ? 'date_equals:today' : 'after:today'],
+            'pickup_date' => [
+                'required', 'date_format:Y-m-d',
+                $this->forToday() ? 'date_equals:today' : 'after:today',
+                'before_or_equal:'.today()->addDays(self::MAX_DAYS_AHEAD)->toDateString(),
+            ],
             // Any hour of the window. One already gone today is refused on
             // submit, with a message that says so.
             'pickup_time' => ['required', Rule::in($this->pickupHours())],
@@ -127,6 +140,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
             'pickup_time.in' => __('Please choose a pickup time between 8:00 AM and 7:00 PM.'),
             'pickup_date.after' => __('A pre-order is for tomorrow or later. To collect today, choose "Pick up today".'),
             'pickup_date.date_equals' => __('"Pick up today" is collected today.'),
+            'pickup_date.before_or_equal' => __('We take pre-orders up to :days days ahead. Please choose an earlier date.', ['days' => self::MAX_DAYS_AHEAD]),
         ];
     }
 
@@ -653,7 +667,7 @@ new #[Layout('layouts::storefront')] #[Title('Your order')] class extends Compon
                     @if ($this->forToday())
                         <flux:input wire:model="pickup_date" :label="__('Pickup date')" type="date" readonly :description:trailing="__('Today')" />
                     @else
-                        <flux:input wire:model.blur="pickup_date" :label="__('Pickup date')" type="date" :min="today()->addDay()->toDateString()" required />
+                        <flux:input wire:model.blur="pickup_date" :label="__('Pickup date')" type="date" :min="today()->addDay()->toDateString()" :max="today()->addDays($this::MAX_DAYS_AHEAD)->toDateString()" required />
                     @endif
                     <flux:select
                         wire:model.blur="pickup_time"

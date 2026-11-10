@@ -16,6 +16,11 @@ use Illuminate\Support\Collection;
  * what open orders due today, or overdue and still uncollected, already claim
  * — floored at zero, since a shelf a sale took negative still has nothing on it.
  *
+ * An order claims for good once its payment has been checked. Before that it
+ * claims only for the half hour it takes to pay (Order::holdingStock): nobody
+ * needs an account to place one, so an unpaid order that held its goods all
+ * day would let anyone empty the menu with a form.
+ *
  * A pre-order for a later day claims nothing yet. The bakery bakes it on top
  * of the day's retail amount, so on its pickup day it lands on the shelf and
  * its claim cancels it out: twenty cakes for the counter and four pre-ordered
@@ -52,7 +57,7 @@ final class CountAvailableStock
 
         $claimed = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereIn('orders.id', Order::query()->open()->where('pickup_at', '<', today()->addDay())->whereIn('outlet_id', $outletIds)->select('id'))
+            ->whereIn('orders.id', Order::query()->holdingStock()->where('pickup_at', '<', today()->addDay())->whereIn('outlet_id', $outletIds)->select('id'))
             ->whereIn('order_items.product_variant_id', $variantIds)
             ->groupBy('order_items.product_variant_id', 'orders.outlet_id')
             ->selectRaw('order_items.product_variant_id, orders.outlet_id, sum(order_items.quantity) as units')

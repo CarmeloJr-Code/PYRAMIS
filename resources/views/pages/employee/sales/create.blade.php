@@ -27,6 +27,26 @@ new #[Title('Record counter sale')] class extends Component {
     public array $lines = [];
 
     /**
+     * How many of one item a single sale may carry — the storefront's limit.
+     */
+    private const MAX_QUANTITY = 99;
+
+    /**
+     * Ticked by the cashier to ring up more than the shelf count shows.
+     *
+     * The count can be behind the counter — a tray put out and not yet
+     * recorded — so the sale is not refused outright. But it is not waved
+     * through unseen either: a sale that takes a shelf negative is one the
+     * cashier has looked at and meant.
+     */
+    public bool $sellAnyway = false;
+
+    /**
+     * Whether the last attempt ran past the shelf, so the tick-box is shown.
+     */
+    public bool $short = false;
+
+    /**
      * Authorize every entry into the component, not just the route.
      */
     public function mount(): void
@@ -86,6 +106,17 @@ new #[Title('Record counter sale')] class extends Component {
     }
 
     /**
+     * A tick covers the sale it was given for. Change the outlet or the items
+     * and it has to be given again.
+     */
+    public function updated(string $property): void
+    {
+        if ($property === 'outlet_id' || str_starts_with($property, 'lines')) {
+            $this->reset('sellAnyway', 'short');
+        }
+    }
+
+    /**
      * Append an empty line.
      */
     public function addLine(): void
@@ -123,7 +154,8 @@ new #[Title('Record counter sale')] class extends Component {
             ],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.product_variant_id' => ['required', 'integer', 'distinct'],
-            'lines.*.quantity' => ['required', 'integer', 'min:1', 'max:999'],
+            'lines.*.quantity' => ['required', 'integer', 'min:1', 'max:'.self::MAX_QUANTITY],
+            'sellAnyway' => ['boolean'],
         ]);
 
         // Re-resolve every variant from the database. The form is client state,
@@ -135,6 +167,8 @@ new #[Title('Record counter sale')] class extends Component {
             ->available()
             ->whereHas('product', fn ($query) => $query->where('is_active', true))
             ->whereIn('id', $variantIds)
+            // For the name a shortfall is reported by.
+            ->with('product')
             ->get()
             ->keyBy('id');
 
@@ -145,6 +179,27 @@ new #[Title('Record counter sale')] class extends Component {
         }
 
         $outlet = Outlet::query()->active()->findOrFail($validated['outlet_id']);
+
+        if (! $validated['sellAnyway']) {
+            foreach ($validated['lines'] as $line) {
+                $variant = $variants[$line['product_variant_id']];
+                $onHand = max(0, $variant->stockAt($outlet));
+
+                if ($line['quantity'] <= $onHand) {
+                    continue;
+                }
+
+                $this->short = true;
+
+                $this->addError('lines', __('The count shows only :count of :name at :outlet. Check the shelf, then tick the box below to record the sale anyway.', [
+                    'count' => $onHand,
+                    'name' => "{$variant->product->name} · {$variant->name}",
+                    'outlet' => $outlet->name,
+                ]));
+
+                return;
+            }
+        }
 
         $sale = DB::transaction(function () use ($validated, $variants, $outlet): Sale {
             $sale = Sale::create([
@@ -243,10 +298,10 @@ new #[Title('Record counter sale')] class extends Component {
                             type="number"
                             min="1"
                             step="1"
-                            max="999"
+                            max="99"
                             inputmode="numeric"
                             x-on:keydown="['e', 'E', '+', '-', '.', ','].includes($event.key) && $event.preventDefault()"
-                            x-on:input="if ($el.value > 999) { $el.value = 999; $el.dispatchEvent(new Event('input')) }"
+                            x-on:input="if ($el.value > 99) { $el.value = 99; $el.dispatchEvent(new Event('input')) }"
                             class="md:w-28"
                         />
 
@@ -268,6 +323,10 @@ new #[Title('Record counter sale')] class extends Component {
                 <span class="font-medium">{{ __('Total') }}</span>
                 <span class="font-semibold">&#8369;{{ $this->total }}</span>
             </p>
+
+            @if ($short)
+                <flux:checkbox wire:model="sellAnyway" :label="__('The goods are on the shelf — record this sale anyway')" />
+            @endif
 
             <div class="flex items-center gap-3">
                 <flux:button variant="primary" type="submit">{{ __('Record sale') }}</flux:button>

@@ -451,4 +451,77 @@ class EmployeeRecordsTest extends TestCase
             ->assertSeeHtml('keep($el, /\s/g)')
             ->assertSeeHtml('maxlength="255"');
     }
+
+    public function test_the_edit_form_cannot_close_the_account_using_it(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+        User::factory()->administrator()->create();
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.workforce.employees.manage', ['user' => $administrator])
+            ->set('is_active', false)
+            ->call('save')
+            ->assertHasErrors('is_active');
+
+        $this->assertTrue($administrator->fresh()->is_active);
+    }
+
+    public function test_the_edit_form_cannot_make_the_last_administrator_something_else(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.workforce.employees.manage', ['user' => $administrator])
+            ->set('role', UserRole::Cashier->value)
+            ->call('save')
+            ->assertHasErrors('role');
+
+        $this->assertSame(UserRole::Administrator, $administrator->fresh()->role);
+    }
+
+    public function test_the_edit_form_cannot_close_the_last_administrator(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+        // Closed already, so the one being edited is the last one standing.
+        $other = User::factory()->administrator()->create(['is_active' => false]);
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.workforce.employees.manage', ['user' => $administrator])
+            ->set('role', UserRole::Baker->value)
+            ->call('save')
+            ->assertHasErrors('role');
+
+        $this->assertSame(UserRole::Administrator, $administrator->fresh()->role);
+        $this->assertFalse($other->fresh()->is_active);
+    }
+
+    public function test_an_administrator_may_step_down_while_another_remains(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+        User::factory()->administrator()->create();
+
+        Livewire::actingAs($administrator)
+            ->test('pages::employee.workforce.employees.manage', ['user' => $administrator])
+            ->set('role', UserRole::Cashier->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(UserRole::Cashier, $administrator->fresh()->role);
+    }
+
+    public function test_a_page_left_open_stops_working_once_its_account_is_closed(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+        $employee = User::factory()->baker()->create();
+
+        $page = Livewire::actingAs($administrator)
+            ->test('pages::employee.workforce.employees.index');
+
+        // Closed by someone else while the page sits open.
+        $administrator->update(['is_active' => false]);
+
+        $page->call('toggleActive', $employee->id)->assertForbidden();
+
+        $this->assertTrue($employee->fresh()->is_active);
+    }
 }

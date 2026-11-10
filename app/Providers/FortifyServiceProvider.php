@@ -61,9 +61,15 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $email = Str::transliterate(Str::lower((string) $request->input(Fortify::username())));
 
-            return Limit::perMinute(5)->by($throttleKey);
+            return [
+                Limit::perMinute(5)->by($email.'|'.$request->ip()),
+                // And per account whatever the address, so guesses spread
+                // across many addresses still meet a ceiling. Loose enough
+                // that an employee mistyping is never the one it stops.
+                Limit::perMinute(10)->by('login-account|'.$email),
+            ];
         });
     }
 }

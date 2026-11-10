@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\User;
 use App\Rules\PhilippineMobile;
 use Flux\Flux;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
@@ -106,6 +107,28 @@ new #[Title('Manage employee')] class extends Component {
 
         $employee = User::findOrFail($this->employeeId);
 
+        $role = UserRole::from($validated['role']);
+
+        // The same two promises the list's switch keeps, because this form can
+        // do everything the switch can. Closing yourself ends the session doing
+        // it with no way back in.
+        if ($employee->is(Auth::user()) && ! $validated['is_active']) {
+            $this->addError('is_active', __('You cannot close your own account.'));
+
+            return;
+        }
+
+        // And the business must keep a way in: the last Administrator standing
+        // can be neither closed nor made something else.
+        if ($employee->isLastActiveAdministrator() && (! $validated['is_active'] || $role !== UserRole::Administrator)) {
+            $this->addError(
+                $validated['is_active'] ? 'role' : 'is_active',
+                __('This is the last active administrator. Make someone else an administrator first.'),
+            );
+
+            return;
+        }
+
         // No password here. An employee changes their own under Settings, and
         // an Administrator resetting one by hand would mean choosing it for
         // them and carrying it across.
@@ -197,6 +220,7 @@ new #[Title('Manage employee')] class extends Component {
                     :label="__('Account open')"
                     :description="__('A closed account keeps its history but cannot sign in.')"
                 />
+                <flux:error name="is_active" />
             @else
                 <flux:text class="text-sm">
                     {{ __('A password is generated when the account is created and shown once.') }}

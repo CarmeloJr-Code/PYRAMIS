@@ -148,10 +148,45 @@ class User extends Authenticatable implements PasskeyUser
 
     /**
      * Determine whether the user holds any of the given roles.
+     *
+     * A closed account holds none. Every ability in the workspace is defined
+     * through this, so closing an account takes its abilities away at once —
+     * including from a page that was already open, whose actions never pass
+     * through the route middleware again.
      */
     public function hasRole(UserRole ...$roles): bool
     {
-        return in_array($this->role, $roles, strict: true);
+        return $this->is_active && in_array($this->role, $roles, strict: true);
+    }
+
+    /**
+     * Whether an email sent to an employee would actually arrive.
+     *
+     * The log and array mailers write the message down and deliver nothing,
+     * which is how production runs until a real mailer is configured. Anything
+     * that would strand an employee waiting on a link — re-verifying a changed
+     * address, a password reset — asks this first.
+     */
+    public static function mailIsDelivered(): bool
+    {
+        return ! in_array(config('mail.default'), ['log', 'array'], true);
+    }
+
+    /**
+     * Whether closing or demoting this account would leave nobody able to
+     * administer: it is an active Administrator and there is no other.
+     */
+    public function isLastActiveAdministrator(): bool
+    {
+        if ($this->role !== UserRole::Administrator || ! $this->is_active) {
+            return false;
+        }
+
+        return self::query()
+            ->active()
+            ->where('role', UserRole::Administrator)
+            ->whereKeyNot($this->id)
+            ->doesntExist();
     }
 
     /**

@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\ProductStockMovement;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\User;
@@ -31,13 +32,18 @@ class CounterSaleTest extends TestCase
     }
 
     /**
-     * A sellable size of a published product.
+     * A sellable size of a published product, with enough on the outlet's
+     * shelf that ringing it up is never the thing a test trips over.
      */
     protected function variant(string $price = '460.00', string $product = 'Ube Cake'): ProductVariant
     {
-        return ProductVariant::factory()
+        $variant = ProductVariant::factory()
             ->for(Product::factory()->create(['name' => $product]))
             ->create(['price' => $price, 'is_available' => true]);
+
+        ProductStockMovement::factory()->for($variant)->for($this->outlet)->quantity(50)->create();
+
+        return $variant;
     }
 
     /**
@@ -250,6 +256,7 @@ class CounterSaleTest extends TestCase
 
         Livewire::actingAs($cashier)
             ->test('pages::employee.sales.index')
+            ->set('voidReason', 'Rang up twice')
             ->call('void', $sale->id)
             ->assertSeeText('0.00');
 
@@ -264,6 +271,18 @@ class CounterSaleTest extends TestCase
         Livewire::actingAs(User::factory()->cashier()->create())
             ->test('pages::employee.sales.create')
             ->assertSeeHtml('inputmode="numeric"')
-            ->assertSeeHtml('max="999"');
+            ->assertSeeHtml('max="99"');
+    }
+
+    public function test_it_rejects_more_of_one_item_than_a_single_sale_carries(): void
+    {
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.sales.create')
+            ->set('outlet_id', $this->outlet->id)
+            ->set('lines', [['product_variant_id' => $this->variant()->id, 'quantity' => 100]])
+            ->call('save')
+            ->assertHasErrors('lines.0.quantity');
+
+        $this->assertSame(0, Sale::count());
     }
 }

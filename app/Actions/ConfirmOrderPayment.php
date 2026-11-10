@@ -23,7 +23,8 @@ class ConfirmOrderPayment
      * shop would owe back, so either way the order stays Pending for the
      * cashier to settle with the customer.
      *
-     * @throws ValidationException when the amount does not match the total
+     * @throws ValidationException when the amount does not match the total, or
+     *                             the reference already paid for another order
      * @throws RuntimeException when the order is no longer waiting on payment
      */
     public function handle(Order $order, User $cashier, string $amount, string $gcashReference): OrderPayment
@@ -47,6 +48,25 @@ class ConfirmOrderPayment
                         'due' => number_format($due / 100, 2),
                         'difference' => $received < $due ? __('short') : __('over'),
                         'gap' => number_format(abs($due - $received) / 100, 2),
+                    ]),
+                ]);
+            }
+
+            // One GCash transfer pays for one order. A reference a cashier has
+            // already accepted elsewhere is a receipt being shown twice — or a
+            // typing slip, which the cashier would want caught just the same.
+            $paidWith = OrderPayment::query()
+                ->withoutReceipt()
+                ->where('gcash_reference', $gcashReference)
+                ->whereNotNull('verified_at')
+                ->where('order_id', '!=', $order->id)
+                ->with('order')
+                ->first();
+
+            if ($paidWith !== null) {
+                throw ValidationException::withMessages([
+                    'gcash_reference' => __('This GCash reference already paid for order :reference. The order stays Pending.', [
+                        'reference' => $paidWith->order->reference,
                     ]),
                 ]);
             }

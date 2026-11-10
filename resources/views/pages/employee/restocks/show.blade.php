@@ -136,6 +136,10 @@ new class extends Component {
      */
     public function cancel(): void
     {
+        // Whoever may schedule a restock may call it off. Preparing one is the
+        // Baker's; deciding it will not happen is BR-007 management.
+        Gate::authorize('schedule-restocks');
+
         $this->apply(RestockStatus::Cancelled);
     }
 
@@ -312,7 +316,7 @@ new class extends Component {
                         <flux:text>{{ __('This restock was called off and nothing moved.') }}</flux:text>
                     @endif
 
-                    @unless ($restock->status->isTerminal())
+                    @if (! $restock->status->isTerminal() && auth()->user()->can('schedule-restocks'))
                         <flux:button
                             variant="subtle"
                             wire:click="cancel"
@@ -320,7 +324,7 @@ new class extends Component {
                         >
                             {{ __('Cancel restock') }}
                         </flux:button>
-                    @endunless
+                    @endif
                 </div>
             </flux:card>
 

@@ -57,6 +57,13 @@ class SecurityHeaders
             $response->headers->set($header, $value);
         }
 
+        // Only over HTTPS, where a browser will honour it: tells the browser
+        // never to try this host over plain HTTP again, so a first request on
+        // a hostile network cannot be answered by someone else.
+        if ($request->isSecure()) {
+            $response->headers->set('Strict-Transport-Security', 'max-age=31536000');
+        }
+
         return $response;
     }
 }

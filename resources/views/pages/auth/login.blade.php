@@ -33,7 +33,8 @@
                     viewable
                 />
 
-                @if (Route::has('password.request'))
+                {{-- Offered only where the link it promises can be delivered. --}}
+                @if (Route::has('password.request') && \App\Models\User::mailIsDelivered())
                     <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
                         {{ __('Forgot your password?') }}
                     </flux:link>

@@ -20,9 +20,9 @@ class VoidSale
     /**
      * Void the sale, crediting back whatever it actually took.
      */
-    public function handle(Sale $sale, User $employee): Sale
+    public function handle(Sale $sale, User $employee, ?string $reason = null): Sale
     {
-        return DB::transaction(function () use ($sale, $employee): Sale {
+        return DB::transaction(function () use ($sale, $employee, $reason): Sale {
             // Re-read inside the transaction and lock, so two cashiers pressing
             // Void at the same moment cannot credit the same goods back twice.
             $sale = Sale::query()->lockForUpdate()->findOrFail($sale->id);
@@ -56,7 +56,7 @@ class VoidSale
                 );
             }
 
-            $sale->void();
+            $sale->void($employee, $reason);
 
             return $sale;
         });

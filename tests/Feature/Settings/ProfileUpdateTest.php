@@ -4,6 +4,7 @@ namespace Tests\Feature\Settings;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Exceptions\ComponentNotFoundException;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\TestWith;
@@ -23,6 +24,9 @@ class ProfileUpdateTest extends TestCase
 
     public function test_profile_information_can_be_updated(): void
     {
+        // With a mailer that delivers, so the new address can be proven.
+        config(['mail.default' => 'smtp']);
+
         $user = User::factory()->create();
 
         $this->actingAs($user);
@@ -166,36 +170,42 @@ class ProfileUpdateTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account(): void
+    public function test_a_changed_email_stays_verified_where_no_link_could_be_delivered(): void
     {
+        // The log and array mailers deliver nothing. Unverifying here would
+        // lock the employee out with no way to receive the link.
+        config(['mail.default' => 'log']);
+
         $user = User::factory()->create();
 
-        $this->actingAs($user);
+        Livewire::actingAs($user)
+            ->test('pages::settings.profile')
+            ->set('email', 'new.address@gmail.com')
+            ->call('updateProfileInformation')
+            ->assertHasNoErrors();
 
-        $response = Livewire::test('pages::settings.delete-user-modal')
-            ->set('password', 'password')
-            ->call('deleteUser');
-
-        $response
-            ->assertHasNoErrors()
-            ->assertRedirect('/');
-
-        $this->assertNull($user->fresh());
-        $this->assertFalse(auth()->check());
+        $this->assertSame('new.address@gmail.com', $user->refresh()->email);
+        $this->assertNotNull($user->email_verified_at);
     }
 
-    public function test_correct_password_must_be_provided_to_delete_account(): void
+    public function test_an_employee_cannot_delete_their_own_account(): void
     {
-        $user = User::factory()->create();
+        // Accounts are closed by an Administrator, never deleted: every sale,
+        // expense and message points back at the employee who made it.
+        $this->actingAs(User::factory()->create())
+            ->get(route('profile.edit'))
+            ->assertOk()
+            ->assertDontSeeText('Delete account');
+    }
 
-        $this->actingAs($user);
+    public function test_the_component_that_deleted_accounts_is_gone(): void
+    {
+        // Not merely unlinked: a component that still resolved could still be
+        // called by anyone holding a page that once rendered it.
+        $this->actingAs(User::factory()->create());
 
-        $response = Livewire::test('pages::settings.delete-user-modal')
-            ->set('password', 'wrong-password')
-            ->call('deleteUser');
+        $this->expectException(ComponentNotFoundException::class);
 
-        $response->assertHasErrors(['password']);
-
-        $this->assertNotNull($user->fresh());
+        Livewire::test('pages::settings.delete-user-modal');
     }
 }

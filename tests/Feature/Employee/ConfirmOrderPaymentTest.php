@@ -222,4 +222,41 @@ class ConfirmOrderPaymentTest extends TestCase
             ->assertSeeHtml('keep($el, /[^\d\s]/g)')
             ->assertSeeHtml('max="99999999.99"');
     }
+
+    public function test_a_reference_that_already_paid_for_another_order_is_refused(): void
+    {
+        $paid = $this->order(OrderStatus::Confirmed);
+        OrderPayment::factory()->for($paid)->verified('1980.00')->create(['gcash_reference' => '1234567890123']);
+
+        $order = $this->order();
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.show', ['order' => $order])
+            ->set('amount', '1980')
+            ->set('gcash_reference', '1234567890123')
+            ->call('confirmPayment')
+            ->assertHasErrors('gcash_reference')
+            ->assertSeeText($paid->reference);
+
+        $this->assertSame(OrderStatus::Pending, $order->fresh()->status);
+        $this->assertNull($order->payment()->first());
+    }
+
+    public function test_a_reference_another_customer_only_claimed_does_not_block_the_real_payer(): void
+    {
+        // Typed into somebody else's order but never checked by a cashier:
+        // a claim, not a payment, and not allowed to hold the reference.
+        OrderPayment::factory()->for($this->order())->create(['gcash_reference' => '1234567890123']);
+
+        $order = $this->order();
+
+        Livewire::actingAs(User::factory()->cashier()->create())
+            ->test('pages::employee.orders.show', ['order' => $order])
+            ->set('amount', '1980')
+            ->set('gcash_reference', '1234567890123')
+            ->call('confirmPayment')
+            ->assertHasNoErrors();
+
+        $this->assertSame(OrderStatus::Confirmed, $order->fresh()->status);
+    }
 }

@@ -487,6 +487,32 @@ class PlaceOrderTest extends TestCase
         $this->assertDatabaseEmpty('orders');
     }
 
+    public function test_it_rejects_a_pickup_date_further_ahead_than_pre_orders_are_taken(): void
+    {
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_date', today()->addDays(61)->toDateString())
+            ->call('submit')
+            ->assertHasErrors('pickup_date');
+
+        $this->assertDatabaseEmpty('orders');
+    }
+
+    public function test_the_last_day_pre_orders_are_taken_for_is_accepted(): void
+    {
+        $variant = $this->variant();
+        Session::put('cart', [$variant->id => 1]);
+
+        $this->withCustomerDetails(Livewire::test('pages::storefront.order'))
+            ->set('pickup_date', today()->addDays(60)->toDateString())
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('orders', 1);
+    }
+
     public function test_it_rejects_a_time_already_passed_today(): void
     {
         $this->travelTo(now()->setTime(14, 0));

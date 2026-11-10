@@ -307,6 +307,20 @@ class RestockTest extends TestCase
         $this->assertSame(4, $variant->stockAt($this->kiosk));
     }
 
+    public function test_a_baker_cannot_call_a_restock_off(): void
+    {
+        $variant = $this->stocked('Ube Cake', 'Round (7x3)', 20);
+        $restock = $this->preparing($variant, 5, 5);
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.restocks.show', ['restock' => $restock])
+            ->assertDontSeeText('Cancel restock')
+            ->call('cancel')
+            ->assertForbidden();
+
+        $this->assertSame(RestockStatus::Preparing, $restock->fresh()->status);
+    }
+
     public function test_cancelling_an_open_restock_moves_nothing(): void
     {
         $variant = $this->stocked('Ube Cake', 'Round (7x3)', 20);

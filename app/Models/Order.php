@@ -45,6 +45,15 @@ class Order extends Model
     use GeneratesReference, HasFactory;
 
     /**
+     * How long an order nobody has paid for keeps its goods off the shelf.
+     *
+     * Long enough to open GCash, pay and send the proof; short enough that an
+     * order placed and abandoned — or placed to empty the menu — gives the
+     * goods back the same morning without a cashier having to notice it.
+     */
+    public const UNPAID_HOLD_MINUTES = 30;
+
+    /**
      * The reference is what stands in for a customer account (BR-001), so it
      * must not be enumerable.
      */
@@ -172,6 +181,24 @@ class Order extends Model
     protected function open(Builder $query): void
     {
         $query->whereNotIn('status', [OrderStatus::Completed, OrderStatus::Cancelled]);
+    }
+
+    /**
+     * Limit the query to orders holding goods for their customer.
+     *
+     * Every open order whose payment a cashier has checked, and an unpaid one
+     * only while it is fresh (UNPAID_HOLD_MINUTES). An account-less storefront
+     * cannot tell a customer from someone filling in the form, so what
+     * reserves the goods for good is the money, not the form.
+     *
+     * @param  Builder<Order>  $query
+     */
+    #[Scope]
+    protected function holdingStock(Builder $query): void
+    {
+        $query->open()->where(fn (Builder $query) => $query
+            ->where('status', '!=', OrderStatus::Pending)
+            ->orWhere('created_at', '>=', now()->subMinutes(self::UNPAID_HOLD_MINUTES)));
     }
 
     /**

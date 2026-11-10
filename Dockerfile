@@ -28,7 +28,9 @@ RUN cp .env.example .env \
 # ---------- runtime ----------
 FROM dunglas/frankenphp:php8.4-alpine
 
-RUN install-php-extensions pdo_pgsql intl zip opcache pcntl
+RUN install-php-extensions pdo_pgsql intl zip opcache pcntl \
+ # No X-Powered-By: the PHP version is nobody's business but the operator's.
+ && echo "expose_php = Off" > "$PHP_INI_DIR/conf.d/zz-hardening.ini"
 
 WORKDIR /app
 COPY --from=build /app /app

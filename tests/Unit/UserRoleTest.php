@@ -23,10 +23,17 @@ class UserRoleTest extends TestCase
 
     public function test_has_role_matches_any_of_the_given_roles(): void
     {
-        $user = new User(['role' => UserRole::Baker]);
+        $user = new User(['role' => UserRole::Baker, 'is_active' => true]);
 
         $this->assertTrue($user->hasRole(UserRole::Baker));
         $this->assertTrue($user->hasRole(UserRole::Administrator, UserRole::Baker));
         $this->assertFalse($user->hasRole(UserRole::Administrator, UserRole::Cashier));
+    }
+
+    public function test_a_closed_account_holds_no_role(): void
+    {
+        $user = new User(['role' => UserRole::Baker, 'is_active' => false]);
+
+        $this->assertFalse($user->hasRole(UserRole::Baker));
     }
 }

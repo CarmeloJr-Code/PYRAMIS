@@ -150,6 +150,21 @@ class ProductManagementTest extends TestCase
         $this->assertSame(1, Product::where('name', 'Ube Cake')->count());
     }
 
+    public function test_it_rejects_a_price_of_nothing(): void
+    {
+        // A size at ₱0.00 is an order with nothing to pay and so nothing for a
+        // cashier to check before it is confirmed.
+        Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.products.manage')
+            ->set('name', 'Ube Cake')
+            ->set('category_id', Category::factory()->create()->id)
+            ->set('variants', [['id' => null, 'name' => 'Round', 'price' => '0', 'is_available' => true]])
+            ->call('save')
+            ->assertHasErrors(['variants.0.price']);
+
+        $this->assertDatabaseEmpty('products');
+    }
+
     public function test_it_rejects_a_negative_price(): void
     {
         $category = Category::factory()->create();

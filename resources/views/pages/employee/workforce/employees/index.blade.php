@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\UserRole;
 use App\Models\User;
 use Flux\Flux;
 use Illuminate\Support\Collection;
@@ -66,7 +65,7 @@ new #[Title('Employees')] class extends Component {
 
         // And the business must keep a way in: the last Administrator standing
         // cannot be the one who is closed.
-        if ($employee->is_active && $this->isLastAdministrator($employee)) {
+        if ($employee->isLastActiveAdministrator()) {
             Flux::toast(variant: 'warning', text: __('This is the last active administrator.'));
 
             return;
@@ -83,22 +82,6 @@ new #[Title('Employees')] class extends Component {
     protected function signedIn(): User
     {
         return Auth::user();
-    }
-
-    /**
-     * Whether closing this account would leave nobody able to administer.
-     */
-    protected function isLastAdministrator(User $employee): bool
-    {
-        if ($employee->role !== UserRole::Administrator) {
-            return false;
-        }
-
-        return User::query()
-            ->active()
-            ->where('role', UserRole::Administrator)
-            ->whereKeyNot($employee->id)
-            ->doesntExist();
     }
 }; ?>
 

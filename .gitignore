@@ -23,3 +23,7 @@ yarn-error.log
 /.vscode
 /.zed
 /.agents
+
+# Local source photos for product images — not served, not versioned
+/resources/images/purple-yam-cutouts 2 Enhanced/
+/resources/images/purple-yam-product-cards enhanced/

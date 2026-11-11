@@ -10,6 +10,7 @@ use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -28,8 +29,12 @@ new #[Title('Sales forecast')] class extends Component {
      * costs a request against a shared allowance and is only ever produced on a
      * press. Loading this page still costs exactly what it did before.
      *
+     * Locked, because only the server writes it: what is shown as the model's
+     * reading must be what the model said, never something sent up the wire.
+     *
      * @var array<string, mixed>|null
      */
+    #[Locked]
     public ?array $reading = null;
 
     /**

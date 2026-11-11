@@ -20,6 +20,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Ai\Prompts\AgentPrompt;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -293,6 +294,25 @@ class ForecastReadingTest extends TestCase
             ->set('lookbackDays', 84)
             ->assertSet('reading', null)
             ->assertDontSee('Saturdays carry the week');
+    }
+
+    public function test_a_reading_cannot_be_sent_up_from_the_browser(): void
+    {
+        ForecastReadingAgent::fake([$this->reading()]);
+
+        $screen = $this->screen()->call('generateReading');
+
+        // Whole or in part, a reading only ever comes from the server.
+        foreach (['reading' => ['summary' => 'Forged'], 'reading.summary' => 'Forged'] as $property => $value) {
+            try {
+                $screen->set($property, $value);
+                $this->fail("The browser was allowed to set {$property}.");
+            } catch (CannotUpdateLockedPropertyException) {
+                // Refused, as it should be.
+            }
+        }
+
+        $screen->assertSet('reading.summary', $this->reading()['summary']);
     }
 
     public function test_the_screen_says_so_when_no_key_is_configured(): void

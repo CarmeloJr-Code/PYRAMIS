@@ -65,7 +65,8 @@ new class extends Component {
     </flux:card>
 @endplaceholder
 
-<flux:card data-test="bake-next">
+{{-- Polled with the dashboard around it, and no faster: the outlook reads the whole lookback window. --}}
+<flux:card wire:poll.60s data-test="bake-next">
     <div class="flex items-center justify-between gap-2">
         <flux:heading>{{ __('Bake next') }}</flux:heading>
         <flux:button :href="route('employee.forecast')" variant="ghost" size="sm" wire:navigate>{{ __('Forecast') }}</flux:button>

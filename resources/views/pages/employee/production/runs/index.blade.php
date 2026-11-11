@@ -220,7 +220,8 @@ new #[Title('Production runs')] class extends Component {
     }
 }; ?>
 
-<section class="w-full">
+{{-- Polled, so a run another baker logs reaches a log left open. A poll sends what has been typed along with it, so a half-filled form survives. --}}
+<section wire:poll.30s class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Production runs') }}</flux:heading>

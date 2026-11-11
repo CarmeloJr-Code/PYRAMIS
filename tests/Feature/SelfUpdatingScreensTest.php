@@ -3,21 +3,29 @@
 namespace Tests\Feature;
 
 use App\Enums\OrderStatus;
+use App\Enums\RestockStatus;
+use App\Models\Conversation;
 use App\Models\Ingredient;
 use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\ProductionRun;
 use App\Models\ProductVariant;
+use App\Models\Restock;
+use App\Models\RestockItem;
 use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * The screens about orders, sales and stock keep themselves current.
+ * The screens other people change while they sit open keep themselves current:
+ * orders, sales and stock, and the dashboard, restocks, production runs and
+ * message list beside them.
  *
  * Each is polled, the same way the notification bell and an open message
  * thread already are. What is settled here is which screens ask, how often,
@@ -42,6 +50,10 @@ class SelfUpdatingScreensTest extends TestCase
             'ingredient stock' => ['employee.inventory.index', '30s'],
             'finished goods' => ['employee.inventory.finished', '30s'],
             'ingredient usage' => ['employee.inventory.usage', '30s'],
+            'dashboard' => ['employee.dashboard', '60s'],
+            'restock list' => ['employee.restocks.index', '30s'],
+            'production runs' => ['employee.production.runs.index', '30s'],
+            'message list' => ['employee.messages.index', '30s'],
         ];
     }
 
@@ -73,6 +85,120 @@ class SelfUpdatingScreensTest extends TestCase
 
         $this->get(route('employee.orders.show', $order))->assertOk()->assertSee('wire:poll.15s', escape: false);
         $this->get(route('employee.inventory.show', $ingredient))->assertOk()->assertSee('wire:poll.30s', escape: false);
+        $this->get(route('employee.restocks.show', Restock::factory()->create()))->assertOk()->assertSee('wire:poll.30s', escape: false);
+
+        // Placed on the dashboard lazily, so it is not in the page that GET
+        // returns and has to ask for itself.
+        Livewire::test('bake-next')->assertSeeHtml('wire:poll.60s');
+    }
+
+    /**
+     * The dashboard is the most expensive thing polled, and the panel on it
+     * reads the whole lookback window, so what one poll of each costs is held
+     * to the ceiling QueryBudgetTest sets for opening a screen.
+     */
+    public function test_a_poll_of_the_dashboard_stays_inside_the_query_budget(): void
+    {
+        Outlet::factory()->mainBranch()->create();
+
+        Order::factory()->count(5)->create();
+        Sale::factory()->count(5)->create();
+
+        $manager = User::factory()->administrator()->create();
+
+        foreach (['pages::employee.dashboard', 'bake-next'] as $component) {
+            $screen = Livewire::actingAs($manager)->test($component);
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+
+            $screen->call('$refresh')->assertOk();
+
+            $queries = count(DB::getQueryLog());
+
+            DB::disableQueryLog();
+
+            $this->assertLessThanOrEqual(25, $queries, "A poll of [{$component}] costs {$queries} queries.");
+        }
+    }
+
+    public function test_the_dashboard_counts_an_order_placed_after_it_was_opened(): void
+    {
+        Outlet::factory()->mainBranch()->create();
+
+        $dashboard = Livewire::actingAs(User::factory()->administrator()->create())
+            ->test('pages::employee.dashboard');
+
+        $before = $dashboard->html();
+
+        Order::factory()->create(['pickup_at' => now()->addHour()]);
+
+        $this->assertNotSame($before, $dashboard->call('$refresh')->html());
+    }
+
+    public function test_the_restock_screens_follow_a_restock_moved_along_by_someone_else(): void
+    {
+        Outlet::factory()->mainBranch()->create();
+
+        $restock = Restock::factory()->preparing()->create();
+        $item = RestockItem::factory()->for($restock)->requesting(4)->create();
+
+        $baker = User::factory()->baker()->create();
+
+        $list = Livewire::actingAs($baker)->test('pages::employee.restocks.index');
+
+        // Halfway through counting what was set aside.
+        $page = Livewire::actingAs($baker)
+            ->test('pages::employee.restocks.show', ['restock' => $restock])
+            ->set("prepared.{$item->id}", '3')
+            ->assertSee('Save prepared quantities');
+
+        $late = Restock::factory()->create();
+
+        $list->assertDontSee($late->reference)->call('$refresh')->assertSee($late->reference);
+
+        $page->call('$refresh')
+            ->assertSee('Save prepared quantities')
+            ->assertSet("prepared.{$item->id}", '3');
+
+        Restock::whereKey($restock->id)->update(['status' => RestockStatus::Cancelled]);
+
+        $page->call('$refresh')
+            ->assertSet('restock.status', RestockStatus::Cancelled)
+            ->assertDontSee('Save prepared quantities');
+    }
+
+    public function test_the_run_log_picks_up_a_run_logged_by_another_baker_and_keeps_the_form(): void
+    {
+        Outlet::factory()->mainBranch()->create();
+
+        $log = Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.runs.index')
+            ->set('quantity', '12')
+            ->set('notes', 'Second oven');
+
+        $run = ProductionRun::factory()->create(['produced_at' => now()]);
+
+        $log->assertDontSee($run->reference)
+            ->call('$refresh')
+            ->assertSee($run->reference)
+            ->assertSet('quantity', '12')
+            ->assertSet('notes', 'Second oven');
+    }
+
+    public function test_the_message_list_picks_up_a_conversation_started_by_someone_else(): void
+    {
+        $cashier = User::factory()->cashier()->create();
+
+        $list = Livewire::actingAs($cashier)
+            ->test('pages::employee.messages.index')
+            ->assertDontSee('Saturday cake orders');
+
+        Conversation::factory()
+            ->withMembers([$cashier, User::factory()->administrator()->create()])
+            ->create(['subject' => 'Saturday cake orders']);
+
+        $list->call('$refresh')->assertSee('Saturday cake orders');
     }
 
     public function test_the_order_queue_picks_up_an_order_placed_after_it_was_opened(): void

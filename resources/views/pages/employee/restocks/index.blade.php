@@ -68,7 +68,8 @@ new #[Title('Restocking')] class extends Component {
     }
 }; ?>
 
-<section class="w-full">
+{{-- Polled, so a restock requested, set aside or delivered by someone else reaches a list left open. --}}
+<section wire:poll.30s class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Restocking') }}</flux:heading>

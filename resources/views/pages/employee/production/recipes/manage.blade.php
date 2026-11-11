@@ -22,7 +22,12 @@ new class extends Component {
     #[Locked]
     public ?int $recipeId = null;
 
-    public int $yield_quantity = 1;
+    /**
+     * A string, as every number a person types is: a strict int cannot hold
+     * the empty string a cleared field sends, and Livewire drops the property
+     * rather than refuse the request.
+     */
+    public string $yield_quantity = '1';
 
     public string $notes = '';
 
@@ -34,9 +39,9 @@ new class extends Component {
     public array $items = [];
 
     /**
-     * How many units the planner is costing out.
+     * How many units the planner is costing out, as typed.
      */
-    public int $plannedUnits = 1;
+    public string $plannedUnits = '1';
 
     /**
      * Mount the component for the size being written up.
@@ -51,9 +56,9 @@ new class extends Component {
 
         if ($recipe !== null) {
             $this->recipeId = $recipe->id;
-            $this->yield_quantity = $recipe->yield_quantity;
+            $this->yield_quantity = (string) $recipe->yield_quantity;
             $this->notes = $recipe->notes ?? '';
-            $this->plannedUnits = $recipe->yield_quantity;
+            $this->plannedUnits = (string) $recipe->yield_quantity;
 
             $this->items = $recipe->items
                 ->map(fn (RecipeItem $item): array => [
@@ -112,16 +117,19 @@ new class extends Component {
             ? null
             : Recipe::with('items.ingredient')->find($this->recipeId);
 
-        // Past what one run may log, the plan would describe nothing the
-        // bakery could record, and the thousandths arithmetic could overflow.
-        if ($recipe === null || $this->plannedUnits < 1 || $this->plannedUnits > 100000) {
+        // A cleared or half-typed field plans nothing. Past what one run may
+        // log, the plan would describe nothing the bakery could record, and
+        // the thousandths arithmetic could overflow.
+        $units = filter_var($this->plannedUnits, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 100000]]);
+
+        if ($recipe === null || $units === false) {
             return collect();
         }
 
         $ingredients = $this->ingredients->keyBy('id');
 
         try {
-            $requirements = $recipe->requirementsInThousandths($this->plannedUnits);
+            $requirements = $recipe->requirementsInThousandths($units);
         } catch (\RuntimeException) {
             // A conversion the saved recipe relies on has gone missing; saving
             // the form again names the line.
@@ -289,7 +297,7 @@ new class extends Component {
 
             $recipe->fill([
                 'product_variant_id' => $this->productVariant->id,
-                'yield_quantity' => $validated['yield_quantity'],
+                'yield_quantity' => (int) $validated['yield_quantity'],
                 'notes' => $validated['notes'] ?: null,
             ])->save();
 

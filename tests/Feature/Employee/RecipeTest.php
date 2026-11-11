@@ -281,6 +281,43 @@ class RecipeTest extends TestCase
         $this->assertCount(0, $component->set('plannedUnits', 100001)->instance()->plan());
     }
 
+    public function test_clearing_the_planner_plans_nothing_rather_than_failing(): void
+    {
+        $recipe = Recipe::factory()->yielding(2)->create();
+
+        RecipeItem::factory()->for($recipe)->quantity('4.000')->create();
+
+        // Backspacing the field empty sends an empty string before anything
+        // else is typed.
+        $component = Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.recipes.manage', ['productVariant' => $recipe->productVariant])
+            ->set('plannedUnits', '')
+            ->assertOk();
+
+        $this->assertCount(0, $component->instance()->plan());
+        $this->assertCount(0, $component->set('plannedUnits', '1.5')->instance()->plan());
+        $this->assertCount(1, $component->set('plannedUnits', '3')->instance()->plan());
+    }
+
+    public function test_a_cleared_batch_size_is_asked_for_rather_than_failing(): void
+    {
+        $recipe = Recipe::factory()->yielding(2)->create();
+        $item = RecipeItem::factory()->for($recipe)->quantity('4.000')->create();
+
+        Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.recipes.manage', ['productVariant' => $recipe->productVariant])
+            ->set('yield_quantity', '')
+            ->set('notes', 'Cool before slicing.')
+            ->call('save')
+            ->assertHasErrors(['yield_quantity' => 'required'])
+            ->set('yield_quantity', '6')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(6, $recipe->fresh()->yield_quantity);
+        $this->assertDatabaseHas('recipe_items', ['id' => $item->id]);
+    }
+
     public function test_a_line_can_be_written_in_cups_spoons_or_grams(): void
     {
         $variant = ProductVariant::factory()->create();

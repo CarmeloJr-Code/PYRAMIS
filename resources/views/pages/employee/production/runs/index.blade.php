@@ -20,7 +20,12 @@ new #[Title('Production runs')] class extends Component {
 
     public ?int $product_variant_id = null;
 
-    public int $quantity = 1;
+    /**
+     * A string, as every number a person types is: a strict int cannot hold
+     * the empty string a cleared field sends, and Livewire drops the property
+     * rather than refuse the request.
+     */
+    public string $quantity = '1';
 
     public string $notes = '';
 
@@ -81,12 +86,16 @@ new #[Title('Production runs')] class extends Component {
     {
         $variant = $this->chosenVariant;
 
-        if ($variant === null || $this->quantity < 1) {
+        // A cleared or half-typed field previews nothing; record() is where
+        // the number is judged.
+        $quantity = filter_var($this->quantity, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 100000]]);
+
+        if ($variant === null || $quantity === false) {
             return collect();
         }
 
         try {
-            $requirements = $variant->recipe->requirementsInThousandths($this->quantity);
+            $requirements = $variant->recipe->requirementsInThousandths($quantity);
         } catch (\RuntimeException) {
             // A line whose conversion has gone missing: show nothing to cover
             // rather than a broken page; logging the run names the line.
@@ -193,7 +202,7 @@ new #[Title('Production runs')] class extends Component {
             $run = app(RecordProductionRun::class)->handle(
                 $variant,
                 Auth::user(),
-                $validated['quantity'],
+                (int) $validated['quantity'],
                 $validated['notes'] ?: null,
             );
         } catch (\RuntimeException $exception) {
@@ -203,7 +212,7 @@ new #[Title('Production runs')] class extends Component {
         }
 
         $this->reset('notes');
-        $this->quantity = 1;
+        $this->quantity = '1';
 
         unset($this->runs, $this->output, $this->preview, $this->canCover, $this->producibleVariants);
 

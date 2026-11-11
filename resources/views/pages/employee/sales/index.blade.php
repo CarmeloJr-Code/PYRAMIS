@@ -182,7 +182,8 @@ new #[Title('Sales')] class extends Component {
     }
 }; ?>
 
-<section class="w-full">
+{{-- Polled, so a sale rung up or voided at another till reaches a log left open. --}}
+<section wire:poll.30s class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-col gap-2">
             <flux:heading size="xl" level="1">{{ __('Sales') }}</flux:heading>

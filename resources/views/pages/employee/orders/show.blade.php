@@ -172,7 +172,8 @@ new class extends Component {
     }
 }; ?>
 
-<section class="w-full max-w-4xl space-y-6">
+{{-- Polled, so a payment sent or a status changed elsewhere reaches an order left open. A poll sends what has been typed along with it, so a half-filled form survives. --}}
+<section wire:poll.15s class="w-full max-w-4xl space-y-6">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-col gap-2">
             <flux:heading size="xl" level="1" class="font-mono">{{ $order->reference }}</flux:heading>

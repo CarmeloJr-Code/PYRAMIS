@@ -198,7 +198,8 @@ new #[Layout('layouts::storefront')] class extends Component {
     }
 }; ?>
 
-<div class="flex max-w-3xl flex-col gap-8">
+{{-- Polled, so the customer watching this page sees the bakery confirm, prepare and release the order without reloading. A poll sends what has been typed along with it, so a half-filled form survives. --}}
+<div wire:poll.15s class="flex max-w-3xl flex-col gap-8">
     <header class="flex flex-col gap-3">
         <p class="text-xs font-medium tracking-[0.2em] text-snow-400 uppercase">{{ __('Order reference') }}</p>
         <h1 class="font-mono text-3xl font-semibold tracking-tight text-orchid-800">{{ $order->reference }}</h1>

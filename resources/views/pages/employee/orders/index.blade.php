@@ -301,7 +301,8 @@ new #[Title('Orders')] class extends Component {
     }
 }; ?>
 
-<section class="w-full">
+{{-- Polled, so an order placed or moved along by someone else reaches a queue left open. --}}
+<section wire:poll.15s class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-col gap-2">
             <flux:heading size="xl" level="1">{{ __('Orders') }}</flux:heading>

@@ -376,7 +376,8 @@ new #[Title('Dashboard')] class extends Component {
     }
 }; ?>
 
-<section class="w-full">
+{{-- Polled, so the day's orders, sales and stock reach a dashboard left open. The bake-next panel is its own component and polls for itself. --}}
+<section wire:poll.60s class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-col gap-1">
             <flux:heading size="xl" level="1">{{ __('Welcome, :name', ['name' => $this->employee->name]) }}</flux:heading>

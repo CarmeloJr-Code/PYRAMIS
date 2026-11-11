@@ -47,7 +47,8 @@ new #[Title('Inventory')] class extends Component {
     }
 }; ?>
 
-<section class="w-full">
+{{-- Polled, so stock drawn or delivered by someone else reaches a list left open. --}}
+<section wire:poll.30s class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Inventory') }}</flux:heading>

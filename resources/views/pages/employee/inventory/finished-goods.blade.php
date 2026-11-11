@@ -188,7 +188,8 @@ new #[Title('Finished goods')] class extends Component {
     }
 }; ?>
 
-<section class="w-full">
+{{-- Polled, so a bake, a sale or a restock by someone else reaches a shelf count left open. A poll sends what has been typed along with it, so a half-filled form survives. --}}
+<section wire:poll.30s class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Finished goods') }}</flux:heading>

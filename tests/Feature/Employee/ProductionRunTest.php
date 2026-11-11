@@ -240,6 +240,32 @@ class ProductionRunTest extends TestCase
             ->assertSee('10');
     }
 
+    public function test_clearing_the_units_field_previews_nothing_rather_than_failing(): void
+    {
+        $flour = $this->stocked('All-Purpose Flour', '50.000');
+        $variant = $this->producible('Ube Cake', 'Round (7x3)', 1, [$flour->id => '1.000']);
+
+        // Backspacing the field empty sends an empty string before anything
+        // else is typed.
+        $component = Livewire::actingAs(User::factory()->baker()->create())
+            ->test('pages::employee.production.runs.index')
+            ->set('product_variant_id', $variant->id)
+            ->set('quantity', '')
+            ->assertOk()
+            ->assertSet('canCover', false);
+
+        $this->assertCount(0, $component->instance()->preview());
+
+        $component->call('record')->assertHasErrors(['quantity' => 'required']);
+
+        $this->assertSame(0, ProductionRun::count());
+        $this->assertSame(50000, $flour->fresh()->stockInThousandths());
+
+        $component->set('quantity', '3')->assertSet('canCover', true)->call('record')->assertHasNoErrors();
+
+        $this->assertSame(47000, $flour->fresh()->stockInThousandths());
+    }
+
     public function test_the_preview_shows_what_a_run_would_take_and_flags_a_shortfall(): void
     {
         $flour = $this->stocked('All-Purpose Flour', '50.000');

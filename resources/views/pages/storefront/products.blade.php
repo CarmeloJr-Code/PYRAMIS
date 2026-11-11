@@ -116,7 +116,8 @@ new #[Layout('layouts::storefront')] #[Title('Products')] class extends Componen
     }
 }; ?>
 
-<div class="flex flex-col gap-8">
+{{-- Polled, so the units shown as left today follow the shelf while the menu sits open. --}}
+<div wire:poll.60s class="flex flex-col gap-8">
     <header class="flex flex-col gap-3">
         <h1 class="text-3xl font-semibold tracking-tight">{{ __('The menu') }}</h1>
         <p class="max-w-2xl text-snow-500">{{ __('Every size has its own card, with its price and how many are ready at each pickup outlet. Pick one to order it.') }}</p>

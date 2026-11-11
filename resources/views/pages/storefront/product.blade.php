@@ -155,7 +155,8 @@ new #[Layout('layouts::storefront')] class extends Component {
     }
 }; ?>
 
-<div class="flex flex-col gap-8">
+{{-- Polled, so the units shown as left today follow the shelf while the page sits open. --}}
+<div wire:poll.60s class="flex flex-col gap-8">
     <nav class="text-sm text-snow-500">
         <a href="{{ route('products.index') }}" class="hover:text-orchid-700" wire:navigate>{{ __('Menu') }}</a>
         <span class="px-2">/</span>

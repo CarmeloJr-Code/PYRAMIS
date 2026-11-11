@@ -41,7 +41,8 @@ new #[Title('Messages')] class extends Component {
     }
 }; ?>
 
-<section class="w-full">
+{{-- Polled, so a new conversation or reply reaches a list left open, as an open thread already does. --}}
+<section wire:poll.30s class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Messages') }}</flux:heading>

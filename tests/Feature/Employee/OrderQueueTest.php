@@ -58,12 +58,13 @@ class OrderQueueTest extends TestCase
         ];
     }
 
-    #[DataProvider('roleProvider')]
-    public function test_every_role_reaches_the_queue(UserRole $role): void
+    public function test_every_role_reaches_the_queue(): void
     {
-        $this->actingAs(User::factory()->create(['role' => $role]))
-            ->get(route('employee.orders.index'))
-            ->assertOk();
+        foreach (UserRole::cases() as $role) {
+            $this->actingAs(User::factory()->create(['role' => $role]))
+                ->get(route('employee.orders.index'))
+                ->assertOk();
+        }
     }
 
     #[DataProvider('roleProvider')]

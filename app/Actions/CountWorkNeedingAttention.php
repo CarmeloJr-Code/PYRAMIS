@@ -52,7 +52,11 @@ final class CountWorkNeedingAttention
     private function count(User $employee): array
     {
         $counts = [
-            'orders' => $employee->can('manage-orders') ? $this->paymentsToCheck() : 0,
+            'orders' => match (true) {
+                $employee->can('manage-orders') => $this->paymentsToCheck(),
+                $employee->can('prepare-orders') => $this->ordersToPrepare(),
+                default => 0,
+            },
             'inventory' => $employee->can('access-inventory') ? $this->lowStock() : 0,
             'restocks' => $employee->can('access-restocking') ? $this->restocksToPrepare() : 0,
             'messages' => $this->unreadMessages($employee),
@@ -73,6 +77,15 @@ final class CountWorkNeedingAttention
                 ->whereNotNull('submitted_at')
                 ->whereNull('verified_at'))
             ->count();
+    }
+
+    /**
+     * Orders paid for and confirmed that nobody has started making — what the
+     * kitchen can pick up right now.
+     */
+    private function ordersToPrepare(): int
+    {
+        return Order::query()->where('status', OrderStatus::Confirmed)->count();
     }
 
     /**

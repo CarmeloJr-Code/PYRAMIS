@@ -50,7 +50,59 @@ new #[Title('Orders')] class extends Component {
      */
     public function mount(): void
     {
-        Gate::authorize('manage-orders');
+        Gate::authorize('prepare-orders');
+    }
+
+    /**
+     * Whether the signed-in employee handles orders end to end, or only the
+     * kitchen's part of them (BR-015).
+     */
+    #[Computed]
+    public function managing(): bool
+    {
+        return Gate::allows('manage-orders');
+    }
+
+    /**
+     * The states this employee may look at: every one for whoever manages
+     * orders, the kitchen's three for a Baker.
+     *
+     * @return list<OrderStatus>
+     */
+    #[Computed]
+    public function statuses(): array
+    {
+        return $this->managing ? OrderStatus::cases() : OrderStatus::kitchen();
+    }
+
+    /**
+     * The states the list is showing right now.
+     *
+     * A picked status, if this employee may look at it — the URL is editable,
+     * so one they may not shows nothing. Otherwise what is still to be done:
+     * every open order at the counter, the ones to make in the kitchen. A
+     * search looks past that to everything the employee may see.
+     *
+     * @return list<OrderStatus>
+     */
+    private function shownStatuses(bool $searching = false): array
+    {
+        if ($this->statusFilter !== '') {
+            return array_values(array_filter(
+                $this->statuses,
+                fn (OrderStatus $status): bool => $status->value === $this->statusFilter,
+            ));
+        }
+
+        if ($searching) {
+            return $this->statuses;
+        }
+
+        return array_values(array_filter(
+            $this->statuses,
+            fn (OrderStatus $status): bool => ! $status->isTerminal()
+                && ($this->managing || $status !== OrderStatus::Ready),
+        ));
     }
 
     /**
@@ -87,14 +139,7 @@ new #[Title('Orders')] class extends Component {
             ->withExists(['payment as payment_to_check' => fn ($query) => $query
                 ->whereNotNull('submitted_at')
                 ->whereNull('verified_at')])
-            ->when(
-                $this->statusFilter !== '',
-                fn ($query) => $query->where('status', $this->statusFilter),
-                fn ($query) => $query->when($term === '', fn ($query) => $query->whereNotIn('status', [
-                    OrderStatus::Completed->value,
-                    OrderStatus::Cancelled->value,
-                ])),
-            )
+            ->whereIn('status', $this->shownStatuses(searching: $term !== ''))
             ->when($term !== '', fn ($query) => $query->where(function ($match) use ($term): void {
                 $match->whereLike('customer_name', "%{$term}%");
 
@@ -107,8 +152,10 @@ new #[Title('Orders')] class extends Component {
                 // Only a term that is all number is a phone number — otherwise
                 // the digits in "PY-234" would match every phone containing 234.
                 // Orders taken before the form insisted on 09XXXXXXXXX may hold
-                // spaces or dashes, so those are ignored on both sides.
-                if (preg_match('/^[\d\s+-]+$/', $term) === 1 && strlen($digits = preg_replace('/\D/', '', $term)) >= 3) {
+                // spaces or dashes, so those are ignored on both sides. Only for
+                // whoever is shown the phone: a search on a hidden column would
+                // let it be guessed a digit at a time.
+                if ($this->managing && preg_match('/^[\d\s+-]+$/', $term) === 1 && strlen($digits = preg_replace('/\D/', '', $term)) >= 3) {
                     $match->orWhereRaw("replace(replace(customer_phone, ' ', ''), '-', '') like ?", ["%{$digits}%"]);
                 }
             }))
@@ -166,9 +213,7 @@ new #[Title('Orders')] class extends Component {
             ->whereHas('order', function (Builder $query) use ($day): void {
                 $this->pickedUpOn($query, $day);
 
-                $this->statusFilter !== ''
-                    ? $query->where('status', $this->statusFilter)
-                    : $query->whereNotIn('status', [OrderStatus::Completed->value, OrderStatus::Cancelled->value]);
+                $query->whereIn('status', $this->shownStatuses());
             })
             ->groupBy('product_variant_id')
             ->get()
@@ -306,10 +351,16 @@ new #[Title('Orders')] class extends Component {
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-col gap-2">
             <flux:heading size="xl" level="1">{{ __('Orders') }}</flux:heading>
-            <flux:text>{{ __('Customer pre-orders, earliest pickup first. Open orders show by default.') }}</flux:text>
+            @if ($this->managing)
+                <flux:text>{{ __('Customer pre-orders, earliest pickup first. Open orders show by default.') }}</flux:text>
+            @else
+                <flux:text>{{ __('Paid pre-orders to make, earliest pickup first. Open one to mark it Preparing, then Ready for pickup.') }}</flux:text>
+            @endif
         </div>
 
-        <x-summary-report-button :report="\App\Enums\SummaryReport::Orders" />
+        @if ($this->managing)
+            <x-summary-report-button :report="\App\Enums\SummaryReport::Orders" />
+        @endif
     </div>
 
     <flux:separator variant="subtle" class="my-6" />
@@ -319,8 +370,8 @@ new #[Title('Orders')] class extends Component {
             type="search"
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
-            :placeholder="__('Reference, name or phone')"
-            :aria-label="__('Search orders by reference, name or phone')"
+            :placeholder="$this->managing ? __('Reference, name or phone') : __('Reference or name')"
+            :aria-label="$this->managing ? __('Search orders by reference, name or phone') : __('Search orders by reference or name')"
         />
     </div>
 
@@ -345,10 +396,10 @@ new #[Title('Orders')] class extends Component {
             :variant="$statusFilter === '' ? 'primary' : 'ghost'"
             wire:click="$set('statusFilter', '')"
         >
-            {{ __('Open') }}
+            {{ $this->managing ? __('Open') : __('To prepare') }}
         </flux:button>
 
-        @foreach (OrderStatus::cases() as $status)
+        @foreach ($this->statuses as $status)
             <flux:button
                 size="sm"
                 wire:key="filter-{{ $status->value }}"
@@ -427,7 +478,9 @@ new #[Title('Orders')] class extends Component {
                     <flux:table.column>{{ __('Customer') }}</flux:table.column>
                     <flux:table.column>{{ __('Pickup') }}</flux:table.column>
                     <flux:table.column>{{ __('Outlet') }}</flux:table.column>
-                    <flux:table.column>{{ __('Total') }}</flux:table.column>
+                    @if ($this->managing)
+                        <flux:table.column>{{ __('Total') }}</flux:table.column>
+                    @endif
                     <flux:table.column>{{ __('Status') }}</flux:table.column>
                     <flux:table.column />
                 </flux:table.columns>
@@ -439,12 +492,16 @@ new #[Title('Orders')] class extends Component {
                             <flux:table.cell>
                                 <div class="flex flex-col">
                                     <span>{{ $order->customer_name }}</span>
-                                    <span class="text-xs text-zinc-500">{{ $order->customer_phone }}</span>
+                                    @if ($this->managing)
+                                        <span class="text-xs text-zinc-500">{{ $order->customer_phone }}</span>
+                                    @endif
                                 </div>
                             </flux:table.cell>
                             <flux:table.cell>{{ $order->pickup_at->format('j M, g:ia') }}</flux:table.cell>
                             <flux:table.cell>{{ $order->outlet->name }}</flux:table.cell>
-                            <flux:table.cell>&#8369;{{ $order->total() }}</flux:table.cell>
+                            @if ($this->managing)
+                                <flux:table.cell>&#8369;{{ $order->total() }}</flux:table.cell>
+                            @endif
                             <flux:table.cell>
                                 <flux:badge size="sm" :color="$order->status->color()">{{ $order->status->label() }}</flux:badge>
                                 @if ($order->status === OrderStatus::Pending && $order->payment_to_check)

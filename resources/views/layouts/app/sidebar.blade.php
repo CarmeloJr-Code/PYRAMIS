@@ -26,7 +26,7 @@
                         </flux:sidebar.item>
                     @endcan
 
-                    @can('manage-orders')
+                    @can('prepare-orders')
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('employee.orders.index')" :current="request()->routeIs('employee.orders.*')" :badge="$attention['orders'] ?? null" badge:color="amber" wire:navigate.hover>
                             {{ __('Orders') }}
                         </flux:sidebar.item>

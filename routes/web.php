@@ -69,10 +69,14 @@ foreach ($storefront ? config('app.storefront_aliases') : [] as $alias) {
 Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($workspace)->prefix('employee')->name('employee.')->group(function () {
     Route::livewire('dashboard', 'pages::employee.dashboard')->name('dashboard');
 
-    Route::middleware('can:manage-orders')->group(function () {
+    // The queue and an order open to the kitchen too; each screen narrows what
+    // a Baker sees and may do. The payment receipt stays with order management.
+    Route::middleware('can:prepare-orders')->group(function () {
         Route::livewire('orders', 'pages::employee.orders.index')->name('orders.index');
         Route::livewire('orders/{order:reference}', 'pages::employee.orders.show')->name('orders.show');
-        Route::get('orders/{order:reference}/receipt', OrderReceiptController::class)->name('orders.receipt');
+        Route::get('orders/{order:reference}/receipt', OrderReceiptController::class)
+            ->middleware('can:manage-orders')
+            ->name('orders.receipt');
     });
 
     Route::middleware('can:manage-outlets')->group(function () {

@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Employee;
 
+use App\Enums\OrderStatus;
 use App\Enums\UserRole;
 use App\Models\Expense;
 use App\Models\Ingredient;
 use App\Models\Order;
+use App\Models\OrderPayment;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductionRun;
@@ -47,9 +49,12 @@ class RoleAuthorizationTest extends TestCase
                 'employee.sales.create',
                 'employee.reports.sales',
             ]],
-            'manage-orders' => ['manage-orders', [UserRole::Administrator, UserRole::Cashier], [
+            'prepare-orders' => ['prepare-orders', [UserRole::Administrator, UserRole::Baker, UserRole::Cashier], [
                 'employee.orders.index',
                 'employee.orders.show',
+            ]],
+            'manage-orders' => ['manage-orders', [UserRole::Administrator, UserRole::Cashier], [
+                'employee.orders.receipt',
             ]],
             'access-expenses' => ['access-expenses', [UserRole::Administrator, UserRole::Cashier], [
                 'employee.expenses.index',
@@ -213,7 +218,9 @@ class RoleAuthorizationTest extends TestCase
     private function urlFor(string $screen): string
     {
         return route($screen, match ($screen) {
-            'employee.orders.show' => Order::factory()->create(),
+            // Confirmed: the kitchen is shown an order only once it is paid for.
+            'employee.orders.show' => Order::factory()->status(OrderStatus::Confirmed)->create(),
+            'employee.orders.receipt' => OrderPayment::factory()->withReceipt()->create()->order,
             'employee.outlets.edit' => Outlet::factory()->create(),
             'employee.products.edit' => Product::factory()->create(),
             'employee.expenses.edit' => Expense::factory()->create(),

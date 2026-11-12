@@ -25,6 +25,7 @@ The capstone manuscript and the unified portal design use two different vocabula
 - Ingredient/inventory updates and usage recording
 - Product stock updates
 - Outlet restock preparation
+- Preparing confirmed customer orders: sees paid orders and marks them Preparing, then Ready for pickup — nothing else on an order (BR-015)
 
 **Cashier (Sales Staff)**
 - Sales transactions
@@ -42,7 +43,7 @@ The capstone manuscript and the unified portal design use two different vocabula
 |---|:---:|:---:|:---:|:---:|
 | Business Dashboard | ✓ | Limited | Limited | ✗ |
 | Sales Management | ✓ | ✗ | ✓ | ✗ |
-| Customer Orders | ✓ | ✗ | ✓ | ✓ (own order only) |
+| Customer Orders | ✓ | Preparation only (BR-015) | ✓ | ✓ (own order only) |
 | Inventory | ✓ | ✓ | ✗ | ✗ |
 | Production | ✓ | ✓ | ✗ | ✗ |
 | Outlet Restock | ✓ | ✓ | ✗ | ✗ |

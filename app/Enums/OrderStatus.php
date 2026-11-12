@@ -84,6 +84,32 @@ enum OrderStatus: string
     }
 
     /**
+     * The states the kitchen works with: paid for and waiting to be made,
+     * being made, and made.
+     *
+     * An order nobody has paid for is not yet the Baker's to start on, and one
+     * that is collected or called off is no longer anybody's.
+     *
+     * @return list<self>
+     */
+    public static function kitchen(): array
+    {
+        return [self::Confirmed, self::Preparing, self::Ready];
+    }
+
+    /**
+     * Whether moving an order to this status is the kitchen's call — starting
+     * on it, and saying it is done.
+     *
+     * Every other move — confirming, handing over, cancelling — belongs to
+     * whoever handles the customer and their money.
+     */
+    public function isKitchenStep(): bool
+    {
+        return in_array($this, [self::Preparing, self::Ready], strict: true);
+    }
+
+    /**
      * The label shown to customers and staff.
      */
     public function label(): string

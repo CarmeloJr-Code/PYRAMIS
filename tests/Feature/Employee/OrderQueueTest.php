@@ -44,6 +44,9 @@ class OrderQueueTest extends TestCase
     }
 
     /**
+     * The Baker reaches the queue too, for the kitchen's part of it — what
+     * they see and may do there is KitchenOrdersTest's business.
+     *
      * @return array<string, array{0: UserRole, 1: bool}>
      */
     public static function roleProvider(): array
@@ -56,16 +59,15 @@ class OrderQueueTest extends TestCase
     }
 
     #[DataProvider('roleProvider')]
-    public function test_only_administrators_and_cashiers_reach_the_queue(UserRole $role, bool $allowed): void
+    public function test_every_role_reaches_the_queue(UserRole $role): void
     {
-        $response = $this->actingAs(User::factory()->create(['role' => $role]))
-            ->get(route('employee.orders.index'));
-
-        $allowed ? $response->assertOk() : $response->assertForbidden();
+        $this->actingAs(User::factory()->create(['role' => $role]))
+            ->get(route('employee.orders.index'))
+            ->assertOk();
     }
 
     #[DataProvider('roleProvider')]
-    public function test_only_administrators_and_cashiers_open_an_order(UserRole $role, bool $allowed): void
+    public function test_only_administrators_and_cashiers_open_an_unpaid_order(UserRole $role, bool $allowed): void
     {
         $response = $this->actingAs(User::factory()->create(['role' => $role]))
             ->get(route('employee.orders.show', $this->order()));
@@ -76,13 +78,6 @@ class OrderQueueTest extends TestCase
     public function test_guests_are_redirected_to_the_login_page(): void
     {
         $this->get(route('employee.orders.index'))->assertRedirect(route('login'));
-    }
-
-    public function test_the_component_itself_refuses_a_baker(): void
-    {
-        Livewire::actingAs(User::factory()->baker()->create())
-            ->test('pages::employee.orders.index')
-            ->assertForbidden();
     }
 
     public function test_the_queue_shows_open_orders_and_hides_finished_ones(): void
@@ -515,14 +510,23 @@ class OrderQueueTest extends TestCase
             ->assertSeeText($first->reference);
     }
 
-    public function test_a_baker_is_refused_whatever_day_or_size_is_asked_for(): void
+    public function test_a_bakers_tally_counts_only_what_is_still_to_make(): void
     {
         [$large] = $this->twoSizes();
+        $this->pickup($large, '2026-12-05 09:00:00', quantity: 2, status: OrderStatus::Confirmed);
+        $this->pickup($large, '2026-12-05 10:00:00', quantity: 3, status: OrderStatus::Preparing);
 
-        Livewire::withQueryParams(['day' => '2026-12-05', 'size' => $large->id])
-            ->actingAs(User::factory()->baker()->create())
+        // Not paid for yet, and already made: neither is the kitchen's to start.
+        $this->pickup($large, '2026-12-05 11:00:00', quantity: 7, status: OrderStatus::Pending);
+        $this->pickup($large, '2026-12-05 12:00:00', quantity: 4, status: OrderStatus::Ready);
+
+        $tally = Livewire::actingAs(User::factory()->baker()->create())
             ->test('pages::employee.orders.index')
-            ->assertForbidden();
+            ->set('pickupDay', '2026-12-05')
+            ->instance()
+            ->tally;
+
+        $this->assertSame([5], $tally->pluck('quantity')->all());
     }
 
     public function test_a_cashier_walks_an_order_through_the_whole_workflow(): void

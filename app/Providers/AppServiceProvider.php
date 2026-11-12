@@ -138,6 +138,16 @@ class AppServiceProvider extends ServiceProvider
             UserRole::Administrator,
             UserRole::Cashier,
         ));
+
+        // The kitchen's part of an order (BR-015): reading the queue and moving
+        // an order to Preparing and to Ready. The Baker holds this and not
+        // manage-orders, so payment, handover and cancellation stay closed to
+        // them; whoever manages orders can do the kitchen's two steps as well.
+        Gate::define('prepare-orders', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+            UserRole::Cashier,
+            UserRole::Baker,
+        ));
     }
 
     /**

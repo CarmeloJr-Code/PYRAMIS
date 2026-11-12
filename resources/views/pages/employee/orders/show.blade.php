@@ -28,10 +28,29 @@ new class extends Component {
      */
     public function mount(Order $order): void
     {
-        Gate::authorize('manage-orders');
+        Gate::authorize('prepare-orders');
 
         $this->order = $order;
+
+        if (! $this->managing) {
+            // The kitchen's orders only (BR-015): not one still unpaid, nor
+            // one already collected or called off.
+            abort_unless(in_array($order->status, OrderStatus::kitchen(), strict: true), 403);
+
+            return;
+        }
+
         $this->gcash_reference = $this->payment?->gcash_reference ?? '';
+    }
+
+    /**
+     * Whether the signed-in employee handles orders end to end, or only the
+     * kitchen's part of them.
+     */
+    #[Computed]
+    public function managing(): bool
+    {
+        return Gate::allows('manage-orders');
     }
 
     /**
@@ -142,10 +161,13 @@ new class extends Component {
 
     /**
      * Apply a status change, refusing anything the workflow disallows.
+     *
+     * Starting on an order and saying it is ready are the kitchen's two steps,
+     * open to a Baker; every other move takes order management.
      */
     protected function apply(?OrderStatus $status): void
     {
-        Gate::authorize('manage-orders');
+        Gate::authorize($status?->isKitchenStep() ? 'prepare-orders' : 'manage-orders');
 
         if ($status === null) {
             return;
@@ -189,9 +211,11 @@ new class extends Component {
         <div class="flex flex-col gap-1">
             <span class="text-xs font-medium tracking-wide text-zinc-500 uppercase">{{ __('Customer') }}</span>
             <span class="font-medium">{{ $order->customer_name }}</span>
-            <span class="text-sm text-zinc-500">{{ $order->customer_phone }}</span>
-            @if ($order->customer_email)
-                <span class="text-sm text-zinc-500">{{ $order->customer_email }}</span>
+            @if ($this->managing)
+                <span class="text-sm text-zinc-500">{{ $order->customer_phone }}</span>
+                @if ($order->customer_email)
+                    <span class="text-sm text-zinc-500">{{ $order->customer_email }}</span>
+                @endif
             @endif
         </div>
 
@@ -253,6 +277,8 @@ new class extends Component {
 
     <flux:separator variant="subtle" />
 
+    {{-- The money is the counter's business; the kitchen only needs to know it was paid, which Confirmed already says. --}}
+    @if ($this->managing)
     @php($payment = $this->payment)
 
     <div class="flex flex-col gap-4">
@@ -332,11 +358,12 @@ new class extends Component {
     </div>
 
     <flux:separator variant="subtle" />
+    @endif
 
     <div class="flex flex-wrap items-center gap-3">
         @if ($order->status->isTerminal())
             <flux:text>{{ __('This order is :status and can no longer be changed.', ['status' => $order->status->label()]) }}</flux:text>
-        @else
+        @elseif ($this->managing)
             @unless ($order->status === OrderStatus::Pending)
                 <flux:button variant="primary" wire:click="advance">
                     {{ __('Mark as :status', ['status' => $order->status->next()->label()]) }}
@@ -346,6 +373,12 @@ new class extends Component {
             <flux:button variant="ghost" wire:click="cancel" wire:confirm="{{ __('Cancel this order? This cannot be undone.') }}">
                 {{ __('Cancel order') }}
             </flux:button>
+        @elseif ($order->status->next()?->isKitchenStep())
+            <flux:button variant="primary" wire:click="advance">
+                {{ __('Mark as :status', ['status' => $order->status->next()->label()]) }}
+            </flux:button>
+        @else
+            <flux:text>{{ __('Ready for pickup. The counter hands it over from here.') }}</flux:text>
         @endif
 
         <flux:spacer />

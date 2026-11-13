@@ -25,7 +25,7 @@ Think-aloud, one participant at a time, one facilitator, one note-taker (the fac
 - **After all tasks**, the participant completes the post-session questionnaire below.
 - **Time each task** from the end of the reading to the participant saying they are done. Timing is for the learnability comparison, not for judging the participant — say so.
 
-Run the roles in the order given. The tasks build on each other: the manager's outlet is what the baker restocks, the customer's order is what the cashier completes.
+Run the roles in the order given. The tasks build on each other: the manager's outlet is what the baker restocks, the customer's order is what the cashier completes. One task breaks the order: the baker's recipe has to be approved by the manager before the baker can bake from it (BR-016), so the manager is called back for task MA in the middle of the baker's session.
 
 Before the first participant, open the site once and wait for it to load — the free hosting plan spins the server down when idle and the first request can take a minute. Nobody should meet that as their first impression of the system.
 
@@ -73,7 +73,7 @@ Tasks marked **(E)** are error-recovery tasks: the participant is asked to do so
 | M4 (L) | "The Mall Kiosk needs six Round Ube Cakes tomorrow. Ask the kitchen for them." | Restocking → Schedule restock → Mall Kiosk, Ube Cake Round (7x3), 6 → *Requested* | Timed. The word *restock* — does it mean to the participant what the system means by it? |
 | M5 | "Send Kyle a message telling him the restock is scheduled." | Messages → New conversation → Kyle Baker → send | Text only; watch for anyone looking for an attachment button. |
 
-Sign the manager out; they return at the end.
+Sign the manager out; they return once during the baker's session, for MA, and again at the end.
 
 ### Production Staff — the baker
 
@@ -83,8 +83,19 @@ Sign the manager out; they return at the end.
 |---|---|---|---|
 | B1 | "Sign in. What is the manager asking you for today?" | dashboard (next shift, open restocks) or Messages | Where do they look first — the dashboard, the roster, or the chat? All three lead there. |
 | B2 | "A delivery just arrived: 10 kg of All-Purpose Flour, 5 kg of White Sugar, 30 Extra Large Eggs. Record it." | Inventory → open each ingredient → Record movement → receipt | Three receipts. Does the third go faster than the first? Is it clear that stock is counted in purchasing units (kg, pieces), not recipe measures? |
-| B3 (E) | "Log a bake of four Round Ube Cakes." | Production → Log a run → the page says *No size has a recipe with ingredients in it* and offers *Write a recipe* | Nothing can be logged yet. Does the participant follow the link the message offers, or go looking on their own? |
-| B4 | "Write the recipe for a Round Ube Cake: 1 kg of All-Purpose Flour, half a kilo of White Sugar, and 3 Extra Large Eggs per cake." | Production → Recipes → Ube Cake Round (7x3) → Add ingredient (three times) → Save recipe | The most form-heavy task. Adding lines, entering 0.5, saving. |
+| B3 (E) | "Log a bake of four Round Ube Cakes." | Production → Log a run → the page says *No size has an approved recipe with ingredients in it* and offers *Write a recipe* | Nothing can be logged yet. Does the participant follow the link the message offers, or go looking on their own? |
+| B4 | "Write the recipe for a Round Ube Cake: 1 kg of All-Purpose Flour, half a kilo of White Sugar, and 3 Extra Large Eggs per cake." | Production → Recipes → Ube Cake Round (7x3) → Add ingredient (three times) → Send for approval → the list shows *Waiting for approval* | The most form-heavy task. Adding lines, entering 0.5, saving. The form says an administrator approves a recipe before the size can be baked — does the participant read it, and do they say what happens next? Ask: "Can you bake from it now?" |
+
+Pause the baker here. The recipe waits for the manager, and B5 cannot start until it is approved. Call the manager back, on their own device, for one task:
+
+| # | Task | Path | Watch |
+|---|---|---|---|
+| MA | "Kyle has written up a recipe. Have a look at it and decide whether the kitchen can use it." | dashboard → *1 recipe to approve*, or the figure on Production in the sidebar → Recipes → Review → Approve recipe | Is the waiting recipe noticed without prompting, and from where? Do they read the quantities before approving? Is *Send back* understood as the alternative? If they send it back, the baker corrects and resubmits, and the manager approves — record it as it happened. |
+
+Sign the manager out again and return to the baker. The run log refreshes itself within half a minute, so the size appears without a reload.
+
+| # | Task | Path | Watch |
+|---|---|---|---|
 | B5 (E) | "Log a bake of forty Round Ube Cakes." | Log a run → Ube Cake Round (7x3), 40 → *This run will use 40 kg …* → Log run → refused: *Only 10 kg of All-Purpose Flour in stock.* | Does the participant read *This run will use* before pressing, or only the refusal after? Is the message understood as a stock problem rather than a form problem? |
 | B6 | "Log the bake you actually did: four." | quantity 4 → *This run will use 4 kg, 2 kg, 12 pc* → Log run → the run appears in the day list | Do they change the one number, or start over? Does the run appear where they expect? |
 | B7 (E) | "The Mall Kiosk asked for six. Set them aside — but say you set aside eight." | Restocking → open the request → Start preparing → prepared 8 → refused: *Only 4 at the main branch.* | The shelf holds four (from B6). Is the refusal understood as "you only baked four"? |
@@ -161,9 +172,9 @@ Given on paper or a form, after the last task, before any debrief conversation.
 | Evaluation aspect | Source in this protocol |
 |---|---|
 | Ease of navigation | Wrong-turn counts across all tasks; N1 rating; SUS 2, 8 |
-| Clarity of interface | N3, N4 ratings; quoted confusions in task notes; open question 2 |
+| Clarity of interface | N3, N4 ratings; quoted confusions in task notes; the baker's answer to "Can you bake from it now?" after B4; open question 2 |
 | Learnability | M4→M9 and B2's three receipts, timed; SUS 4, 7, 10; assist count on first-contact tasks (C1, M1, B1, S1) |
-| Task completion | Completed / assisted / failed per task, all 30 tasks |
+| Task completion | Completed / assisted / failed per task, all 31 tasks |
 | Error recovery | Recovered Yes/No on the six **(E)** tasks; whether the offered link was followed in B3 |
 | Overall experience | SUS total; N1–N6 mean; open question 3 |
 

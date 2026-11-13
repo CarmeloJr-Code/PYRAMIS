@@ -124,4 +124,49 @@ class SecurityTest extends TestCase
 
         $response->assertHasErrors(['current_password']);
     }
+
+    public function test_a_new_password_containing_a_space_is_refused(): void
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test('pages::settings.security')
+            ->set('current_password', 'password')
+            ->set('password', 'new password')
+            ->set('password_confirmation', 'new password')
+            ->call('updatePassword')
+            ->assertHasErrors(['password']);
+
+        $this->assertTrue(Hash::check('password', $user->refresh()->password));
+    }
+
+    public function test_spaces_typed_around_the_current_password_are_ignored(): void
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('password'),
+        ]);
+
+        $this->actingAs($user);
+
+        Livewire::test('pages::settings.security')
+            ->set('current_password', ' pass word ')
+            ->set('password', 'new-password')
+            ->set('password_confirmation', 'new-password')
+            ->call('updatePassword')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
+    }
+
+    public function test_the_password_fields_refuse_typed_spaces(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->withSession(['auth.password_confirmed_at' => time()])
+            ->get(route('security.edit'))
+            ->assertOk()
+            ->assertSee('data-no-spaces', false);
+    }
 }

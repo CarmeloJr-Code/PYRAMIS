@@ -27,6 +27,7 @@
                     name="password"
                     :label="__('Password')"
                     type="password"
+                    data-no-spaces
                     required
                     autocomplete="current-password"
                     :placeholder="__('Password')"

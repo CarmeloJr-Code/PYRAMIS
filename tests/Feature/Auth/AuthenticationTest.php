@@ -83,6 +83,61 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_spaces_typed_or_pasted_with_the_password_are_ignored(): void
+    {
+        $user = User::factory()->create();
+
+        $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => " pass\tword ",
+        ])->assertSessionHasNoErrors();
+
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_a_wrong_password_with_spaces_is_still_refused(): void
+    {
+        $user = User::factory()->create();
+
+        $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'pass word wrong',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+    }
+
+    public function test_an_unknown_email_is_refused(): void
+    {
+        $this->post(route('login.store'), [
+            'email' => 'nobody@purpleyam.store',
+            'password' => 'password',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+    }
+
+    public function test_the_password_field_refuses_typed_spaces(): void
+    {
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertSee('data-no-spaces', false);
+    }
+
+    public function test_a_spaced_password_still_reaches_the_two_factor_challenge(): void
+    {
+        $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
+
+        $user = User::factory()->withTwoFactor()->create();
+
+        $this->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => 'password ',
+        ])->assertRedirect(route('two-factor.login'));
+
+        $this->assertGuest();
+    }
+
     public function test_users_with_two_factor_enabled_are_redirected_to_two_factor_challenge(): void
     {
         $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());

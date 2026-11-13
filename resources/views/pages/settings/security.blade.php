@@ -46,6 +46,11 @@ new #[Title('Security settings')] class extends Component {
      */
     public function updatePassword(): void
     {
+        // Livewire skips the TrimStrings middleware, and no password holds
+        // whitespace, so any around the current one is a slip — drop it. The
+        // new one is left as typed so the rule against spaces can say so.
+        $this->current_password = $this->withoutWhitespace($this->current_password);
+
         try {
             $validated = $this->validate([
                 'current_password' => $this->currentPasswordRules(),
@@ -97,6 +102,7 @@ new #[Title('Security settings')] class extends Component {
                 wire:model="current_password"
                 :label="__('Current password')"
                 type="password"
+                data-no-spaces
                 required
                 autocomplete="current-password"
                 viewable
@@ -105,6 +111,7 @@ new #[Title('Security settings')] class extends Component {
                 wire:model="password"
                 :label="__('New password')"
                 type="password"
+                data-no-spaces
                 required
                 autocomplete="new-password"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
@@ -114,6 +121,7 @@ new #[Title('Security settings')] class extends Component {
                 wire:model="password_confirmation"
                 :label="__('Confirm password')"
                 type="password"
+                data-no-spaces
                 required
                 autocomplete="new-password"
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"

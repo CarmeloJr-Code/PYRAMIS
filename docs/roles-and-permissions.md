@@ -19,9 +19,10 @@ The capstone manuscript and the unified portal design use two different vocabula
 - Outlet restock scheduling and monitoring
 - Reports and AI-assisted forecasting
 - Full sales, orders, inventory, production, and expense visibility
+- Approving recipes, or sending them back with a reason, before they can be baked from (BR-016)
 
 **Baker (Production Staff)**
-- Production planning and logging
+- Production planning and logging; writes recipes, which wait for the Administrator's approval (BR-016)
 - Ingredient/inventory updates and usage recording
 - Product stock updates
 - Outlet restock preparation

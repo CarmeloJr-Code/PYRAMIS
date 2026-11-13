@@ -63,7 +63,7 @@
                     @endcan
 
                     @can('access-production')
-                        <flux:sidebar.item icon="fire" :href="route('employee.production')" :current="request()->routeIs('employee.production*')" wire:navigate.hover>
+                        <flux:sidebar.item icon="fire" :href="route('employee.production')" :current="request()->routeIs('employee.production*')" :badge="$attention['production'] ?? null" badge:color="amber" wire:navigate.hover>
                             {{ __('Production') }}
                         </flux:sidebar.item>
                     @endcan

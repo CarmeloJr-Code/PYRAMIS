@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\RecipeStatus;
 use App\Models\ProductVariant;
+use App\Models\Recipe;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -11,6 +13,9 @@ use Livewire\Component;
 new #[Title('Recipes')] class extends Component {
     #[Url(as: 'missing', except: false)]
     public bool $onlyMissing = false;
+
+    #[Url(as: 'pending', except: false)]
+    public bool $onlyPending = false;
 
     /**
      * Authorize every entry into the component, not just the route.
@@ -31,6 +36,7 @@ new #[Title('Recipes')] class extends Component {
         return ProductVariant::query()
             ->with(['product', 'recipe.items'])
             ->when($this->onlyMissing, fn ($query) => $query->whereDoesntHave('recipe'))
+            ->when($this->onlyPending, fn ($query) => $query->whereHas('recipe', fn ($recipe) => $recipe->where('status', RecipeStatus::Pending)))
             ->get()
             ->sortBy(fn (ProductVariant $variant): string => $variant->product->name.' '.$variant->name)
             ->values();
@@ -44,13 +50,22 @@ new #[Title('Recipes')] class extends Component {
     {
         return ProductVariant::query()->whereDoesntHave('recipe')->count();
     }
+
+    /**
+     * How many recipes are waiting for an Administrator (BR-016).
+     */
+    #[Computed]
+    public function pendingCount(): int
+    {
+        return Recipe::query()->where('status', RecipeStatus::Pending)->count();
+    }
 }; ?>
 
 <section class="w-full">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
             <flux:heading size="xl" level="1">{{ __('Recipes') }}</flux:heading>
-            <flux:text class="mt-2">{{ __('What each size is made of, per batch. A size can\'t be baked until it has a recipe.') }}</flux:text>
+            <flux:text class="mt-2">{{ __('What each size is made of, per batch. A size can\'t be baked until it has a recipe an administrator has approved.') }}</flux:text>
         </div>
 
         <flux:button size="sm" variant="ghost" :href="route('employee.production')" wire:navigate>
@@ -61,19 +76,30 @@ new #[Title('Recipes')] class extends Component {
     <flux:separator variant="subtle" class="my-6" />
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <flux:switch wire:model.live="onlyMissing" :label="__('Only sizes without a recipe')" />
+        <div class="flex flex-wrap items-center gap-6">
+            <flux:switch wire:model.live="onlyMissing" :label="__('Only sizes without a recipe')" />
+            <flux:switch wire:model.live="onlyPending" :label="__('Only waiting for approval')" />
+        </div>
 
-        @if ($this->missingCount > 0)
-            <flux:badge color="amber">
-                {{ trans_choice('{1} :count size has no recipe|[2,*] :count sizes have no recipe', $this->missingCount, ['count' => $this->missingCount]) }}
-            </flux:badge>
-        @endif
+        <div class="flex flex-wrap items-center gap-2">
+            @if ($this->pendingCount > 0)
+                <flux:badge color="amber">
+                    {{ trans_choice('{1} :count recipe is waiting for approval|[2,*] :count recipes are waiting for approval', $this->pendingCount, ['count' => $this->pendingCount]) }}
+                </flux:badge>
+            @endif
+
+            @if ($this->missingCount > 0)
+                <flux:badge color="amber">
+                    {{ trans_choice('{1} :count size has no recipe|[2,*] :count sizes have no recipe', $this->missingCount, ['count' => $this->missingCount]) }}
+                </flux:badge>
+            @endif
+        </div>
     </div>
 
     @if ($this->variants->isEmpty())
         <flux:callout icon="book-open">
             <flux:callout.heading>{{ __('Nothing to show') }}</flux:callout.heading>
-            <flux:callout.text>{{ __('Every size has a recipe, or the catalogue is empty.') }}</flux:callout.text>
+            <flux:callout.text>{{ __('No size matches, or the catalogue is empty.') }}</flux:callout.text>
         </flux:callout>
     @else
         <div class="overflow-x-auto">
@@ -83,6 +109,7 @@ new #[Title('Recipes')] class extends Component {
                     <flux:table.column>{{ __('Size') }}</flux:table.column>
                     <flux:table.column>{{ __('Batch makes') }}</flux:table.column>
                     <flux:table.column>{{ __('Ingredients') }}</flux:table.column>
+                    <flux:table.column>{{ __('Status') }}</flux:table.column>
                     <flux:table.column />
                 </flux:table.columns>
 
@@ -101,9 +128,22 @@ new #[Title('Recipes')] class extends Component {
                             <flux:table.cell>
                                 {{ $variant->recipe?->items->count() ?? '—' }}
                             </flux:table.cell>
+                            <flux:table.cell>
+                                @if ($variant->recipe)
+                                    <flux:badge size="sm" :color="$variant->recipe->status->color()">{{ __($variant->recipe->status->label()) }}</flux:badge>
+                                @else
+                                    —
+                                @endif
+                            </flux:table.cell>
                             <flux:table.cell class="text-end">
                                 <flux:button size="sm" variant="ghost" :href="route('employee.production.recipes.manage', $variant)" wire:navigate>
-                                    {{ $variant->recipe ? __('Edit') : __('Add recipe') }}
+                                    @if ($variant->recipe === null)
+                                        {{ __('Add recipe') }}
+                                    @elseif ($variant->recipe->status === RecipeStatus::Pending && auth()->user()->can('approve-recipes'))
+                                        {{ __('Review') }}
+                                    @else
+                                        {{ __('Edit') }}
+                                    @endif
                                 </flux:button>
                             </flux:table.cell>
                         </flux:table.row>

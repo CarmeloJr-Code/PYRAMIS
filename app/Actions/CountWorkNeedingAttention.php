@@ -3,10 +3,12 @@
 namespace App\Actions;
 
 use App\Enums\OrderStatus;
+use App\Enums\RecipeStatus;
 use App\Enums\RestockStatus;
 use App\Models\Ingredient;
 use App\Models\Message;
 use App\Models\Order;
+use App\Models\Recipe;
 use App\Models\Restock;
 use App\Models\User;
 
@@ -32,7 +34,7 @@ final class CountWorkNeedingAttention
      * Counts keyed by section, present only for the sections the employee can
      * open and only when there is something waiting.
      *
-     * @return array{orders?: int, inventory?: int, restocks?: int, messages?: int}
+     * @return array{orders?: int, inventory?: int, production?: int, restocks?: int, messages?: int}
      */
     public function handle(User $employee): array
     {
@@ -47,7 +49,7 @@ final class CountWorkNeedingAttention
     }
 
     /**
-     * @return array{orders?: int, inventory?: int, restocks?: int, messages?: int}
+     * @return array{orders?: int, inventory?: int, production?: int, restocks?: int, messages?: int}
      */
     private function count(User $employee): array
     {
@@ -58,6 +60,11 @@ final class CountWorkNeedingAttention
                 default => 0,
             },
             'inventory' => $employee->can('access-inventory') ? $this->lowStock() : 0,
+            'production' => match (true) {
+                $employee->can('approve-recipes') => $this->recipesIn(RecipeStatus::Pending),
+                $employee->can('access-production') => $this->recipesIn(RecipeStatus::Rejected),
+                default => 0,
+            },
             'restocks' => $employee->can('access-restocking') ? $this->restocksToPrepare() : 0,
             'messages' => $this->unreadMessages($employee),
         ];
@@ -100,6 +107,16 @@ final class CountWorkNeedingAttention
             ->get()
             ->filter(fn (Ingredient $ingredient): bool => $ingredient->isLowStock())
             ->count();
+    }
+
+    /**
+     * Recipes at the step this employee moves on: waiting for approval for
+     * whoever approves them, sent back for correction for whoever writes them
+     * (BR-016).
+     */
+    private function recipesIn(RecipeStatus $status): int
+    {
+        return Recipe::query()->where('status', $status)->count();
     }
 
     /**

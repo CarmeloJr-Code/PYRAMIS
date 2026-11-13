@@ -48,8 +48,8 @@ new #[Title('Production runs')] class extends Component {
     }
 
     /**
-     * The sizes that can be produced — a size without a recipe cannot be run
-     * against the stockroom, so it is not offered.
+     * The sizes that can be produced — a size without an approved recipe
+     * (BR-016) cannot be run against the stockroom, so it is not offered.
      *
      * @return Collection<int, ProductVariant>
      */
@@ -57,7 +57,7 @@ new #[Title('Production runs')] class extends Component {
     public function producibleVariants(): Collection
     {
         return ProductVariant::query()
-            ->whereHas('recipe.items')
+            ->whereHas('recipe', fn ($query) => $query->approved()->has('items'))
             ->with(['product', 'recipe.items.ingredient'])
             ->get()
             ->sortBy(fn (ProductVariant $variant): string => $variant->product->name.' '.$variant->name)
@@ -188,12 +188,12 @@ new #[Title('Production runs')] class extends Component {
         ]);
 
         // The form is client state, so the size is re-resolved from the
-        // database and anything without a recipe is refused here, not just
+        // database and anything without an approved recipe is refused here, not just
         // left out of the picker.
         $variant = $this->producibleVariants->firstWhere('id', $validated['product_variant_id']);
 
         if ($variant === null) {
-            $this->addError('product_variant_id', __('That size cannot be produced. Give it a recipe first.'));
+            $this->addError('product_variant_id', __('That size cannot be produced. It needs an approved recipe first.'));
 
             return;
         }
@@ -242,7 +242,7 @@ new #[Title('Production runs')] class extends Component {
             @if ($this->producibleVariants->isEmpty())
                 <flux:callout icon="book-open" class="mt-4">
                     <flux:callout.heading>{{ __('Nothing can be produced yet') }}</flux:callout.heading>
-                    <flux:callout.text>{{ __('No size has a recipe with ingredients in it.') }}</flux:callout.text>
+                    <flux:callout.text>{{ __('No size has an approved recipe with ingredients in it.') }}</flux:callout.text>
                     <flux:callout.link :href="route('employee.production.recipes.index')" wire:navigate>
                         {{ __('Write a recipe') }}
                     </flux:callout.link>

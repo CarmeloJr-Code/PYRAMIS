@@ -245,7 +245,8 @@ final class BuildForecastContext
             ->whereHas('product', fn ($query) => $query->where('is_active', true))
             ->with('product')
             ->withStockEverywhere()
-            ->withExists('recipe as has_recipe')
+            // Only a recipe the bakery may bake from counts (BR-016).
+            ->withExists(['recipe as has_recipe' => fn ($query) => $query->approved()])
             ->get();
 
         $products = [];

@@ -73,6 +73,17 @@ new #[Title('Dashboard')] class extends Component {
                 'href' => route('employee.inventory.index'),
                 'icon' => 'exclamation-triangle',
             ],
+            'production' => fn (int $count): array => $this->employee->can('approve-recipes')
+                ? [
+                    'label' => trans_choice(':count recipe to approve|:count recipes to approve', $count),
+                    'href' => route('employee.production.recipes.index', ['pending' => 1]),
+                    'icon' => 'book-open',
+                ]
+                : [
+                    'label' => trans_choice(':count recipe sent back|:count recipes sent back', $count),
+                    'href' => route('employee.production.recipes.index'),
+                    'icon' => 'book-open',
+                ],
             'restocks' => fn (int $count): array => [
                 'label' => trans_choice(':count restock to prepare|:count restocks to prepare', $count),
                 'href' => route('employee.restocks.index'),

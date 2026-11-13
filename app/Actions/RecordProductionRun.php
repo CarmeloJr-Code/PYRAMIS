@@ -26,8 +26,8 @@ class RecordProductionRun
     /**
      * Record the run.
      *
-     * @throws RuntimeException when the size has no recipe, or the stockroom
-     *                          cannot cover what the run needs
+     * @throws RuntimeException when the size has no approved recipe, or the
+     *                          stockroom cannot cover what the run needs
      */
     public function handle(
         ProductVariant $productVariant,
@@ -50,6 +50,11 @@ class RecordProductionRun
 
             if ($recipe === null || $recipe->items->isEmpty()) {
                 throw new RuntimeException("{$productVariant->name} has no recipe to produce against.");
+            }
+
+            // BR-016: a recipe nobody has approved is not yet the bakery's.
+            if (! $recipe->isApproved()) {
+                throw new RuntimeException("The {$productVariant->name} recipe has not been approved yet.");
             }
 
             $requirements = $recipe->requirementsInThousandths($quantity);

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\RecipeMeasure;
+use App\Enums\RecipeStatus;
 use App\Models\Ingredient;
 use App\Models\ProductVariant;
 use App\Models\Recipe;
@@ -8,6 +9,7 @@ use App\Models\RecipeItem;
 use Flux\Flux;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -21,6 +23,19 @@ new class extends Component {
 
     #[Locked]
     public ?int $recipeId = null;
+
+    /**
+     * When the version on screen was saved. A decision is only taken on the
+     * version the Administrator actually read, so one saved again since is
+     * refused rather than approved unseen.
+     */
+    #[Locked]
+    public ?int $submittedAt = null;
+
+    /**
+     * Why the recipe is being sent back.
+     */
+    public string $review_note = '';
 
     /**
      * A string, as every number a person types is: a strict int cannot hold
@@ -56,6 +71,7 @@ new class extends Component {
 
         if ($recipe !== null) {
             $this->recipeId = $recipe->id;
+            $this->submittedAt = $recipe->submitted_at?->getTimestamp();
             $this->yield_quantity = (string) $recipe->yield_quantity;
             $this->notes = $recipe->notes ?? '';
             $this->plannedUnits = (string) $recipe->yield_quantity;
@@ -84,6 +100,17 @@ new class extends Component {
             'product' => $this->productVariant->product->name,
             'variant' => $this->productVariant->name,
         ]));
+    }
+
+    /**
+     * The saved recipe, with who wrote it and who decided on it.
+     */
+    #[Computed]
+    public function recipe(): ?Recipe
+    {
+        return $this->recipeId === null
+            ? null
+            : Recipe::with(['submittedBy', 'reviewedBy'])->find($this->recipeId);
     }
 
     /**
@@ -299,7 +326,12 @@ new class extends Component {
                 'product_variant_id' => $this->productVariant->id,
                 'yield_quantity' => (int) $validated['yield_quantity'],
                 'notes' => $validated['notes'] ?: null,
-            ])->save();
+            ]);
+
+            // BR-016: an Administrator's save is approved as it stands; anyone
+            // else's waits for one, including an edit to a recipe already in use.
+            $recipe->markSubmittedBy(Auth::user());
+            $recipe->save();
 
             // Only ids this recipe already owns may be updated — a submitted id
             // belonging to another recipe is treated as a new row, never adopted.
@@ -325,11 +357,81 @@ new class extends Component {
             $this->recipeId = $recipe->id;
         });
 
-        unset($this->plan);
+        unset($this->plan, $this->recipe);
 
-        Flux::toast(variant: 'success', text: __('Recipe saved.'));
+        Flux::toast(variant: 'success', text: Auth::user()->can('approve-recipes')
+            ? __('Recipe saved.')
+            : __('Recipe sent for approval.'));
 
         $this->redirectRoute('employee.production.recipes.index', navigate: true);
+    }
+
+    /**
+     * Approve the recipe as it was read.
+     */
+    public function approve(): void
+    {
+        Gate::authorize('approve-recipes');
+
+        if ($this->decide(fn (Recipe $recipe) => $recipe->approve(Auth::user()))) {
+            Flux::toast(variant: 'success', text: __('Recipe approved.'));
+
+            $this->redirectRoute('employee.production.recipes.index', navigate: true);
+        }
+    }
+
+    /**
+     * Send the recipe back to be corrected, saying why.
+     */
+    public function sendBack(): void
+    {
+        Gate::authorize('approve-recipes');
+
+        // Livewire skips the TrimStrings middleware, so trim here.
+        $this->review_note = trim($this->review_note);
+
+        $validated = $this->validate([
+            'review_note' => ['required', 'string', 'max:1000'],
+        ]);
+
+        if ($this->decide(fn (Recipe $recipe) => $recipe->sendBack(Auth::user(), $validated['review_note']))) {
+            Flux::toast(variant: 'success', text: __('Recipe sent back.'));
+
+            $this->redirectRoute('employee.production.recipes.index', navigate: true);
+        }
+    }
+
+    /**
+     * Take a decision on the saved recipe, if it is still the one on screen.
+     *
+     * The row is locked so a save landing at the same moment queues behind
+     * the decision or ahead of it, never in the middle.
+     *
+     * @param  Closure(Recipe): void  $decision
+     */
+    private function decide(Closure $decision): bool
+    {
+        $problem = DB::transaction(function () use ($decision): ?string {
+            $recipe = Recipe::query()->lockForUpdate()->find($this->recipeId);
+
+            if ($recipe === null || $recipe->status !== RecipeStatus::Pending) {
+                return __('This recipe is not waiting for approval.');
+            }
+
+            if ($recipe->submitted_at?->getTimestamp() !== $this->submittedAt) {
+                return __('This recipe was changed after you opened it. Reload the page to review it as it is now.');
+            }
+
+            $decision($recipe);
+
+            return null;
+        });
+
+        if ($problem !== null) {
+            $this->addError('review', $problem);
+        }
+
+        return $problem === null;
     }
 }; ?>
 
@@ -346,6 +448,52 @@ new class extends Component {
     </div>
 
     <flux:separator variant="subtle" class="my-6" />
+
+    @if ($this->recipe?->status === RecipeStatus::Pending)
+        <flux:callout icon="clock" variant="warning" class="mb-6" data-test="recipe-review">
+            <flux:callout.heading>{{ __('Waiting for approval') }}</flux:callout.heading>
+            <flux:callout.text>
+                {{ __('Saved by :name on :date. This size can\'t be baked until an administrator approves the recipe.', [
+                    'name' => $this->recipe->submittedBy?->name ?? __('someone'),
+                    'date' => $this->recipe->submitted_at?->format('M j, Y g:ia'),
+                ]) }}
+            </flux:callout.text>
+
+            @can('approve-recipes')
+                <div class="mt-4 flex flex-col gap-4">
+                    @error('review')
+                        <flux:text class="text-danger">{{ $message }}</flux:text>
+                    @enderror
+
+                    <div>
+                        <flux:button variant="primary" size="sm" type="button" wire:click="approve">{{ __('Approve recipe') }}</flux:button>
+                    </div>
+
+                    <form wire:submit="sendBack" class="flex flex-col gap-3">
+                        <flux:textarea
+                            wire:model="review_note"
+                            :label="__('Or send it back')"
+                            :placeholder="__('What needs changing before this can be approved.')"
+                            rows="2"
+                            maxlength="1000"
+                        />
+
+                        <div>
+                            <flux:button size="sm" variant="danger" type="submit">{{ __('Send back') }}</flux:button>
+                        </div>
+                    </form>
+                </div>
+            @endcan
+        </flux:callout>
+    @elseif ($this->recipe?->status === RecipeStatus::Rejected)
+        <flux:callout icon="arrow-uturn-left" variant="danger" class="mb-6" data-test="recipe-review">
+            <flux:callout.heading>
+                {{ __('Sent back by :name', ['name' => $this->recipe->reviewedBy?->name ?? __('an administrator')]) }}
+            </flux:callout.heading>
+            <flux:callout.text>{{ $this->recipe->review_note }}</flux:callout.text>
+            <flux:callout.text>{{ __('Correct the recipe and save it to send it for approval again.') }}</flux:callout.text>
+        </flux:callout>
+    @endif
 
     @if ($this->ingredients->isEmpty())
         <flux:callout icon="beaker">
@@ -446,8 +594,22 @@ new class extends Component {
                         :placeholder="__('Anything the baker needs alongside the quantities.')"
                     />
 
+                    @cannot('approve-recipes')
+                        <flux:text>
+                            {{ $this->recipe?->isApproved()
+                                ? __('Saving a change sends this recipe back for approval. This size can\'t be baked until an administrator approves it again.')
+                                : __('An administrator approves a recipe before this size can be baked.') }}
+                        </flux:text>
+                    @endcannot
+
                     <div class="flex items-center gap-3">
-                        <flux:button variant="primary" type="submit">{{ __('Save recipe') }}</flux:button>
+                        <flux:button variant="primary" type="submit">
+                            @can('approve-recipes')
+                                {{ $this->recipe === null || $this->recipe->isApproved() ? __('Save recipe') : __('Save and approve') }}
+                            @else
+                                {{ __('Send for approval') }}
+                            @endcan
+                        </flux:button>
                         <flux:button variant="ghost" :href="route('employee.production.recipes.index')" wire:navigate>{{ __('Cancel') }}</flux:button>
                     </div>
                 </form>

@@ -328,8 +328,8 @@ new #[Title('Sales forecast')] class extends Component {
                             <flux:table.cell>
                                 {{ $row['size'] }}
                                 @unless ($row['has_recipe'])
-                                    {{-- Without a recipe the bakery cannot log a run for it at all. --}}
-                                    <flux:badge size="sm" color="amber" class="ms-2">{{ __('No recipe') }}</flux:badge>
+                                    {{-- Without an approved recipe the bakery cannot log a run for it at all. --}}
+                                    <flux:badge size="sm" color="amber" class="ms-2">{{ __('No approved recipe') }}</flux:badge>
                                 @endunless
                             </flux:table.cell>
                             <flux:table.cell>{{ number_format($row['units_sold']) }}</flux:table.cell>

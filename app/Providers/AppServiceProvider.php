@@ -62,6 +62,12 @@ class AppServiceProvider extends ServiceProvider
             UserRole::Baker,
         ));
 
+        // Deciding whether a recipe may be baked from is oversight (BR-016):
+        // a Baker writes one, the Administrator approves it or sends it back.
+        Gate::define('approve-recipes', fn (User $user): bool => $user->hasRole(
+            UserRole::Administrator,
+        ));
+
         // "Inventory" in the capability matrix — Administrator and Baker. Under
         // BR-005 the Baker records ingredient usage and stock updates, and the
         // Cashier has no business in the stockroom.

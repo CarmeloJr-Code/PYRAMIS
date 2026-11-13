@@ -37,3 +37,36 @@ window.addEventListener('pageshow', (event) => {
 function refreshEveryComponent() {
     window.Livewire?.all().forEach((component) => component.$wire.$refresh());
 }
+
+/**
+ * A password field takes no whitespace.
+ *
+ * No password holds any, so a space typed or pasted along with one could only
+ * make a correct password fail. A typed space is dropped; a paste goes in with
+ * its whitespace taken out, rather than being refused whole. The server drops
+ * whitespace too, for whatever reaches it another way.
+ */
+document.addEventListener('beforeinput', (event) => {
+    const input = event.target;
+
+    if (
+        !(input instanceof HTMLInputElement) ||
+        !input.hasAttribute('data-no-spaces') ||
+        !event.data ||
+        !/\s/.test(event.data)
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+
+    input.setRangeText(
+        event.data.replace(/\s/g, ''),
+        input.selectionStart ?? input.value.length,
+        input.selectionEnd ?? input.value.length,
+        'end',
+    );
+
+    // Lets wire:model see the change, as it would a keystroke.
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+});

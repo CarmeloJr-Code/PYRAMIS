@@ -18,5 +18,26 @@ class PasswordConfirmationTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('Confirm with passkey');
+        $response->assertSee('data-no-spaces', false);
+    }
+
+    public function test_spaces_entered_with_the_password_are_ignored(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post(route('password.confirm.store'), ['password' => ' pass word '])
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('auth.password_confirmed_at');
+    }
+
+    public function test_a_wrong_password_is_not_confirmed(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->post(route('password.confirm.store'), ['password' => 'wrong-password'])
+            ->assertSessionHasErrors('password')
+            ->assertSessionMissing('auth.password_confirmed_at');
     }
 }

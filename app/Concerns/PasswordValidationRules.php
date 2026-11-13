@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -12,11 +13,35 @@ trait PasswordValidationRules
     /**
      * Get the validation rules used to validate passwords.
      *
-     * @return array<int, Password|ValidationRule|array<mixed>|string>
+     * A password may not contain any whitespace: a stray space typed at
+     * sign-in would otherwise make a correct password fail.
+     *
+     * @return array<int, Closure|Password|ValidationRule|array<mixed>|string>
      */
     protected function passwordRules(): array
     {
-        return ['required', 'string', Password::default(), 'confirmed'];
+        return [
+            'required',
+            'string',
+            Password::default(),
+            function (string $attribute, mixed $value, Closure $fail): void {
+                if (is_string($value) && preg_match('/\s/u', $value) === 1) {
+                    $fail(__('The :attribute may not contain spaces.'));
+                }
+            },
+            'confirmed',
+        ];
+    }
+
+    /**
+     * Drop every whitespace character from a password being checked.
+     *
+     * No password can contain whitespace, so any that arrives with one being
+     * entered is a slip of the keyboard or the clipboard, never part of it.
+     */
+    protected function withoutWhitespace(?string $password): string
+    {
+        return (string) preg_replace('/\s+/u', '', (string) $password);
     }
 
     /**

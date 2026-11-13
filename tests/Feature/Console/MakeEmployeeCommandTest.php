@@ -256,6 +256,20 @@ class MakeEmployeeCommandTest extends TestCase
 
         $this->assertDatabaseEmpty('users');
     }
+
+    public function test_it_rejects_a_password_containing_a_space(): void
+    {
+        $this->artisan('make:employee', [
+            '--name' => 'Ana Reyes',
+            '--email' => 'ana@purpleyam.store',
+            '--role' => 'baker',
+        ])
+            ->expectsQuestion('Password', 'correct horse battery staple')
+            ->expectsQuestion('Confirm password', 'correct horse battery staple')
+            ->assertFailed();
+
+        $this->assertDatabaseEmpty('users');
+    }
 }
 
 /**

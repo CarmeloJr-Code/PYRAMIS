@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
@@ -112,5 +113,34 @@ class PasswordResetTest extends TestCase
 
             return true;
         });
+    }
+
+    public function test_a_new_password_containing_a_space_is_refused(): void
+    {
+        Notification::fake();
+
+        $user = User::factory()->create();
+
+        $this->post(route('password.request'), ['email' => $user->email]);
+
+        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+            $this->post(route('password.update'), [
+                'token' => $notification->token,
+                'email' => $user->email,
+                'password' => 'new password',
+                'password_confirmation' => 'new password',
+            ])->assertSessionHasErrors('password');
+
+            return true;
+        });
+
+        $this->assertTrue(Hash::check('password', $user->refresh()->password));
+    }
+
+    public function test_the_password_fields_refuse_typed_spaces(): void
+    {
+        $this->get(route('password.reset', 'a-token'))
+            ->assertOk()
+            ->assertSee('data-no-spaces', false);
     }
 }

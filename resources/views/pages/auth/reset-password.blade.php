@@ -26,6 +26,7 @@
                 name="password"
                 :label="__('Password')"
                 type="password"
+                data-no-spaces
                 required
                 autocomplete="new-password"
                 :placeholder="__('Password')"
@@ -38,6 +39,7 @@
                 name="password_confirmation"
                 :label="__('Confirm password')"
                 type="password"
+                data-no-spaces
                 required
                 autocomplete="new-password"
                 :placeholder="__('Confirm password')"

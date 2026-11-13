@@ -3,8 +3,12 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\ResetUserPassword;
+use App\Concerns\PasswordValidationRules;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -12,6 +16,8 @@ use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
 {
+    use PasswordValidationRules;
+
     /**
      * Register any application services.
      */
@@ -36,6 +42,34 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureActions(): void
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+
+        // No password contains whitespace, so any typed or pasted along with
+        // one is dropped before it is checked rather than failing the check.
+        Fortify::authenticateUsing(function (Request $request): ?Authenticatable {
+            $provider = Auth::guard(config('fortify.guard'))->getProvider();
+            $password = $this->withoutWhitespace($request->input('password'));
+
+            $user = $provider->retrieveByCredentials([
+                Fortify::username() => $request->input(Fortify::username()),
+            ]);
+
+            if ($user === null || ! $provider->validateCredentials($user, ['password' => $password])) {
+                return null;
+            }
+
+            if (config('hashing.rehash_on_login', true)) {
+                $provider->rehashPasswordIfRequired($user, ['password' => $password]);
+            }
+
+            return $user;
+        });
+
+        Fortify::confirmPasswordsUsing(
+            fn (Authenticatable $user, ?string $password): bool => Hash::check(
+                $this->withoutWhitespace($password),
+                $user->getAuthPassword(),
+            ),
+        );
     }
 
     /**

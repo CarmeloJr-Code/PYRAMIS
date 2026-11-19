@@ -47,7 +47,8 @@ class ShiftUnassigned extends Notification
 
     public function toSms(object $notifiable): string
     {
-        return __('Purple Yam: You have been taken off :shift.', [
+        return __('Purple Yam: Hi :name! You have been taken off :shift.', [
+            'name' => $notifiable->name,
             'shift' => $this->shift->textLine(),
         ]);
     }

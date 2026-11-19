@@ -4,7 +4,10 @@ namespace Tests\Feature\Employee;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Outlet;
+use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Shift;
 use App\Models\ShiftAssignment;
 use App\Models\User;
@@ -37,7 +40,10 @@ class SmsNotificationsTest extends TestCase
     {
         parent::setUp();
 
-        $this->outlet = Outlet::factory()->mainBranch()->create(['name' => 'Main Branch']);
+        $this->outlet = Outlet::factory()->mainBranch()->create([
+            'name' => 'Main Branch',
+            'address' => 'Fortich St, Malaybalay City',
+        ]);
         $this->administrator = User::factory()->administrator()->create();
     }
 
@@ -72,6 +78,15 @@ class SmsNotificationsTest extends TestCase
             ->for($this->outlet)
             ->create(['customer_phone' => '09171234567']);
 
+        foreach ([['Ube Cake', 'Round 8"', 2], ['Ube Halaya', 'Jar', 1]] as [$product, $size, $quantity]) {
+            OrderItem::factory()->for($order)->create([
+                'product_variant_id' => ProductVariant::factory()
+                    ->for(Product::factory()->create(['name' => $product]))
+                    ->create(['name' => $size]),
+                'quantity' => $quantity,
+            ]);
+        }
+
         Livewire::actingAs(User::factory()->cashier()->create())
             ->test('pages::employee.orders.show', ['order' => $order])
             ->call('advance');
@@ -79,7 +94,7 @@ class SmsNotificationsTest extends TestCase
         return $order->fresh();
     }
 
-    public function test_an_order_made_ready_texts_the_customer_how_to_collect_it(): void
+    public function test_an_order_made_ready_texts_the_customer_what_they_ordered_and_where_to_collect_it(): void
     {
         $this->gateway();
 
@@ -93,7 +108,7 @@ class SmsNotificationsTest extends TestCase
             && $request->hasHeader('Authorization', 'Basic '.base64_encode('sk-test:'))
             && $request['recipient'] === '+639171234567'
             && $request['sender_id'] === 'PurpleYam'
-            && $request['content'] === "Purple Yam Malaybalay: Your order {$order->reference} is ready for pickup at Main Branch. Show this reference when you collect it.");
+            && $request['content'] === "Purple Yam Malaybalay: Your order {$order->reference} is ready for pickup. Items: 2x Round 8\" Ube Cake, 1x Jar Ube Halaya. Pick it up at Main Branch, Fortich St, Malaybalay City. Show this reference when you collect it.");
     }
 
     public function test_the_pickup_text_carries_no_link_a_default_sender_id_would_refuse(): void
@@ -186,11 +201,11 @@ class SmsNotificationsTest extends TestCase
         );
     }
 
-    public function test_assigning_a_shift_texts_the_employee_what_when_and_where(): void
+    public function test_assigning_a_shift_greets_the_employee_then_texts_what_when_and_where(): void
     {
         $this->gateway();
         $shift = Shift::factory()->for($this->outlet)->on('2026-11-05', '06:00', '14:00')->create(['name' => 'Morning bake']);
-        $baker = User::factory()->baker()->create(['phone' => '09181112222']);
+        $baker = User::factory()->baker()->create(['name' => 'Ana Reyes', 'phone' => '09181112222']);
 
         Livewire::actingAs($this->administrator)
             ->test('pages::employee.workforce.show', ['shift' => $shift])
@@ -199,7 +214,7 @@ class SmsNotificationsTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame(
-            ['+639181112222' => 'Purple Yam: You are on Morning bake, Thu 05 Nov, 6:00am-2:00pm at Main Branch.'],
+            ['+639181112222' => 'Purple Yam: Hi Ana Reyes! You have a new shift: Morning bake, Thu 05 Nov, 6:00am-2:00pm at Main Branch.'],
             $this->texts(),
         );
     }
@@ -241,7 +256,7 @@ class SmsNotificationsTest extends TestCase
     {
         $this->gateway();
         $shift = Shift::factory()->for($this->outlet)->on('2026-11-05', '06:00', '14:00')->create(['name' => 'Morning bake']);
-        $baker = User::factory()->baker()->create(['phone' => '09181112222']);
+        $baker = User::factory()->baker()->create(['name' => 'Ana Reyes', 'phone' => '09181112222']);
         $closed = User::factory()->cashier()->create(['phone' => '09183334444', 'is_active' => false]);
         $this->administrator->update(['phone' => '09185556666']);
 
@@ -256,7 +271,7 @@ class SmsNotificationsTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame(
-            ['+639181112222' => 'Purple Yam: Your shift has changed. It is now Morning bake, Thu 05 Nov, 7:00am-2:00pm at Main Branch.'],
+            ['+639181112222' => 'Purple Yam: Hi Ana Reyes! Your shift has changed. It is now Morning bake, Thu 05 Nov, 7:00am-2:00pm at Main Branch.'],
             $this->texts(),
         );
         $this->assertSame(1, $baker->notifications()->count());
@@ -300,7 +315,7 @@ class SmsNotificationsTest extends TestCase
     {
         $this->gateway();
         $shift = Shift::factory()->for($this->outlet)->on('2026-11-05', '06:00', '14:00')->create(['name' => 'Morning bake']);
-        $baker = User::factory()->baker()->create(['phone' => '09181112222']);
+        $baker = User::factory()->baker()->create(['name' => 'Ana Reyes', 'phone' => '09181112222']);
         $assignment = ShiftAssignment::factory()->for($shift)->for($baker)->create();
 
         Livewire::actingAs($this->administrator)
@@ -309,7 +324,7 @@ class SmsNotificationsTest extends TestCase
 
         $this->assertDatabaseMissing('shift_assignments', ['id' => $assignment->id]);
         $this->assertSame(
-            ['+639181112222' => 'Purple Yam: You have been taken off Morning bake, Thu 05 Nov, 6:00am-2:00pm at Main Branch.'],
+            ['+639181112222' => 'Purple Yam: Hi Ana Reyes! You have been taken off Morning bake, Thu 05 Nov, 6:00am-2:00pm at Main Branch.'],
             $this->texts(),
         );
         $this->assertSame(route('employee.schedule'), $baker->notifications()->firstOrFail()->data['url']);

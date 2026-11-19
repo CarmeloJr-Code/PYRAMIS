@@ -24,7 +24,10 @@ class ShiftAssigned extends Notification
 
     public function toSms(object $notifiable): string
     {
-        return __('Purple Yam: You are on :shift.', ['shift' => $this->shift->textLine()]);
+        return __('Purple Yam: Hi :name! You have a new shift: :shift.', [
+            'name' => $notifiable instanceof User ? $notifiable->name : __('there'),
+            'shift' => $this->shift->textLine(),
+        ]);
     }
 
     /**

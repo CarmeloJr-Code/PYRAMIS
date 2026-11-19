@@ -49,7 +49,7 @@ class ShiftChanged extends Notification
     public function toSms(object $notifiable): string
     {
         return __('Purple Yam: Hi :name! Your shift has changed. It is now :shift.', [
-            'name' => $notifiable->name,
+            'name' => $notifiable instanceof User ? $notifiable->name : __('there'),
             'shift' => $this->shift->textLine(),
         ]);
     }

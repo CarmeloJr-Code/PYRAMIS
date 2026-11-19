@@ -20,7 +20,7 @@ use RuntimeException;
  * Nothing runs a queue worker, so the text goes out during the request. A text
  * only tells someone about a change already made, so a failure is reported and
  * swallowed — it never undoes or blocks the shift or order behind it. With no
- * key configured the text is written to the log instead.
+ * key or no sender ID configured the text is written to the log instead.
  */
 class SmsChannel
 {
@@ -42,9 +42,16 @@ class SmsChannel
         $recipient = $this->international($phone);
         $content = (string) $notification->toSms($notifiable);
         $key = config('services.unisms.key');
+        $sender = config('services.unisms.sender_id');
 
-        if (blank($key)) {
-            Log::info('SMS not sent: no UniSMS key is configured.', [
+        $missing = match (true) {
+            blank($key) => 'SMS not sent: no UniSMS key is configured.',
+            blank($sender) => 'SMS not sent: no UniSMS sender ID is configured.',
+            default => null,
+        };
+
+        if ($missing !== null) {
+            Log::info($missing, [
                 'recipient' => $this->masked($recipient),
                 'content' => $content,
             ]);
@@ -61,7 +68,7 @@ class SmsChannel
                 ->post(config('services.unisms.url'), [
                     'recipient' => $recipient,
                     'content' => $content,
-                    'sender_id' => config('services.unisms.sender_id'),
+                    'sender_id' => $sender,
                 ])
                 ->throw();
         } catch (ConnectionException|RequestException $exception) {

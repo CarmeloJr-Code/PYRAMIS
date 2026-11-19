@@ -93,7 +93,17 @@ class SmsNotificationsTest extends TestCase
             && $request->hasHeader('Authorization', 'Basic '.base64_encode('sk-test:'))
             && $request['recipient'] === '+639171234567'
             && $request['sender_id'] === 'PurpleYam'
-            && $request['content'] === "Purple Yam Malaybalay: Your order {$order->reference} is ready for pickup at Main Branch. Show this reference when you collect it. ".route('orders.show', $order));
+            && $request['content'] === "Purple Yam Malaybalay: Your order {$order->reference} is ready for pickup at Main Branch. Show this reference when you collect it.");
+    }
+
+    public function test_the_pickup_text_carries_no_link_a_default_sender_id_would_refuse(): void
+    {
+        $this->gateway();
+
+        $this->readyOrder();
+
+        Http::assertSent(fn (Request $request) => ! str_contains($request['content'], 'http')
+            && ! str_contains($request['content'], '://'));
     }
 
     public function test_no_other_status_change_texts_the_customer(): void
@@ -156,6 +166,23 @@ class SmsNotificationsTest extends TestCase
             'SMS not sent: no UniSMS key is configured.',
             Mockery::on(fn (array $context) => $context['recipient'] === '*********4567'
                 && str_contains($context['content'], $order->reference)),
+        );
+    }
+
+    public function test_with_no_sender_id_the_text_is_logged_rather_than_sent(): void
+    {
+        config(['services.unisms.key' => 'sk-test', 'services.unisms.sender_id' => null]);
+        Http::preventStrayRequests();
+        Http::fake();
+        Log::spy();
+
+        $order = $this->readyOrder();
+
+        $this->assertSame(OrderStatus::Ready, $order->status);
+        Http::assertNothingSent();
+        Log::shouldHaveReceived('info')->once()->with(
+            'SMS not sent: no UniSMS sender ID is configured.',
+            Mockery::on(fn (array $context) => $context['recipient'] === '*********4567'),
         );
     }
 

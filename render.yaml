@@ -83,7 +83,7 @@ services:
       - key: UNISMS_SECRET_KEY
         sync: false          # https://unismsapi.com
       - key: UNISMS_SENDER_ID
-        sync: false          # blank uses UniSMS's default until a custom one is approved
+        sync: false          # required; the account's default sender ID until a custom one is approved
 
   # Purple Yam Malaybalay storefront. The same image as the workspace, on a host
   # of its own; it never migrates or seeds, so the two boots cannot race on the

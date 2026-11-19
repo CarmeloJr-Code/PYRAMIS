@@ -30,14 +30,14 @@ return [
 
     /*
     | Texts to employees about their shifts and to customers when an order is
-    | ready (App\Notifications\Channels\SmsChannel). With no key the texts are
-    | written to the log instead of sent.
+    | ready (App\Notifications\Channels\SmsChannel). With no key or no sender
+    | ID the texts are written to the log instead of sent.
     */
     'unisms' => [
         'key' => env('UNISMS_SECRET_KEY'),
-        // Blank falls back to the gateway's default sender until a custom one
-        // is approved by the telcos.
-        'sender_id' => env('UNISMS_SENDER_ID') ?: 'UniSMS',
+        // UniSMS requires one on every text. Until a custom one is approved,
+        // this is the account's own default sender ID from its dashboard.
+        'sender_id' => env('UNISMS_SENDER_ID'),
         'url' => env('UNISMS_URL', 'https://unismsapi.com/api/sms'),
     ],
 

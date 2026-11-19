@@ -18,13 +18,17 @@ services:
       - key: APP_KEY
         sync: false          # php artisan key:generate --show
       - key: APP_URL
-        sync: false          # https://pyramis.onrender.com
+        sync: false          # https://www.pyramis.site
       # The workspace and the storefront each answer only on their own host
       # (config/app.php); set identically on both services.
       - key: WORKSPACE_DOMAIN
-        value: pyramis.onrender.com
+        value: www.pyramis.site
       - key: STOREFRONT_DOMAIN
         sync: false          # www.purpleyam.store, the storefront's custom domain
+      # This service's own address, behind the custom domain: every path on it
+      # moves permanently to WORKSPACE_DOMAIN.
+      - key: WORKSPACE_ALIASES
+        value: pyramis.onrender.com
       # The header Cloudflare writes the caller's address into (config/app.php).
       # Without it the rate limiters count an address the caller can forge.
       - key: CLIENT_ADDRESS_HEADER
@@ -109,7 +113,7 @@ services:
       - key: APP_URL
         sync: false          # https://www.purpleyam.store
       - key: WORKSPACE_DOMAIN
-        value: pyramis.onrender.com
+        value: www.pyramis.site
       - key: STOREFRONT_DOMAIN
         sync: false          # www.purpleyam.store
       # This service's own address, behind the custom domain: every path on it

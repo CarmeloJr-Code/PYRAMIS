@@ -55,16 +55,21 @@ if ($storefront && $workspace) {
     });
 }
 
-// The storefront's other addresses send every path on to the storefront host,
-// so links and the cart's session stay on one host. /up still answers on each,
-// for the platform's health check.
-foreach ($storefront ? config('app.storefront_aliases') : [] as $alias) {
-    Route::domain($alias)->group(function () use ($storefront) {
-        Route::get('{path?}', fn (Request $request) => redirect()->away(
-            $request->getScheme().'://'.$storefront.$request->getRequestUri(), 301,
-        ))->where('path', '(?!up$).*');
-    });
-}
+// Each half's other addresses send every path on to its own host, so links,
+// the session, and the links already stored in employees' notifications all
+// land on one host. /up still answers on each, for the platform's health check.
+$redirectAliases = function (?string $host, array $aliases): void {
+    foreach ($host ? $aliases : [] as $alias) {
+        Route::domain($alias)->group(function () use ($host) {
+            Route::get('{path?}', fn (Request $request) => redirect()->away(
+                $request->getScheme().'://'.$host.$request->getRequestUri(), 301,
+            ))->where('path', '(?!up$).*');
+        });
+    }
+};
+
+$redirectAliases($storefront, config('app.storefront_aliases'));
+$redirectAliases($workspace, config('app.workspace_aliases'));
 
 Route::middleware(['auth', 'verified', EnsureEmployeeIsActive::class])->domain($workspace)->prefix('employee')->name('employee.')->group(function () {
     Route::livewire('dashboard', 'pages::employee.dashboard')->name('dashboard');

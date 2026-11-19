@@ -16,6 +16,8 @@ class HostSeparationTest extends TestCase
 
     private const STOREFRONT_ALIAS = 'shop.onrender.test';
 
+    private const WORKSPACE_ALIAS = 'staff.onrender.test';
+
     /**
      * The hosts are read when the routes are registered, so they have to be in
      * the environment before the application boots.
@@ -25,6 +27,7 @@ class HostSeparationTest extends TestCase
         $_SERVER['STOREFRONT_DOMAIN'] = self::STOREFRONT;
         $_SERVER['WORKSPACE_DOMAIN'] = self::WORKSPACE;
         $_SERVER['STOREFRONT_ALIASES'] = ' '.self::STOREFRONT_ALIAS.', ';
+        $_SERVER['WORKSPACE_ALIASES'] = self::WORKSPACE_ALIAS;
 
         parent::setUp();
     }
@@ -33,7 +36,35 @@ class HostSeparationTest extends TestCase
     {
         parent::tearDown();
 
-        unset($_SERVER['STOREFRONT_DOMAIN'], $_SERVER['WORKSPACE_DOMAIN'], $_SERVER['STOREFRONT_ALIASES']);
+        unset($_SERVER['STOREFRONT_DOMAIN'], $_SERVER['WORKSPACE_DOMAIN'], $_SERVER['STOREFRONT_ALIASES'], $_SERVER['WORKSPACE_ALIASES']);
+    }
+
+    public function test_the_workspace_alias_moves_every_address_to_the_workspace_host(): void
+    {
+        $this->get('http://'.self::WORKSPACE_ALIAS.'/')
+            ->assertStatus(301)
+            ->assertRedirect('http://'.self::WORKSPACE.'/');
+
+        $this->get('http://'.self::WORKSPACE_ALIAS.'/employee/login')
+            ->assertStatus(301)
+            ->assertRedirect('http://'.self::WORKSPACE.'/employee/login');
+
+        $this->get('http://'.self::WORKSPACE_ALIAS.'/employee/orders/PY-ABC123?tab=items')
+            ->assertStatus(301)
+            ->assertRedirect('http://'.self::WORKSPACE.'/employee/orders/PY-ABC123?tab=items');
+    }
+
+    public function test_the_workspace_alias_never_serves_the_workspace_itself(): void
+    {
+        $this->actingAs(User::factory()->administrator()->create())
+            ->get('http://'.self::WORKSPACE_ALIAS.'/employee/dashboard')
+            ->assertStatus(301)
+            ->assertRedirect('http://'.self::WORKSPACE.'/employee/dashboard');
+    }
+
+    public function test_the_workspace_alias_still_answers_the_health_check(): void
+    {
+        $this->get('http://'.self::WORKSPACE_ALIAS.'/up')->assertOk();
     }
 
     public function test_the_storefront_alias_moves_every_address_to_the_storefront_host(): void

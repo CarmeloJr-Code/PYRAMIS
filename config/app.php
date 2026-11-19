@@ -65,9 +65,9 @@ return [
     | to the other one. Left unset — locally, and under test — neither route
     | group is tied to a host and the whole app answers on one.
     |
-    | The storefront aliases are other hosts the storefront is reachable by,
-    | comma-separated — its own onrender.com address behind a custom domain.
-    | Every path on them moves permanently to the storefront host.
+    | Each half's aliases are other hosts it is reachable by, comma-separated
+    | — its own onrender.com address behind a custom domain. Every path on
+    | them moves permanently to that half's host.
     |
     */
 
@@ -76,6 +76,8 @@ return [
     'storefront_aliases' => array_values(array_filter(array_map('trim', explode(',', (string) env('STOREFRONT_ALIASES'))))),
 
     'workspace_domain' => env('WORKSPACE_DOMAIN'),
+
+    'workspace_aliases' => array_values(array_filter(array_map('trim', explode(',', (string) env('WORKSPACE_ALIASES'))))),
 
     /*
     |--------------------------------------------------------------------------

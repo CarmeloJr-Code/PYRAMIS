@@ -24,7 +24,6 @@ use App\Notifications\PaymentProofSubmitted;
 use App\Notifications\RestockDelivered;
 use App\Notifications\RestockRequested;
 use App\Notifications\ShiftAssigned;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Session;
 use Livewire\Livewire;
@@ -259,15 +258,13 @@ class WorkspaceNotificationsTest extends TestCase
         $this->baker->notify(new OrderPlaced(Order::factory()->for(Outlet::factory())->create()));
         $notification = $this->baker->notifications()->firstOrFail();
 
-        $this->expectException(ModelNotFoundException::class);
+        Livewire::actingAs($this->cashier)
+            ->test('notification-bell')
+            ->call('open', $notification->id)
+            ->assertNotFound()
+            ->assertNoRedirect();
 
-        try {
-            Livewire::actingAs($this->cashier)
-                ->test('notification-bell')
-                ->call('open', $notification->id);
-        } finally {
-            $this->assertNull($notification->fresh()->read_at);
-        }
+        $this->assertNull($notification->fresh()->read_at);
     }
 
     public function test_marking_all_read_clears_only_the_employees_own(): void

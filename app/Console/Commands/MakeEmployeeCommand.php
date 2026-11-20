@@ -42,9 +42,9 @@ class MakeEmployeeCommand extends Command
         $generate = (bool) $this->option('generate-password');
 
         $needsPrompt = ! $generate
-            || $this->option('name') === null
-            || $this->option('email') === null
-            || $this->option('role') === null;
+            || $this->stringOption('name') === null
+            || $this->stringOption('email') === null
+            || $this->stringOption('role') === null;
 
         if ($needsPrompt && ! $this->input->isInteractive()) {
             $this->components->error(
@@ -54,17 +54,17 @@ class MakeEmployeeCommand extends Command
             return self::FAILURE;
         }
 
-        $name = $this->option('name') ?? text(
+        $name = $this->stringOption('name') ?? text(
             label: 'Full name',
             required: true,
         );
 
-        $email = $this->normaliseEmail($this->option('email') ?? text(
+        $email = $this->normaliseEmail($this->stringOption('email') ?? text(
             label: 'Email address',
             required: true,
         ));
 
-        $role = $this->option('role') ?? select(
+        $role = $this->stringOption('role') ?? select(
             label: 'Role',
             options: $this->roleOptions(),
         );
@@ -141,6 +141,16 @@ class MakeEmployeeCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * A value option as the text it was given, or null when it was not.
+     */
+    protected function stringOption(string $key): ?string
+    {
+        $value = $this->option($key);
+
+        return is_string($value) ? $value : null;
     }
 
     /**

@@ -11,8 +11,8 @@
         "concurrently": "^10.0.3",
         "laravel-vite-plugin": "^3.1",
         "tailwindcss": "^4.0.7",
-        "vite": "^8.0.0",
-        "vite-plus": "0.3.0"
+        "vite": "npm:@voidzero-dev/vite-plus-core@8.3.8000",
+        "vite-plus": "1.7.0"
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1",

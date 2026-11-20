@@ -41,13 +41,20 @@ COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 # carries file capabilities fails with EPERM. We bind $PORT, never :80.
 RUN setcap -r /usr/local/bin/frankenphp
 
+# Everything runs as www-data, not root. The only paths it writes are
+# storage (compiled views, logs, Livewire's temporary uploads),
+# bootstrap/cache (what `artisan optimize` caches at boot), and Caddy's own
+# data and config dirs ($XDG_DATA_HOME/caddy, $XDG_CONFIG_HOME/caddy). The
+# rest of /app stays root-owned, so the process cannot rewrite its own code.
 RUN chmod +x /usr/local/bin/entrypoint \
  && mkdir -p storage/framework/cache/data \
              storage/framework/sessions \
              storage/framework/views \
              storage/logs \
              bootstrap/cache \
- && chown -R www-data:www-data storage bootstrap/cache
+ && chown -R www-data:www-data storage bootstrap/cache /data/caddy /config/caddy
+
+USER www-data
 
 ENV SERVER_NAME=":8080"
 EXPOSE 8080

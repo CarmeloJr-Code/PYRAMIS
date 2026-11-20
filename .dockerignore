@@ -1,8 +1,8 @@
 .git
 .github
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
 node_modules
 vendor
 public/build
@@ -14,6 +14,20 @@ tests
 .phpunit.result.cache
 phpstan.neon
 phpunit.xml
+phpunit.dusk.xml
 pint.json
 Dockerfile
 .dockerignore
+
+# Specs, capstone sources and scanned business forms: reference for people,
+# never read by the running app, so they stay out of the image.
+docs
+
+# Agent and editor tooling.
+.claude
+.agents
+.ai
+.mcp.json
+CLAUDE.md
+boost.json
+skills-lock.json

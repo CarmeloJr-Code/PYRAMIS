@@ -18,6 +18,9 @@
         </include>
     </source>
     <php>
+        <!-- The whole suite runs in one process; PHP's 128M default no longer
+             holds every compiled view and Livewire component at once. -->
+        <ini name="memory_limit" value="512M"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
